@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "satisfactory-db",
+  "satisfactory-accounting",
+  "satisfactory-accounting-app",
+]
