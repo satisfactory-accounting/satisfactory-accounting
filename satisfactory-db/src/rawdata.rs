@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{RecipeId, ItemId};
+use crate::{ItemId, RecipeId};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Color {
