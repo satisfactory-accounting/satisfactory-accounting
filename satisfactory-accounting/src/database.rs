@@ -3,6 +3,7 @@ use std::fmt;
 use std::ops::Index;
 
 use internment::Intern;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::BuildingSettings;
@@ -19,8 +20,18 @@ pub struct Database {
 }
 
 impl Database {
+    /// Get an item, recipe, or building by id.
     pub fn get<T: Id>(&self, id: T) -> Option<&<T as Id>::Info> {
         id.fetch(self)
+    }
+
+    /// Get the default database instance.
+    pub fn instance() -> &'static Self {
+        const SERIALIZED_DB: &str = include_str!("../db.json");
+        static INSTANCE: Lazy<Database> = Lazy::new(|| {
+            serde_json::from_str(SERIALIZED_DB).expect("Could not parse included Database")
+        });
+        &*INSTANCE
     }
 }
 
