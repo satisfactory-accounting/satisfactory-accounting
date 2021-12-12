@@ -23,7 +23,6 @@ pub(crate) struct ItemAmount {
     pub(crate) amount: f32,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct RawData {
     pub(crate) recipes: HashMap<String, Recipe>,

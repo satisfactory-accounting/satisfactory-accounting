@@ -260,7 +260,6 @@ pub enum BuildingKindId {
     Geothermal,
     /// General power consumer with no production.
     PowerConsumer,
-
 }
 
 /// Power-usage information for a building.
