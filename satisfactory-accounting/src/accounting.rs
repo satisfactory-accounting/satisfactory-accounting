@@ -421,9 +421,11 @@ impl GeneratorSettings {
             }
 
             balance.power = g.power_production.get_rate(self.clock_speed);
-            balance
-                .balances
-                .insert(ItemId::water(), -balance.power * g.used_water);
+            if g.used_water > 0.0 {
+                balance
+                    .balances
+                    .insert(ItemId::water(), -balance.power * g.used_water);
+            }
             // Burn time in Seconds MJ / MW = MJ/(MJ/s) = s
             let fuel_burn_time = energy.energy / balance.power;
             *balance.balances.entry(fuel_id).or_default() -= 60.0 / fuel_burn_time;

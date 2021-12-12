@@ -7,7 +7,7 @@ pub use accounting::{
     ResourcePurity,
 };
 pub use database::{
-    BuildingId, BuildingKind, BuildingType, Database, Generator, Id, Item, ItemAmount, ItemId,
-    Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe, RecipeId, BuildingKindId,
-    Geothermal,
+    BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, Fuel, Generator, Geothermal,
+    Id, Item, ItemAmount, ItemId, Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe,
+    RecipeId,
 };

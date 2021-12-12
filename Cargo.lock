@@ -139,9 +139,6 @@ dependencies = [
 [[package]]
 name = "satisfactory-accounting-app"
 version = "0.1.0"
-dependencies = [
- "satisfactory-db",
-]
 
 [[package]]
 name = "satisfactory-db"

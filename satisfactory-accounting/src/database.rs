@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::BuildingSettings;
 
 /// Database of satisfactory ... stuff.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Database {
     /// Core recipe storage. We only store machine recipes.
     pub recipes: HashMap<RecipeId, Recipe>,
