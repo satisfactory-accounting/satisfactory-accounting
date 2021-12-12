@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{ItemId, RecipeId};
+use crate::{BuildingId, ItemAmount, ItemId, RecipeId};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Color {
@@ -25,15 +25,34 @@ pub(crate) struct RawData {
     pub(crate) items: HashMap<ItemId, Item>,
     pub(crate) schematics: HashMap<String, Schematic>,
     pub(crate) generators: HashMap<String, Generator>,
-    pub(crate) resources: HashMap<String, Resource>,
+    pub(crate) resources: HashMap<ItemId, Resource>,
     pub(crate) miners: HashMap<String, Miner>,
-    pub(crate) buildings: HashMap<String, Building>,
+    pub(crate) buildings: HashMap<BuildingId, Building>,
 }
 
 impl RawData {
     pub(crate) fn load() -> Self {
         const RAW_DATA: &str = include_str!("../data.json");
-        serde_json::from_str(RAW_DATA).expect("failed to parse default data")
+        let mut data: RawData = serde_json::from_str(RAW_DATA).expect("failed to parse default data");
+
+        // Patch extra fields.
+        data.buildings
+            .get_mut(&"Desc_MinerMk1_C".into())
+            .unwrap()
+            .metadata
+            .manufacturing_speed = Some(1.0);
+        data.buildings
+            .get_mut(&"Desc_MinerMk2_C".into())
+            .unwrap()
+            .metadata
+            .manufacturing_speed = Some(1.0);
+        data.buildings
+            .get_mut(&"Desc_MinerMk3_C".into())
+            .unwrap()
+            .metadata
+            .manufacturing_speed = Some(1.0);
+
+        data
     }
 }
 
@@ -52,13 +71,7 @@ pub(crate) struct Recipe {
     pub(crate) in_hand: bool,
     pub(crate) in_workshop: bool,
     pub(crate) products: Vec<ItemAmount>,
-    pub(crate) produced_in: Vec<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub(crate) struct ItemAmount {
-    pub(crate) item: ItemId,
-    pub(crate) amount: f32,
+    pub(crate) produced_in: Vec<BuildingId>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -123,7 +136,7 @@ pub(crate) struct Resource {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Miner {
     pub(crate) class_name: String,
-    pub(crate) allowed_resources: Vec<String>,
+    pub(crate) allowed_resources: Vec<ItemId>,
     pub(crate) items_per_cycle: f32,
     pub(crate) extract_cycle_time: f32,
     pub(crate) allow_liquids: bool,
@@ -138,7 +151,7 @@ pub(crate) struct Building {
     pub(crate) description: String,
     pub(crate) categories: Vec<String>,
     pub(crate) build_menu_priority: f32,
-    pub(crate) class_name: String,
+    pub(crate) class_name: BuildingId,
     pub(crate) metadata: BuildingMetadata,
     pub(crate) size: Size,
 }

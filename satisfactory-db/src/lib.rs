@@ -11,45 +11,50 @@ use serde::{Deserialize, Serialize};
 mod rawdata;
 
 /// Database of satisfactory ... stuff.
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Database {
     /// Core recipe storage. We only store machine recipes.
     recipes: HashMap<RecipeId, Recipe>,
     /// Core item storage.
     items: HashMap<ItemId, Item>,
+    /// Core buildings storage.
+    buildings: HashMap<BuildingId, Building>,
 }
 
-static DATABASE: Lazy<Database> = Lazy::new(|| Database::new(RawData::load()));
+static DATABASE: Lazy<Database> = Lazy::new(|| Database::load());
+
+/// Make synthetic extraction recipes for the given items.
+fn make_synth_extract_recipes(resource: ItemId, raw_item: &rawdata::Item, impure_time: f32) -> impl Iterator<Item = Recipe> {
+}
 
 impl Database {
-    fn new(raw_data: RawData) -> Self {
-        let recipes: HashMap<_, _> = raw_data
+    fn load() -> Self {
+        let raw_data = RawData::load();
+        // First get the base recipes.
+        let mut recipes: HashMap<_, _> = raw_data
             .recipes
             .into_values()
             .filter(|recipe| recipe.in_machine)
-            .map(|recipe| Recipe {
-                name: recipe.name,
-                id: recipe.class_name,
-                image: recipe.slug,
-                time: recipe.time,
-                ingredients: recipe
-                    .ingredients
-                    .into_iter()
-                    .map(|ingredient| ItemAmount {
-                        item: ingredient.item,
-                        amount: ingredient.amount,
-                    })
-                    .collect(),
-                products: recipe
-                    .products
-                    .into_iter()
-                    .map(|product| ItemAmount {
-                        item: product.item,
-                        amount: product.amount,
-                    })
-                    .collect(),
-            })
+            .map(Recipe::from)
             .map(|recipe| (recipe.id, recipe))
             .collect();
+
+        const MINERS: &[&str] = &["Desc_MinerMk1_C", "Desc_MinerMk2_C", "Desc_MinerMk3_C"];
+        for (resource, impure_time, extractors) in [
+            ("Desc_Coal_C", 2.0, MINERS),
+            ("Desc_OreBauxite_C", 2.0, MINERS),
+            ("Desc_OreCopper_C", 2.0, MINERS),
+            ("Desc_OreGold_C", 2.0, MINERS),
+            ("Desc_OreIron_C", 2.0, MINERS),
+            ("Desc_OreUranium_C", 2.0, MINERS),
+            ("Desc_RawQuartz_C", 2.0, MINERS),
+            ("Desc_Stone_C", 2.0, MINERS),
+            ("Desc_Sulfur_C", 2.0, MINERS),
+        ] {
+            let resource = ItemId::from(resource);
+            let raw_item = &raw_data.items[&resource];
+            recipes.extend(make_synth_extract_recipes(resource, raw_item).map(|recipe| (recipe.id, recipe)));
+        }
 
         let used_items: HashSet<_> = recipes
             .values()
@@ -57,23 +62,28 @@ impl Database {
             .map(|item_amount| item_amount.item)
             .collect();
 
+        let used_buildings: HashSet<_> = recipes
+            .values()
+            .flat_map(|recipe| recipe.produced_in.iter().copied())
+            .collect();
+
         let mut items: HashMap<_, _> = raw_data
             .items
             .into_values()
-            .map(|item| Item {
-                name: item.name,
-                id: item.class_name,
-                image: item.slug,
-                description: item.description,
-                transport: ItemTransport::from_is_liquid(item.liquid),
-                produced_by: Vec::new(),
-                consumed_by: Vec::new(),
-            })
-            .filter(|item| used_items.contains(&item.id))
+            .filter(|item| used_items.contains(&item.class_name))
+            .map(Item::from)
             .map(|item| (item.id, item))
             .collect();
 
-        // Add the back mappings from ingredients to recipes.
+        let mut buildings: HashMap<_, _> = raw_data
+            .buildings
+            .into_values()
+            .filter(|building| used_buildings.contains(&building.class_name))
+            .map(Building::from)
+            .map(|building| (building.id, building))
+            .collect();
+
+        // Add the back mappings from ingredients and buildings to recipes.
         for recipe in recipes.values() {
             for ingredient in recipe.ingredients.iter() {
                 match items.get_mut(&ingredient.item) {
@@ -93,9 +103,22 @@ impl Database {
                     ),
                 }
             }
+            for producer in recipe.produced_in.iter() {
+                match buildings.get_mut(&producer) {
+                    Some(building) => building.available_recipes.push(recipe.id),
+                    None => panic!(
+                        "Recipe {} can be produced in Building {} which is not defined",
+                        recipe.id, producer,
+                    ),
+                }
+            }
         }
 
-        Database { recipes, items }
+        Database {
+            recipes,
+            items,
+            buildings,
+        }
     }
 
     /// Get the global database instance.
@@ -158,6 +181,12 @@ macro_rules! typed_symbol {
                 }
             }
 
+            impl From<&str> for $Self {
+                fn from(id: &str) -> Self {
+                    Self(Intern::from(id))
+                }
+            }
+
             impl From<$Self> for String {
                 fn from(id: $Self) -> Self {
                     id.as_str().to_owned()
@@ -193,6 +222,11 @@ typed_symbol! {
         info = Item,
         map = items,
     }
+
+    BuildingId {
+        info = Building,
+        map = buildings,
+    }
 }
 
 /// Recipe for crafting an item or items.
@@ -210,6 +244,25 @@ pub struct Recipe {
     pub ingredients: Vec<ItemAmount>,
     /// Number and types of products produced by this recipe.
     pub products: Vec<ItemAmount>,
+    /// True if this is an alternate recipe.
+    pub is_alternate: bool,
+    /// Buildings which can produce this recipe.
+    pub produced_in: Vec<BuildingId>,
+}
+
+impl From<rawdata::Recipe> for Recipe {
+    fn from(recipe: rawdata::Recipe) -> Self {
+        Self {
+            name: recipe.name,
+            id: recipe.class_name,
+            image: recipe.slug,
+            time: recipe.time,
+            ingredients: recipe.ingredients,
+            products: recipe.products,
+            is_alternate: recipe.alternate,
+            produced_in: recipe.produced_in,
+        }
+    }
 }
 
 /// An input or output: a certain number of items produced or consumed.
@@ -257,6 +310,57 @@ pub struct Item {
     pub produced_by: Vec<RecipeId>,
     /// Recipes which consume this item.
     pub consumed_by: Vec<RecipeId>,
+}
+
+impl From<rawdata::Item> for Item {
+    /// Build an Item from a RawItem. Does not fill in produced_by or consumed_by.
+    fn from(item: rawdata::Item) -> Self {
+        Self {
+            name: item.name,
+            id: item.class_name,
+            image: item.slug,
+            description: item.description,
+            transport: ItemTransport::from_is_liquid(item.liquid),
+            produced_by: Vec::new(),
+            consumed_by: Vec::new(),
+        }
+    }
+}
+
+/// A building used to produce recipes.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Building {
+    /// Name of the building.
+    pub name: String,
+    /// ID of the building.
+    pub id: BuildingId,
+    /// ID of the image for this building.
+    pub image: String,
+    /// Description of the building.
+    pub description: String,
+    /// Amount of power used by this building at 100% production.
+    pub power_consumption: f32,
+    /// Exponent used to adjust power consumption when scaling down or up.
+    pub power_consumption_exponent: f32,
+    /// Unclear. Multiplier applied to base manufacturing time on recipes?
+    pub manufacturing_speed: f32,
+    /// Reverse table of available recipes.
+    pub available_recipes: Vec<RecipeId>,
+}
+
+impl From<rawdata::Building> for Building {
+    fn from(building: rawdata::Building) -> Self {
+        Self {
+            name: building.name,
+            id: building.class_name,
+            image: building.slug,
+            description: building.description,
+            power_consumption: building.metadata.power_consumption.unwrap_or(0.0),
+            power_consumption_exponent: building.metadata.power_consumption_exponent.unwrap_or(1.0),
+            manufacturing_speed: building.metadata.manufacturing_speed.unwrap_or(1.0),
+            available_recipes: Vec::new(),
+        }
+    }
 }
 
 #[cfg(test)]
