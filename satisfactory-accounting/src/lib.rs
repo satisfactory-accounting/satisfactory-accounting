@@ -3,7 +3,7 @@ mod database;
 
 pub use accounting::{
     Balance, BuildError, BuildNode, Building, BuildingSettings, GeneratorSettings,
-    GeothermalSettings, Group, ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings,
+    GeothermalSettings, Group, ManufacturerSettings, MinerSettings, Node, NodeRef, NodeKind, PumpSettings,
     ResourcePurity,
 };
 pub use database::{

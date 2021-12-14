@@ -15,14 +15,13 @@ mod balance;
 /// or consumes and how much power it generates or uses.
 ///
 /// Nodes are immutable. Modifying them requires creating new nodes.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Node(Rc<NodeInner>);
+pub type NodeRef = Rc<Node>;
 
 /// Trait for types that can be turned into nodes.
 pub trait BuildNode: private::Sealed {
     /// Create a node from this type. Uses the database to compute the balance of the
     /// node.
-    fn build_node(self, database: &Database) -> Result<Node, BuildError>;
+    fn build_node(self, database: &Database) -> Result<NodeRef, BuildError>;
 }
 
 /// Error found when building a [`Node`].
@@ -55,48 +54,17 @@ pub enum BuildError {
 impl BuildError {
     /// Builds a node with this error as a waning.
     #[inline]
-    pub fn into_warning_node(self, kind: impl Into<NodeKind>) -> Node {
+    pub fn into_warning_node(self, kind: impl Into<NodeKind>) -> NodeRef {
         Node::warn(kind, self)
     }
 }
 
-impl Node {
-    /// Create a new tree node.
-    fn new(kind: impl Into<NodeKind>, balance: Balance) -> Node {
-        Self(Rc::new(NodeInner {
-            kind: kind.into(),
-            balance,
-            warning: None,
-        }))
-    }
-
-    /// Create a node that has no balance because of an error.
-    fn warn(kind: impl Into<NodeKind>, warning: BuildError) -> Node {
-        Self(Rc::new(NodeInner {
-            kind: kind.into(),
-            balance: Balance::empty(),
-            warning: Some(warning),
-        }))
-    }
-
-    /// Get the kind of this node.
-    pub fn kind(&self) -> &NodeKind {
-        &self.0.kind
-    }
-
-    /// Get the balance of this node.
-    pub fn balance(&self) -> &Balance {
-        &self.0.balance
-    }
-
-    /// Get the warning for this error.
-    pub fn warning(&self) -> Option<BuildError> {
-        self.0.warning
-    }
-}
-
+/// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
+/// or consumes and how much power it generates or uses.
+///
+/// Nodes are immutable. Modifying them requires creating new nodes.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct NodeInner {
+pub struct Node {
     /// Type of this node.
     kind: NodeKind,
 
@@ -107,11 +75,75 @@ struct NodeInner {
     warning: Option<BuildError>,
 }
 
+impl Node {
+    /// Create a new tree node.
+    fn new(kind: impl Into<NodeKind>, balance: Balance) -> NodeRef {
+        Rc::new(Node {
+            kind: kind.into(),
+            balance,
+            warning: None,
+        })
+    }
+
+    /// Create a node that has no balance because of an error.
+    fn warn(kind: impl Into<NodeKind>, warning: BuildError) -> NodeRef {
+        Rc::new(Node {
+            kind: kind.into(),
+            balance: Balance::empty(),
+            warning: Some(warning),
+        })
+    }
+
+    /// Get the kind of this node.
+    pub fn kind(&self) -> &NodeKind {
+        &self.kind
+    }
+
+    /// Get the balance of this node.
+    pub fn balance(&self) -> &Balance {
+        &self.balance
+    }
+
+    /// Get the warning for this error.
+    pub fn warning(&self) -> Option<BuildError> {
+        self.warning
+    }
+
+    /// Get the Group if this is a Group, otherwise None.
+    pub fn group(&self) -> Option<&Group> {
+        self.kind.group()
+    }
+
+    /// Get the Building if this is a Building, otherwise None.
+    pub fn building(&self) -> Option<&Building> {
+        self.kind.building()
+    }
+}
+
+
 /// Kind of node.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NodeKind {
     Group(Group),
     Building(Building),
+}
+
+impl NodeKind {
+    /// Get the Group if this is a Group, otherwise None.
+    pub fn group(&self) -> Option<&Group> {
+        match self {
+            Self::Group(group) => Some(group),
+            _ => None,
+        }
+    }
+
+    /// Get the Building if this is a Building, otherwise None.
+    pub fn building(&self) -> Option<&Building> {
+        match self {
+            Self::Building(building) => Some(building),
+            _ => None,
+        }
+    }
 }
 
 impl From<Group> for NodeKind {
@@ -133,7 +165,7 @@ pub struct Group {
     pub name: Option<String>,
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
-    pub children: Vec<Node>,
+    pub children: Vec<NodeRef>,
 }
 
 impl Group {
@@ -145,12 +177,12 @@ impl Group {
 
     /// Get a child of this node by index.
     pub fn get_child(&self, index: usize) -> Option<&Node> {
-        self.children.get(index)
+        self.children.get(index).map(|rc| &**rc)
     }
 }
 
 impl BuildNode for Group {
-    fn build_node(self, _database: &Database) -> Result<Node, BuildError> {
+    fn build_node(self, _database: &Database) -> Result<NodeRef, BuildError> {
         let balance = self.compute_balance();
         Ok(Node::new(self, balance))
     }
@@ -166,7 +198,7 @@ pub struct Building {
 }
 
 impl BuildNode for Building {
-    fn build_node(self, database: &Database) -> Result<Node, BuildError> {
+    fn build_node(self, database: &Database) -> Result<NodeRef, BuildError> {
         let mut balance = Balance::empty();
         if let Some(building_id) = self.building {
             let building = database

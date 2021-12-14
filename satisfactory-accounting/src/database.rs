@@ -3,13 +3,12 @@ use std::fmt;
 use std::ops::Index;
 
 use internment::Intern;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 use crate::BuildingSettings;
 
 /// Database of satisfactory ... stuff.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Database {
     /// Core recipe storage. We only store machine recipes.
     pub recipes: HashMap<RecipeId, Recipe>,
@@ -25,13 +24,10 @@ impl Database {
         id.fetch(self)
     }
 
-    /// Get the default database instance.
-    pub fn instance() -> &'static Self {
+    /// Load the default database from the included json string.
+    pub fn load_default() -> Self {
         const SERIALIZED_DB: &str = include_str!("../db.json");
-        static INSTANCE: Lazy<Database> = Lazy::new(|| {
-            serde_json::from_str(SERIALIZED_DB).expect("Could not parse included Database")
-        });
-        &*INSTANCE
+        serde_json::from_str(SERIALIZED_DB).expect("Failed to parse included db.json")
     }
 }
 
@@ -126,7 +122,7 @@ typed_symbol! {
 }
 
 /// Recipe for crafting an item or items.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Recipe {
     /// Name of the recipe. Typically similar to the name of the item(s) produced.
     pub name: String,
@@ -147,7 +143,7 @@ pub struct Recipe {
 }
 
 /// An input or output: a certain number of items produced or consumed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ItemAmount {
     /// Id of the item(s).
     pub item: ItemId,
@@ -156,7 +152,7 @@ pub struct ItemAmount {
 }
 
 /// A solid or liquid item used in crafting.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Item {
     /// Name of this item.
     pub name: String,
@@ -179,7 +175,7 @@ pub struct Item {
 }
 
 /// Settings for an item used as fuel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Fuel {
     /// Amount of energy that this item is worth in MJ.
     pub energy: f32,
@@ -195,7 +191,7 @@ impl ItemId {
 }
 
 /// A building used to produce or use items.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuildingType {
     /// Name of the building.
     pub name: String,
@@ -224,7 +220,7 @@ impl BuildingType {
 }
 
 /// Which kind of building this is (affects how resources are produced/consumed).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum BuildingKind {
     /// Manufacturing buildings consume power to produce outputs according to recipes.
     Manufacturer(Manufacturer),
@@ -274,7 +270,7 @@ pub enum BuildingKindId {
 }
 
 /// Power-usage information for a building.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Power {
     /// Amount of power used by this building at 100% production, in MW.
     pub power: f32,
@@ -291,7 +287,7 @@ impl Power {
 }
 
 /// Manufacturing settings of a building.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Manufacturer {
     /// Multiplier applied to base manufacturing time on recipes.
     pub manufacturing_speed: f32,
@@ -302,7 +298,7 @@ pub struct Manufacturer {
 }
 
 /// Miner settings of a building.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Miner {
     /// Items which can be mined.
     pub allowed_resources: Vec<ItemId>,
@@ -315,7 +311,7 @@ pub struct Miner {
 }
 
 /// Generator settings of a building.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Generator {
     /// Recipes this generator type can use.
     pub allowed_fuel: Vec<ItemId>,
@@ -326,7 +322,7 @@ pub struct Generator {
 }
 
 /// Pump settings of a building.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Pump {
     /// Recipes this generator type can use.
     pub allowed_resources: Vec<ItemId>,
@@ -339,14 +335,14 @@ pub struct Pump {
 }
 
 /// Geothermal generator settings.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Geothermal {
     /// Power production. No exponent because overclocking is not possible.
     pub power: f32,
 }
 
 /// A general power-consumer which doesn't produce or consume items, just power.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PowerConsumer {
     /// Amount of power consumed.
     pub power: f32,
