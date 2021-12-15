@@ -166,6 +166,16 @@ pub struct Group {
 }
 
 impl Group {
+    /// Create a new empty group.
+    pub fn empty() -> Self {
+        Default::default()
+    }
+
+    /// Create a new empty group wrapped in a node.
+    pub fn empty_node() -> Node {
+        Self::empty().into()
+    }
+
     /// Compute the net balance for this group, using the *cached* values of child nodes.
     /// Caller is responsible for recaching child balances first if necessary.
     fn compute_balance(&self) -> Balance {
@@ -178,10 +188,16 @@ impl Group {
     }
 }
 
+impl From<Group> for Node {
+    fn from(group: Group) -> Self {
+        let balance = group.compute_balance();
+        Node::new(group, balance)
+    }
+}
+
 impl BuildNode for Group {
     fn build_node(self, _database: &Database) -> Result<Node, BuildError> {
-        let balance = self.compute_balance();
-        Ok(Node::new(self, balance))
+        Ok(self.into())
     }
 }
 
@@ -192,6 +208,18 @@ pub struct Building {
     pub building: Option<BuildingId>,
     /// Settings for this building. Must match the BuildingKind of the building.
     pub settings: BuildingSettings,
+}
+
+impl Building {
+    /// Create a new empty building.
+    pub fn empty() -> Self {
+        Default::default()
+    }
+
+    /// Create a new node for an unassigned building.
+    pub fn empty_node() -> Node {
+        Node::new(Self::empty(), Balance::empty())
+    }
 }
 
 impl BuildNode for Building {
@@ -229,6 +257,15 @@ impl BuildNode for Building {
             }
         }
         Ok(Node::new(self, balance))
+    }
+}
+
+impl Default for Building {
+    fn default() -> Self {
+        Self {
+            building: None,
+            settings: BuildingSettings::PowerConsumer,
+        }
     }
 }
 

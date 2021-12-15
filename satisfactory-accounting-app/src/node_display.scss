@@ -13,8 +13,17 @@ $button-size: 30px;
     border-radius: 3px;
     box-sizing: border-box;
 
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+
     height: $button-size;
     min-width: $button-size;
+
+    .material-icons {
+        font-size: 18px;
+    }
 
     background-color: $base-color;
     &:hover {
@@ -28,10 +37,20 @@ $button-size: 30px;
 
 @mixin green-button {
     @include color-button(colors.$green);
+    color: colors.$gray-dark;
+}
+
+@mixin red-button {
+    @include color-button(colors.$red);
+    color: colors.$gray-dark;
 }
 
 .NodeDisplay {
-    .Group {
+    .delete {
+        @include red-button();
+    }
+
+    .group {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
@@ -53,16 +72,26 @@ $button-size: 30px;
             flex-grow: 1;
             gap: 5px;
 
-            .name {
-                font-size: 20px;
+            .GroupName {
+                box-sizing: border-box;
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                flex-grow: 1;
+                gap: 5px;
 
-                &.notset {
-                    color: colors.$dark;
+                .name {
+                    font-size: 20px;
+                    color: colors.$gray-dark;
+
+                    &.notset {
+                        color: colors.$gray;
+                    }
                 }
-            }
 
-            .edit {
-                @include green-button();
+                .edit {
+                    @include green-button();
+                }
             }
         }
 
@@ -70,13 +99,26 @@ $button-size: 30px;
             box-sizing: border-box;
 
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
             flex-direction: row;
-            align-items: center;
+            align-items: flex-start;
             margin: 0 5px;
             background-color: colors.$dark;
+            border-radius: 5px;
             padding: 5px;
             flex-grow: 1;
+            gap: 5px;
+
+            .children-display {
+                box-sizing: border-box;
+
+                display: flex;
+                justify-content: flex-start;
+                flex-direction: column;
+                align-items: stretch;
+                flex-grow: 1;
+                gap: 5px;
+            }
         }
 
         .footer {
@@ -96,7 +138,7 @@ $button-size: 30px;
         }
     }
 
-    .Balance {
+    .balance {
         box-sizing: border-box;
 
         display: flex;
@@ -104,7 +146,6 @@ $button-size: 30px;
         justify-content: flex-start;
         align-items: stretch;
 
-        margin: 5px;
         border-radius: 5px;
         background-color: colors.$light;
         padding: 5px;

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use gloo::storage::{LocalStorage, Storage};
-use log::info;
+use log::warn;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
@@ -30,7 +30,9 @@ impl Default for AppState {
     }
 }
 
+/// Messages for communicating with App.
 pub enum Msg {
+    ReplaceRoot { replacement: Node },
 }
 
 pub struct App {
@@ -48,11 +50,19 @@ impl Component for App {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::ReplaceRoot { replacement } => {
+                self.state.root = replacement;
+                self.save();
+                true
+            }
         }
     }
 
-    fn view(&self, _ctx: &Context<Self>) -> Html {
-        // This gives us a component's "`Scope`" which allows us to send messages, etc to the component.
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let replace = ctx.link().callback(|(idx, replacement)| {
+            assert!(idx == 0, "Attempting to replace index {} at the root", idx);
+            Msg::ReplaceRoot { replacement }
+        });
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
                 <div class="App">
@@ -61,10 +71,20 @@ impl Component for App {
                     </div>
                     <div class="appbody">
                         <NodeDisplay node={self.state.root.clone()}
-                            path={Vec::new()} />
+                            path={Vec::new()}
+                            {replace} />
                     </div>
                 </div>
             </ContextProvider<Rc<Database>>>
+        }
+    }
+}
+
+impl App {
+    /// Save the current state to local storage.
+    fn save(&self) {
+        if let Err(e) = LocalStorage::set(KEY, &self.state) {
+            warn!("Unable to save state: {}", e);
         }
     }
 }
