@@ -1,0 +1,32 @@
+$bg-primary: #DF691A;
+$bg-secondary: #4E5D6c;
+
+$blue: #DF691A;
+$indigo: #6610f2;
+$purple: #6f42c1;
+$pink: #e83e8c;
+$red: #d9534f;
+$orange: #f0ad4e;
+$yellow: #f0ad4e;
+$green: #5cb85c;
+$teal: #20c997;
+$cyan: #5bc0de;
+$white: #fff;
+$gray: #868e96;
+$gray-dark: #343a40;
+$primary: $bg-primary;
+$secondary: $bg-secondary;
+$success: #5cb85c;
+$info: #5bc0de;
+$warning: #f0ad4e;
+$danger: #d9534f;
+$light: #abb6c2;
+$dark: #4E5D6C;
+
+@mixin satisfactory {
+    font-family: 'Satisfontory', 'Rubik', 'Sans';
+    background: linear-gradient(to top,#ADC8DD,#FEFFFE,#E2E9EF);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+}

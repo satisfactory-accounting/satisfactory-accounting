@@ -1,0 +1,49 @@
+@use "colors.scss";
+@use "node_display.scss";
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Rubik', 'Sans';
+    background-color: colors.$bg-secondary;
+}
+
+.App {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.appbody {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: 10px;
+}
+
+.navbar {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    width: 100%;
+    height: 60px;
+    background-color: colors.$bg-primary;
+    padding: 10px;
+
+    .appheader {
+        @include colors.satisfactory;
+        font-size: 40px;
+        line-height: 40px;
+    }
+}
+
+.space {
+    flex-grow: 1;
+}

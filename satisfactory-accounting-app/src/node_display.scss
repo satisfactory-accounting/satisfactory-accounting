@@ -1,0 +1,60 @@
+@use "colors.scss";
+@use "sass:color";
+
+.Group {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    min-width: 500px;
+
+    background-color: colors.$light;
+
+    .header {
+        box-sizing: border-box;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 5px;
+        flex-grow: 1;
+
+        .name {
+            font-size: 20px;
+
+            &.notset {
+                color: colors.$dark;
+            }
+        }
+
+        .edit {
+            background-color: colors.$green;
+            border: 0;
+            padding: 3px;
+            border-radius: 3px;
+            color: colors.$dark;
+
+            &:hover {
+                background-color: color.scale(colors.$green, $lightness: -10%);
+            }
+            &:active {
+                background-color: color.scale(colors.$green, $lightness: 10%);
+            }
+
+        }
+    }
+
+    .body {
+        box-sizing: border-box;
+
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin: 0 5px;
+        background-color: colors.$dark;
+        padding: 5px;
+        flex-grow: 1;
+    }
+}

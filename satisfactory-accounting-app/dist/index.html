@@ -1,0 +1,40 @@
+<!DOCTYPE html><html><head>
+    <meta charset="utf-8">
+    <title>Satisfactory Accounting</title>
+    <link rel="stylesheet" href="/app-66f615a3edb40cc3.css">
+
+    <link rel="stylesheet" href="/fonts-3e35ad46f7a72dd5.css">
+    
+    
+    
+  
+<link rel="preload" href="/index-c54954c5c84e316a_bg.wasm" as="fetch" type="application/wasm" crossorigin="">
+<link rel="modulepreload" href="/index-c54954c5c84e316a.js"></head>
+<body>
+<script type="module">import init from '/index-c54954c5c84e316a.js';init('/index-c54954c5c84e316a_bg.wasm');</script><script>(function () {
+    var url = 'ws://' + window.location.host + '/_trunk/ws';
+    var poll_interval = 5000;
+    var reload_upon_connect = () => {
+        window.setTimeout(
+            () => {
+                // when we successfully reconnect, we'll force a
+                // reload (since we presumably lost connection to
+                // trunk due to it being killed, so it will have
+                // rebuilt on restart)
+                var ws = new WebSocket(url);
+                ws.onopen = () => window.location.reload();
+                ws.onclose = reload_upon_connect;
+            },
+            poll_interval);
+    };
+
+    var ws = new WebSocket(url);
+    ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.reload) {
+            window.location.reload();
+        }
+    };
+    ws.onclose = reload_upon_connect;
+})()
+</script></body></html>

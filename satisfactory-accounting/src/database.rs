@@ -5,7 +5,7 @@ use std::ops::Index;
 use internment::Intern;
 use serde::{Deserialize, Serialize};
 
-use crate::BuildingSettings;
+use crate::accounting::BuildingSettings;
 
 /// Database of satisfactory ... stuff.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]

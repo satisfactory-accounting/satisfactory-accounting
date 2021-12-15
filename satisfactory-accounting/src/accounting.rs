@@ -4,24 +4,27 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub use self::balance::Balance;
-use crate::{
+use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
     Manufacturer, Miner, Pump, RecipeId,
 };
+use self::refs::{NodeKindRef, GroupRef, BuildingRef, BalanceRef};
 
 mod balance;
+pub mod refs;
 
 /// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
 /// or consumes and how much power it generates or uses.
 ///
 /// Nodes are immutable. Modifying them requires creating new nodes.
-pub type NodeRef = Rc<Node>;
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Node(Rc<NodeInner>);
 
 /// Trait for types that can be turned into nodes.
 pub trait BuildNode: private::Sealed {
     /// Create a node from this type. Uses the database to compute the balance of the
     /// node.
-    fn build_node(self, database: &Database) -> Result<NodeRef, BuildError>;
+    fn build_node(self, database: &Database) -> Result<Node, BuildError>;
 }
 
 /// Error found when building a [`Node`].
@@ -54,17 +57,78 @@ pub enum BuildError {
 impl BuildError {
     /// Builds a node with this error as a waning.
     #[inline]
-    pub fn into_warning_node(self, kind: impl Into<NodeKind>) -> NodeRef {
+    pub fn into_warning_node(self, kind: impl Into<NodeKind>) -> Node {
         Node::warn(kind, self)
     }
 }
 
-/// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
-/// or consumes and how much power it generates or uses.
-///
-/// Nodes are immutable. Modifying them requires creating new nodes.
+impl Node {
+    /// Create a new tree node.
+    fn new(kind: impl Into<NodeKind>, balance: Balance) -> Node {
+        Self(Rc::new(NodeInner {
+            kind: kind.into(),
+            balance,
+            warning: None,
+        }))
+    }
+
+    /// Create a node that has no balance because of an error.
+    fn warn(kind: impl Into<NodeKind>, warning: BuildError) -> Node {
+        Self(Rc::new(NodeInner {
+            kind: kind.into(),
+            balance: Balance::empty(),
+            warning: Some(warning),
+        }))
+    }
+
+    /// Get the kind of this node.
+    pub fn kind(&self) -> &NodeKind {
+        &self.0.kind
+    }
+
+    /// Get a reference-counted reference to the NodeKind.
+    pub fn kind_ref(&self) -> NodeKindRef {
+        NodeKindRef::new(self)
+    }
+
+    /// Get the balance of this node.
+    pub fn balance(&self) -> &Balance {
+        &self.0.balance
+    }
+
+    /// Get a reference-counted reference to the balance.
+    pub fn balance_ref(&self) -> BalanceRef {
+        unsafe { BalanceRef::new(self.clone(), self.balance()) }
+    }
+
+    /// Get the warning for this error.
+    pub fn warning(&self) -> Option<BuildError> {
+        self.0.warning
+    }
+
+    /// Get the Group if this is a Group, otherwise None.
+    pub fn group(&self) -> Option<&Group> {
+        self.kind().group()
+    }
+
+    /// Get the reference-counted Group if this is a Group, otherwise None.
+    pub fn group_ref(&self) -> Option<GroupRef> {
+        self.kind_ref().group()
+    }
+
+    /// Get the Building if this is a Building, otherwise None.
+    pub fn building(&self) -> Option<&Building> {
+        self.kind().building()
+    }
+
+    /// Get reference-counted Building if this is a Building, otherwise None.
+    pub fn building_ref(&self) -> Option<BuildingRef> {
+        self.kind_ref().building()
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Node {
+struct NodeInner {
     /// Type of this node.
     kind: NodeKind,
 
@@ -74,52 +138,6 @@ pub struct Node {
     /// Warnings generated when building this node.
     warning: Option<BuildError>,
 }
-
-impl Node {
-    /// Create a new tree node.
-    fn new(kind: impl Into<NodeKind>, balance: Balance) -> NodeRef {
-        Rc::new(Node {
-            kind: kind.into(),
-            balance,
-            warning: None,
-        })
-    }
-
-    /// Create a node that has no balance because of an error.
-    fn warn(kind: impl Into<NodeKind>, warning: BuildError) -> NodeRef {
-        Rc::new(Node {
-            kind: kind.into(),
-            balance: Balance::empty(),
-            warning: Some(warning),
-        })
-    }
-
-    /// Get the kind of this node.
-    pub fn kind(&self) -> &NodeKind {
-        &self.kind
-    }
-
-    /// Get the balance of this node.
-    pub fn balance(&self) -> &Balance {
-        &self.balance
-    }
-
-    /// Get the warning for this error.
-    pub fn warning(&self) -> Option<BuildError> {
-        self.warning
-    }
-
-    /// Get the Group if this is a Group, otherwise None.
-    pub fn group(&self) -> Option<&Group> {
-        self.kind.group()
-    }
-
-    /// Get the Building if this is a Building, otherwise None.
-    pub fn building(&self) -> Option<&Building> {
-        self.kind.building()
-    }
-}
-
 
 /// Kind of node.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -146,6 +164,7 @@ impl NodeKind {
     }
 }
 
+
 impl From<Group> for NodeKind {
     fn from(group: Group) -> Self {
         Self::Group(group)
@@ -165,7 +184,7 @@ pub struct Group {
     pub name: Option<String>,
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
-    pub children: Vec<NodeRef>,
+    pub children: Vec<Node>,
 }
 
 impl Group {
@@ -177,12 +196,12 @@ impl Group {
 
     /// Get a child of this node by index.
     pub fn get_child(&self, index: usize) -> Option<&Node> {
-        self.children.get(index).map(|rc| &**rc)
+        self.children.get(index)
     }
 }
 
 impl BuildNode for Group {
-    fn build_node(self, _database: &Database) -> Result<NodeRef, BuildError> {
+    fn build_node(self, _database: &Database) -> Result<Node, BuildError> {
         let balance = self.compute_balance();
         Ok(Node::new(self, balance))
     }
@@ -194,17 +213,17 @@ pub struct Building {
     /// Building being used. If not set, balance will be zero.
     pub building: Option<BuildingId>,
     /// Settings for this building. Must match the BuildingKind of the building.
-    pub building_settings: BuildingSettings,
+    pub settings: BuildingSettings,
 }
 
 impl BuildNode for Building {
-    fn build_node(self, database: &Database) -> Result<NodeRef, BuildError> {
+    fn build_node(self, database: &Database) -> Result<Node, BuildError> {
         let mut balance = Balance::empty();
         if let Some(building_id) = self.building {
             let building = database
                 .get(building_id)
                 .ok_or(BuildError::UnknownBuilding(building_id))?;
-            match (&self.building_settings, &building.kind) {
+            match (&self.settings, &building.kind) {
                 (BuildingSettings::Manufacturer(ms), BuildingKind::Manufacturer(m)) => {
                     balance = ms.get_balance(building_id, m, database)?;
                 }

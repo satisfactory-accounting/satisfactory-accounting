@@ -1,14 +1,7 @@
+mod app;
+mod node_display;
+
 fn main() {
-    let db = satisfactory_accounting::Database::instance();
-    for item in db.items.values() {
-        println!("{}", item.name);
-        println!("  Produced By:");
-        for recipe in item.produced_by.iter().map(|&r| &db[r]) {
-            println!("  - {}", recipe.name);
-        }
-        println!("  Consumed By:");
-        for recipe in item.consumed_by.iter().map(|&r| &db[r]) {
-            println!("  - {}", recipe.name);
-        }
-    }
+    console_log::init_with_level(log::Level::Debug).expect("Unable to init logger");
+    yew::start_app::<app::App>();
 }

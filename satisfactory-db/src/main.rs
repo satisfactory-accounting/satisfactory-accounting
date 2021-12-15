@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use satisfactory_accounting::{
+use satisfactory_accounting::database::{
     BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item, ItemAmount, ItemId,
     Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe,
 };
