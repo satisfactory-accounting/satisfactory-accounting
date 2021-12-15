@@ -2,17 +2,19 @@
 
 
 .NodeDisplay {
+
     .delete {
         @include colors.red-button();
     }
 
-    .group {
+    &.group {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
         align-items: stretch;
-        min-width: 500px;
+        flex-grow: 1;
+
         border-radius: 5px;
 
         background-color: colors.$light;
@@ -25,7 +27,6 @@
             justify-content: flex-start;
             align-items: center;
             padding: 5px;
-            flex-grow: 1;
             gap: 5px;
 
             .GroupName {
@@ -85,7 +86,6 @@
             justify-content: flex-end;
             align-items: center;
             padding: 5px;
-            flex-grow: 1;
             gap: 5px;
 
             .create {

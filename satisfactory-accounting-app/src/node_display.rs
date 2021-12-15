@@ -47,7 +47,10 @@ impl Component for NodeDisplay {
                         new_group.children[idx] = replacement;
                         ctx.props().replace.emit((our_idx, new_group.into()));
                     } else {
-                        warn!("Cannot replace child index {}; out of range for this group", idx);
+                        warn!(
+                            "Cannot replace child index {}; out of range for this group",
+                            idx
+                        );
                     }
                 } else {
                     warn!("Cannot replace child of a non-group");
@@ -61,7 +64,10 @@ impl Component for NodeDisplay {
                         new_group.children.remove(idx);
                         ctx.props().replace.emit((our_idx, new_group.into()));
                     } else {
-                        warn!("Cannot delete child index {}; out of range for this group", idx);
+                        warn!(
+                            "Cannot delete child index {}; out of range for this group",
+                            idx
+                        );
                     }
                 } else {
                     warn!("Cannot delete child of a non-group");
@@ -82,15 +88,11 @@ impl Component for NodeDisplay {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        html! {
-            <div class="NodeDisplay">
-            {match ctx.props().node.kind() {
-                NodeKind::Group(group) => self.view_group(ctx, group),
-                NodeKind::Building(building) => {
-                    html! {}
-                }
-            }}
-            </div>
+        match ctx.props().node.kind() {
+            NodeKind::Group(group) => self.view_group(ctx, group),
+            NodeKind::Building(building) => {
+                html! {}
+            }
         }
     }
 }
@@ -109,7 +111,7 @@ impl NodeDisplay {
             child: Building::empty_node(),
         });
         html! {
-            <div class="group">
+            <div class="NodeDisplay group">
                 <div class="header">
                     <GroupName name={group.name.clone()} />
                     {self.delete_button(ctx)}

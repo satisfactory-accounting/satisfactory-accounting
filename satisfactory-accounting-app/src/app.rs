@@ -84,6 +84,7 @@ impl Component for App {
                 Some(previous) => {
                     let next = mem::replace(&mut self.state, previous);
                     self.redo_stack.push(next);
+                    self.save();
                     true
                 }
                 None => {
@@ -95,13 +96,14 @@ impl Component for App {
                 Some(next) => {
                     let previous = mem::replace(&mut self.state, next);
                     self.undo_stack.push(previous);
+                    self.save();
                     true
                 }
                 None => {
                     warn!("Nothing to redo");
                     false
                 }
-            }
+            },
         }
     }
 
