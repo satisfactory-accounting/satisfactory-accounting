@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -12,7 +12,7 @@ pub struct Balance {
     /// Net power in MW (negative is consumption, positive is production).
     pub power: f32,
     /// Net balance of each item type, in units-per-minute by ID.
-    pub balances: HashMap<ItemId, f32>,
+    pub balances: BTreeMap<ItemId, f32>,
 }
 
 impl Balance {

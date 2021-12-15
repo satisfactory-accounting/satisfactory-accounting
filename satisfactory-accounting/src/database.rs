@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 use std::ops::Index;
+use std::cmp::Ordering;
 
 use internment::Intern;
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,18 @@ macro_rules! typed_symbol {
             impl $Self {
                 fn as_str(&self) -> &str {
                     &*self.0
+                }
+            }
+
+            impl Ord for $Self {
+                fn cmp(&self, other: &Self) -> Ordering {
+                    self.as_str().cmp(other.as_str())
+                }
+            }
+
+            impl PartialOrd for $Self {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                    Some(self.cmp(other))
                 }
             }
 

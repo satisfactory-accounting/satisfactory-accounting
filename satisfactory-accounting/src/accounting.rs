@@ -8,10 +8,8 @@ use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
     Manufacturer, Miner, Pump, RecipeId,
 };
-use self::refs::{NodeKindRef, GroupRef, BuildingRef, BalanceRef};
 
 mod balance;
-pub mod refs;
 
 /// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
 /// or consumes and how much power it generates or uses.
@@ -86,19 +84,9 @@ impl Node {
         &self.0.kind
     }
 
-    /// Get a reference-counted reference to the NodeKind.
-    pub fn kind_ref(&self) -> NodeKindRef {
-        NodeKindRef::new(self)
-    }
-
     /// Get the balance of this node.
     pub fn balance(&self) -> &Balance {
         &self.0.balance
-    }
-
-    /// Get a reference-counted reference to the balance.
-    pub fn balance_ref(&self) -> BalanceRef {
-        unsafe { BalanceRef::new(self.clone(), self.balance()) }
     }
 
     /// Get the warning for this error.
@@ -111,19 +99,9 @@ impl Node {
         self.kind().group()
     }
 
-    /// Get the reference-counted Group if this is a Group, otherwise None.
-    pub fn group_ref(&self) -> Option<GroupRef> {
-        self.kind_ref().group()
-    }
-
     /// Get the Building if this is a Building, otherwise None.
     pub fn building(&self) -> Option<&Building> {
         self.kind().building()
-    }
-
-    /// Get reference-counted Building if this is a Building, otherwise None.
-    pub fn building_ref(&self) -> Option<BuildingRef> {
-        self.kind_ref().building()
     }
 }
 

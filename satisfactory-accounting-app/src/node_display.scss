@@ -1,60 +1,126 @@
 @use "colors.scss";
 @use "sass:color";
 
-.Group {
+$button-size: 30px;
+
+@mixin color-button(
+    $base-color,
+    $hover-color: color.scale($base-color, $lightness: -10%),
+    $active-color: color.scale($base-color, $lightness: 10%)
+) {
+    border: 0;
+    padding: 5px;
+    border-radius: 3px;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: stretch;
-    min-width: 500px;
 
-    background-color: colors.$light;
+    height: $button-size;
+    min-width: $button-size;
 
-    .header {
+    background-color: $base-color;
+    &:hover {
+        background-color: $hover-color;
+    }
+    &:active {
+        background-color: $active-color;
+    }
+
+}
+
+@mixin green-button {
+    @include color-button(colors.$green);
+}
+
+.NodeDisplay {
+    .Group {
         box-sizing: border-box;
-
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         justify-content: flex-start;
-        align-items: center;
-        padding: 5px;
-        flex-grow: 1;
+        align-items: stretch;
+        min-width: 500px;
+        border-radius: 5px;
 
-        .name {
-            font-size: 20px;
+        background-color: colors.$light;
 
-            &.notset {
-                color: colors.$dark;
+        .header {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 5px;
+            flex-grow: 1;
+            gap: 5px;
+
+            .name {
+                font-size: 20px;
+
+                &.notset {
+                    color: colors.$dark;
+                }
+            }
+
+            .edit {
+                @include green-button();
             }
         }
 
-        .edit {
-            background-color: colors.$green;
-            border: 0;
-            padding: 3px;
-            border-radius: 3px;
-            color: colors.$dark;
+        .body {
+            box-sizing: border-box;
 
-            &:hover {
-                background-color: color.scale(colors.$green, $lightness: -10%);
-            }
-            &:active {
-                background-color: color.scale(colors.$green, $lightness: 10%);
-            }
+            display: flex;
+            justify-content: flex-start;
+            flex-direction: row;
+            align-items: center;
+            margin: 0 5px;
+            background-color: colors.$dark;
+            padding: 5px;
+            flex-grow: 1;
+        }
 
+        .footer {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 5px;
+            flex-grow: 1;
+            gap: 5px;
+
+            .create {
+                @include green-button();
+            }
         }
     }
 
-    .body {
+    .Balance {
         box-sizing: border-box;
 
         display: flex;
+        flex-direction: column;
         justify-content: flex-start;
-        align-items: center;
-        margin: 0 5px;
-        background-color: colors.$dark;
+        align-items: stretch;
+
+        margin: 5px;
+        border-radius: 5px;
+        background-color: colors.$light;
         padding: 5px;
-        flex-grow: 1;
+
+        .entry-row {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            .icon {
+                width: 24px;
+                height: 24px;
+            }
+        }
     }
 }
