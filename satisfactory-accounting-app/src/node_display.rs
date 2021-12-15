@@ -3,7 +3,7 @@ use std::rc::Rc;
 use log::warn;
 use yew::prelude::*;
 
-use satisfactory_accounting::accounting::{BuildNode, Building, Group, Node, NodeKind};
+use satisfactory_accounting::accounting::{Building, Group, Node, NodeKind};
 use satisfactory_accounting::database::Database;
 
 #[derive(Debug, PartialEq, Properties)]
@@ -38,10 +38,6 @@ impl Component for NodeDisplay {
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
-        let (db, _) = ctx
-            .link()
-            .context::<Rc<Database>>(Callback::noop())
-            .expect("context to be set");
         let our_idx = ctx.props().path.last().copied().unwrap_or_default();
         match msg {
             NodeMsg::ReplaceChild { idx, replacement } => {

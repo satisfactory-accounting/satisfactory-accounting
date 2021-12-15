@@ -1,3 +1,4 @@
+use std::mem;
 use std::rc::Rc;
 
 use gloo::storage::{LocalStorage, Storage};
@@ -22,6 +23,17 @@ struct AppState {
     root: Node,
 }
 
+impl AppState {
+    /// Updates AppState and returns the previous version.
+    fn update_root(&mut self, root: Node) -> Self {
+        let old_root = mem::replace(&mut self.root, root);
+        Self {
+            database: self.database.clone(),
+            root: old_root,
+        }
+    }
+}
+
 impl Default for AppState {
     fn default() -> Self {
         let database = Rc::new(Database::load_default());
@@ -33,10 +45,15 @@ impl Default for AppState {
 /// Messages for communicating with App.
 pub enum Msg {
     ReplaceRoot { replacement: Node },
+    Undo,
+    Redo,
 }
 
+#[derive(Default)]
 pub struct App {
     state: AppState,
+    undo_stack: Vec<AppState>,
+    redo_stack: Vec<AppState>,
 }
 
 impl Component for App {
@@ -45,29 +62,72 @@ impl Component for App {
 
     fn create(_ctx: &Context<Self>) -> Self {
         let state = LocalStorage::get(KEY).unwrap_or_default();
-        Self { state }
+        Self {
+            state,
+            ..Default::default()
+        }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ReplaceRoot { replacement } => {
-                self.state.root = replacement;
+                self.undo_stack.push(self.state.update_root(replacement));
+                if self.undo_stack.len() > 100 {
+                    let num_to_remove = self.undo_stack.len() - 100;
+                    self.undo_stack.drain(..num_to_remove);
+                }
+                self.redo_stack.clear();
                 self.save();
                 true
+            }
+            Msg::Undo => match self.undo_stack.pop() {
+                Some(previous) => {
+                    let next = mem::replace(&mut self.state, previous);
+                    self.redo_stack.push(next);
+                    true
+                }
+                None => {
+                    warn!("Nothing to undo");
+                    false
+                }
+            },
+            Msg::Redo => match self.redo_stack.pop() {
+                Some(next) => {
+                    let previous = mem::replace(&mut self.state, next);
+                    self.undo_stack.push(previous);
+                    true
+                }
+                None => {
+                    warn!("Nothing to redo");
+                    false
+                }
             }
         }
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let replace = ctx.link().callback(|(idx, replacement)| {
+        let link = ctx.link();
+        let replace = link.callback(|(idx, replacement)| {
             assert!(idx == 0, "Attempting to replace index {} at the root", idx);
             Msg::ReplaceRoot { replacement }
         });
+        let undo = link.callback(|_| Msg::Undo);
+        let redo = link.callback(|_| Msg::Redo);
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
                 <div class="App">
                     <div class="navbar">
                         <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
+                    </div>
+                    <div class="menubar">
+                        <button class="unredo" onclick={undo}
+                            disabled={self.undo_stack.is_empty()}>
+                            <span class="material-icons">{"undo"}</span>
+                        </button>
+                        <button class="unredo" onclick={redo}
+                            disabled={self.redo_stack.is_empty()}>
+                            <span class="material-icons">{"redo"}</span>
+                        </button>
                     </div>
                     <div class="appbody">
                         <NodeDisplay node={self.state.root.clone()}

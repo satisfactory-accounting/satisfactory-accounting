@@ -1,53 +1,9 @@
 @use "colors.scss";
-@use "sass:color";
 
-$button-size: 30px;
-
-@mixin color-button(
-    $base-color,
-    $hover-color: color.scale($base-color, $lightness: -10%),
-    $active-color: color.scale($base-color, $lightness: 10%)
-) {
-    border: 0;
-    padding: 5px;
-    border-radius: 3px;
-    box-sizing: border-box;
-
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-
-    height: $button-size;
-    min-width: $button-size;
-
-    .material-icons {
-        font-size: 18px;
-    }
-
-    background-color: $base-color;
-    &:hover {
-        background-color: $hover-color;
-    }
-    &:active {
-        background-color: $active-color;
-    }
-
-}
-
-@mixin green-button {
-    @include color-button(colors.$green);
-    color: colors.$gray-dark;
-}
-
-@mixin red-button {
-    @include color-button(colors.$red);
-    color: colors.$gray-dark;
-}
 
 .NodeDisplay {
     .delete {
-        @include red-button();
+        @include colors.red-button();
     }
 
     .group {
@@ -90,7 +46,7 @@ $button-size: 30px;
                 }
 
                 .edit {
-                    @include green-button();
+                    @include colors.green-button();
                 }
             }
         }
@@ -133,7 +89,7 @@ $button-size: 30px;
             gap: 5px;
 
             .create {
-                @include green-button();
+                @include colors.green-button();
             }
         }
     }
