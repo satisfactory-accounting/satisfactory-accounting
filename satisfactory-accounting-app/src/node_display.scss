@@ -12,13 +12,18 @@
         @include colors.red-button();
     }
 
+    .icon {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+    }
+
     &.group {
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
         align-items: stretch;
-        flex-grow: 1;
 
         border-radius: 5px;
 
@@ -132,10 +137,39 @@
                 justify-content: space-between;
                 align-items: center;
 
-                .icon {
-                    width: 24px;
-                    height: 24px;
-                }
+            }
+        }
+    }
+
+    &.building {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        padding: 2px 5px;
+        gap: 5px;
+
+        border-radius: 5px;
+
+        background-color: colors.$light;
+
+        .balance {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: stretch;
+            gap: 2px;
+
+            .entry-row {
+                box-sizing: border-box;
+
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
             }
         }
     }

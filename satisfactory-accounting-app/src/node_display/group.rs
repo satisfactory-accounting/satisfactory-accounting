@@ -63,10 +63,12 @@ impl NodeDisplay {
                     {self.view_balance(ctx)}
                 </div>
                 <div class="footer">
-                    <button class="create create-group" onclick={add_group}>
+                    <button class="create create-group" title="Add Group"
+                        onclick={add_group}>
                         <span class="material-icons">{"create_new_folder"}</span>
                     </button>
-                    <button class="create create-building" onclick={add_building}>
+                    <button class="create create-building" title="Add Building"
+                        onclick={add_building}>
                         <span class="material-icons">{"add"}</span>
                     </button>
                 </div>
@@ -176,7 +178,8 @@ impl GroupName {
                     </span>
                 }
                 <div class="space" />
-                <button class="edit" onclick={startedit}>
+                <button class="edit" title="Edit Group Name"
+                    onclick={startedit}>
                     <span class="material-icons">{"edit"}</span>
                 </button>
             </div>

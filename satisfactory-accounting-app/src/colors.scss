@@ -87,3 +87,12 @@ $button-size: 30px;
         color: $gray;
     }
 }
+
+.material-icons {
+    &.warning {
+        color: $warning;
+    }
+    &.error {
+        color: $danger;
+    }
+}

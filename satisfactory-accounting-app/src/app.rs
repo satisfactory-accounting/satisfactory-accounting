@@ -124,11 +124,13 @@ impl Component for App {
                         <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
                     </div>
                     <div class="menubar">
-                        <button class="unredo" onclick={undo}
+                        <button class="unredo" title="undo"
+                            onclick={undo}
                             disabled={self.undo_stack.is_empty()}>
                             <span class="material-icons">{"undo"}</span>
                         </button>
-                        <button class="unredo" onclick={redo}
+                        <button class="unredo" title="redo"
+                            onclick={redo}
                             disabled={self.redo_stack.is_empty()}>
                             <span class="material-icons">{"redo"}</span>
                         </button>

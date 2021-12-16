@@ -17,7 +17,7 @@ impl NodeDisplay {
     }
 
     /// Build an event handler for the ondragover event.
-    pub fn drag_over_handler(&self, ctx: &Context<Self>) -> Callback<DragEvent> {
+    pub(super) fn drag_over_handler(&self, ctx: &Context<Self>) -> Callback<DragEvent> {
         let chooser = self.insert_pos_chooser(ctx);
         ctx.link().batch_callback(move |e: DragEvent| {
             if let Some((insert_pos, would_stay_in_place, _)) = chooser.choose_insert_pos(&e) {
@@ -40,7 +40,7 @@ impl NodeDisplay {
     }
 
     /// Build an event handler for the ondrop event.
-    pub fn drop_handler(&self, ctx: &Context<Self>) -> Callback<DragEvent> {
+    pub(super) fn drop_handler(&self, ctx: &Context<Self>) -> Callback<DragEvent> {
         let chooser = self.insert_pos_chooser(ctx);
         ctx.link().callback(move |e: DragEvent| {
             if let Some((insert_pos, would_stay_in_place, src_path)) = chooser.choose_insert_pos(&e)
@@ -68,7 +68,7 @@ impl NodeDisplay {
     }
 
     /// Creates a drag-handle for this element.
-    pub fn drag_handle(&self, ctx: &Context<Self>) -> Html {
+    pub(super) fn drag_handle(&self, ctx: &Context<Self>) -> Html {
         if ctx.props().path.is_empty() {
             html! {}
         } else {

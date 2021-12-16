@@ -4,6 +4,7 @@ use yew::prelude::*;
 use satisfactory_accounting::accounting::{Node, NodeKind};
 
 mod balance;
+mod building;
 mod drag;
 mod graph_manipulation;
 mod group;
@@ -174,9 +175,7 @@ impl Component for NodeDisplay {
     fn view(&self, ctx: &Context<Self>) -> Html {
         match ctx.props().node.kind() {
             NodeKind::Group(group) => self.view_group(ctx, group),
-            NodeKind::Building(building) => {
-                html! {}
-            }
+            NodeKind::Building(building) => self.view_building(ctx, building),
         }
     }
 }
@@ -200,7 +199,7 @@ impl NodeDisplay {
                     .expect("Parent provided a delete callback, but this is the root node.");
                 let onclick = Callback::from(move |_| delete_from_parent.emit(idx));
                 html! {
-                    <button {onclick} class="delete">
+                    <button {onclick} class="delete" title="Delete">
                         <span class="material-icons">{"delete"}</span>
                     </button>
                 }
@@ -216,4 +215,11 @@ fn slug_to_icon(slug: impl AsRef<str>) -> String {
     icon.insert_str(0, "/images/items/");
     icon.push_str("_64.png");
     icon
+}
+
+/// Get a span to use when an icon is unknown.
+fn icon_missing() -> Html {
+    html! {
+        <span class="material-icons error">{"error"}</span>
+    }
 }
