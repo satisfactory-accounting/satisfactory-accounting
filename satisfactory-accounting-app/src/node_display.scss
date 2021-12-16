@@ -45,6 +45,11 @@
                         color: colors.$gray;
                     }
                 }
+                input.name {
+                        background-color: colors.$white;
+                        border: none;
+                        outline: none;
+                    }
 
                 .edit {
                     @include colors.green-button();

@@ -158,8 +158,8 @@ impl From<Building> for NodeKind {
 /// A grouping of other nodes. It's balance is based
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Group {
-    /// Name of this group.
-    pub name: Option<String>,
+    /// Name of this group. May be empty.
+    pub name: String,
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
     pub children: Vec<Node>,

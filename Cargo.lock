@@ -420,6 +420,8 @@ dependencies = [
  "log",
  "satisfactory-accounting",
  "serde",
+ "wasm-bindgen",
+ "web-sys",
  "yew",
 ]
 

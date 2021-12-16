@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
 use log::warn;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{Building, Group, Node, NodeKind};
@@ -21,9 +23,15 @@ pub struct NodeDisplayProperties {
 
 /// Messages which can be sent to a Node.
 pub enum NodeMsg {
+    // Messages for groups:
+    /// Replace the child at the given index with the specified node.
     ReplaceChild { idx: usize, replacement: Node },
+    /// Delete the child at the specified index.
     DeleteChild { idx: usize },
+    /// Add the given node as a child at the end of the list.
     AddChild { child: Node },
+    /// Rename this node.
+    Rename { name: String },
 }
 
 /// Display for a single AccountingGraph node.
@@ -84,6 +92,16 @@ impl Component for NodeDisplay {
                 }
                 false
             }
+            NodeMsg::Rename { name } => {
+                if let NodeKind::Group(group) = ctx.props().node.kind() {
+                    let mut new_group = group.clone();
+                    new_group.name = name.trim().to_owned();
+                    ctx.props().replace.emit((our_idx, new_group.into()));
+                } else {
+                    warn!("Cannot rename a non-group");
+                }
+                false
+            }
         }
     }
 
@@ -110,10 +128,11 @@ impl NodeDisplay {
         let add_building = link.callback(|_| NodeMsg::AddChild {
             child: Building::empty_node(),
         });
+        let rename = link.callback(|name| NodeMsg::Rename { name });
         html! {
             <div class="NodeDisplay group">
                 <div class="header">
-                    <GroupName name={group.name.clone()} />
+                    <GroupName name={group.name.clone()} {rename} />
                     {self.delete_button(ctx)}
                 </div>
                 <div class="body">
@@ -217,33 +236,135 @@ fn balance_style(balance: f32) -> &'static str {
 
 #[derive(PartialEq, Properties)]
 struct GroupNameProps {
-    name: Option<String>,
+    /// Current name of the Node.
+    name: String,
+    /// Callback to rename the node.
+    rename: Callback<String>,
 }
 
-struct GroupName {}
+/// Messages for the GroupName component.
+enum GroupNameMsg {
+    /// Start editing.
+    StartEdit,
+    /// Change the pending value to the given value.
+    UpdatePending {
+        /// New value of `pending`.
+        pending: String,
+    },
+    /// Save the value by passing it to the parent.
+    CommitEdit,
+}
+
+#[derive(Default)]
+struct GroupName {
+    /// If currently editing, the edit in progress, or `None` if not editing.
+    pending: Option<String>,
+    input: NodeRef,
+    did_focus: bool,
+}
 
 impl Component for GroupName {
-    type Message = ();
+    type Message = GroupNameMsg;
     type Properties = GroupNameProps;
 
     fn create(_: &Context<Self>) -> Self {
-        Self {}
+        Default::default()
+    }
+
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+        match msg {
+            GroupNameMsg::StartEdit => {
+                self.pending = Some(ctx.props().name.to_owned());
+                self.did_focus = false;
+                true
+            }
+            GroupNameMsg::UpdatePending { pending } => {
+                self.pending = Some(pending);
+                true
+            }
+            GroupNameMsg::CommitEdit => {
+                if let Some(pending) = self.pending.take() {
+                    ctx.props().rename.emit(pending);
+                } else {
+                    warn!("CommitEdit while not editing.");
+                }
+                false
+            }
+        }
+    }
+
+    fn changed(&mut self, _: &Context<Self>) -> bool {
+        self.pending = None;
+        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        match self.pending.clone() {
+            None => self.view_not_editing(ctx),
+            Some(pending) => self.view_editing(ctx, pending),
+        }
+    }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        if !self.did_focus {
+            if let Some(input) = self.input.cast::<HtmlInputElement>() {
+                if let Err(_) = input.focus() {
+                    warn!("Failed to focus input");
+                }
+                self.did_focus = true;
+            }
+        }
+    }
+}
+
+impl GroupName {
+    /// View of the GroupName when not editing.
+    fn view_not_editing(&self, ctx: &Context<Self>) -> Html {
         let name = &ctx.props().name;
+        let startedit = ctx.link().callback(|_| GroupNameMsg::StartEdit);
         html! {
             <div class="GroupName">
-                if let Some(name) = name {
-                    <span class="name">{name}</span>
+                if name.is_empty() {
+                    <span class="name notset" onclick={startedit.clone()}>
+                        {"unnamed"}
+                    </span>
                 } else {
-                    <span class="name notset">{"unnamed"}</span>
+                    <span class="name" onclick={startedit.clone()}>
+                        {name}
+                    </span>
                 }
                 <div class="space" />
-                <button class="edit">
+                <button class="edit" onclick={startedit}>
                     <span class="material-icons">{"edit"}</span>
                 </button>
             </div>
         }
     }
+
+    fn view_editing(&self, ctx: &Context<Self>, pending: String) -> Html {
+        let link = ctx.link();
+        let oninput = link.callback(|input| GroupNameMsg::UpdatePending {
+            pending: get_value_from_input_event(input),
+        });
+        let commitedit = link.callback(|e: FocusEvent| {
+            e.prevent_default();
+            GroupNameMsg::CommitEdit
+        });
+        html! {
+            <form class="GroupName" onsubmit={commitedit}>
+                <input class="name" type="text" value={pending} {oninput} ref={self.input.clone()}/>
+                <div class="space" />
+                <button class="edit" type="submit">
+                    <span class="material-icons">{"save"}</span>
+                </button>
+            </form>
+        }
+    }
+}
+
+fn get_value_from_input_event(e: InputEvent) -> String {
+    let event: Event = e.dyn_into().unwrap();
+    let event_target = event.target().unwrap();
+    let target: HtmlInputElement = event_target.dyn_into().unwrap();
+    target.value()
 }
