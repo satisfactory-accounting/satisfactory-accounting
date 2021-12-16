@@ -115,6 +115,8 @@ impl Component for App {
         });
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
+        let move_node =
+            Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
                 <div class="App">
@@ -134,7 +136,8 @@ impl Component for App {
                     <div class="appbody">
                         <NodeDisplay node={self.state.root.clone()}
                             path={Vec::new()}
-                            {replace} />
+                            {replace}
+                            {move_node} />
                     </div>
                 </div>
             </ContextProvider<Rc<Database>>>

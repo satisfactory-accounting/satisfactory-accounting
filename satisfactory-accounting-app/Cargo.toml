@@ -15,6 +15,18 @@ instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 satisfactory-accounting = { path = "../satisfactory-accounting" }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 wasm-bindgen = "0.2"
-web-sys = "0.3"
 yew = "0.19"
+
+[dependencies.web-sys]
+version = "0.3"
+features = [
+    "DataTransfer",
+    "DomRect",
+    "DomTokenList",
+    "DragEvent",
+    "Element",
+    "Event",
+    "HtmlCollection",
+]
