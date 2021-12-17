@@ -178,7 +178,6 @@ impl GroupName {
                         {name}
                     </span>
                 }
-                <div class="space" />
                 <button class="edit" title="Edit Group Name"
                     onclick={startedit}>
                     <span class="material-icons">{"edit"}</span>
@@ -199,7 +198,6 @@ impl GroupName {
         html! {
             <form class="GroupName" onsubmit={commitedit}>
                 <input class="name" type="text" value={pending} {oninput} ref={self.input.clone()}/>
-                <div class="space" />
                 <button class="edit" type="submit">
                     <span class="material-icons">{"save"}</span>
                 </button>
