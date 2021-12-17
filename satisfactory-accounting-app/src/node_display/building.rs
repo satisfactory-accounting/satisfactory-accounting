@@ -27,6 +27,7 @@ impl NodeDisplay {
                 <div class="section">
                     {self.view_balance(ctx)}
                     {self.delete_button(ctx)}
+                    {self.copy_button(ctx)}
                 </div>
             </div>
         }

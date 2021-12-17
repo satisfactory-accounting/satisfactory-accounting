@@ -12,6 +12,10 @@
         @include colors.red-button();
     }
 
+    .copy {
+        @include colors.green-button;
+    }
+
     .icon {
         width: 24px;
         height: 24px;

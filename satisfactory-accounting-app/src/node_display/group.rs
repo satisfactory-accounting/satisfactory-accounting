@@ -14,6 +14,7 @@ impl NodeDisplay {
         let replace =
             link.callback(|(idx, replacement)| NodeMsg::ReplaceChild { idx, replacement });
         let delete = link.callback(|idx| NodeMsg::DeleteChild { idx });
+        let copy = link.callback(|idx| NodeMsg::CopyChild { idx });
         let move_node = link.callback(|(src_path, dest_path)| NodeMsg::MoveNode {
             src_path,
             dest_path,
@@ -51,6 +52,7 @@ impl NodeDisplay {
                                     <NodeDisplay {node} {path}
                                         replace={replace.clone()}
                                         delete={delete.clone()}
+                                        copy={copy.clone()}
                                         move_node={move_node.clone()} />
                                 </>
                             }

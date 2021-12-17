@@ -25,6 +25,9 @@ pub struct NodeDisplayProperties {
     /// Callback to tell the parent to delete this node.
     #[prop_or_default]
     pub delete: Option<Callback<usize>>,
+    /// Callback to tell the parent to copy this node.
+    #[prop_or_default]
+    pub copy: Option<Callback<usize>>,
     /// Callback to tell the parent to replace this node.
     pub replace: Callback<(usize, Node)>,
     /// Callback to tell the parent to move a node.
@@ -38,6 +41,8 @@ pub enum NodeMsg {
     ReplaceChild { idx: usize, replacement: Node },
     /// Delete the child at the specified index.
     DeleteChild { idx: usize },
+    /// Copy the child at the specified index.
+    CopyChild { idx: usize },
     /// Add the given node as a child at the end of the list.
     AddChild { child: Node },
     /// Rename this node.
@@ -110,6 +115,24 @@ impl Component for NodeDisplay {
                     }
                 } else {
                     warn!("Cannot delete child of a non-group");
+                }
+                false
+            }
+            NodeMsg::CopyChild { idx } => {
+                if let NodeKind::Group(group) = ctx.props().node.kind() {
+                    if idx < group.children.len() {
+                        let mut new_group = group.clone();
+                        let copied = new_group.children[idx].clone();
+                        new_group.children.insert(idx + 1, copied);
+                        ctx.props().replace.emit((our_idx, new_group.into()));
+                    } else {
+                        warn!(
+                            "Cannot copy child index {}; out of range for this group",
+                            idx
+                        );
+                    }
+                } else {
+                    warn!("Cannot copy child of a non-group");
                 }
                 false
             }
@@ -233,6 +256,27 @@ impl NodeDisplay {
                 html! {
                     <button {onclick} class="delete" title="Delete">
                         <span class="material-icons">{"delete"}</span>
+                    </button>
+                }
+            }
+            None => html! {},
+        }
+    }
+
+    /// Creates the copy button, if the parent allows this node to be copied.
+    fn copy_button(&self, ctx: &Context<Self>) -> Html {
+        match ctx.props().copy.clone() {
+            Some(copy_from_parent) => {
+                let idx = ctx
+                    .props()
+                    .path
+                    .last()
+                    .copied()
+                    .expect("Parent provided a copy callback, but this is the root node.");
+                let onclick = Callback::from(move |_| copy_from_parent.emit(idx));
+                html! {
+                    <button {onclick} class="copy" title="Copy">
+                        <span class="material-icons">{"content_copy"}</span>
                     </button>
                 }
             }
