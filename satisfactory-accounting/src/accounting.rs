@@ -142,7 +142,6 @@ impl NodeKind {
     }
 }
 
-
 impl From<Group> for NodeKind {
     fn from(group: Group) -> Self {
         Self::Group(group)
@@ -335,7 +334,7 @@ impl ManufacturerSettings {
                 });
             }
 
-            balance.power = -m.power_consumption.get_rate(self.clock_speed);
+            balance.power = -m.power_consumption.get_consumption_rate(self.clock_speed);
             let recipe_runs_per_minute =
                 60.0 / recipe.time * m.manufacturing_speed * self.clock_speed;
 
@@ -434,7 +433,7 @@ impl MinerSettings {
                 });
             }
 
-            balance.power = -m.power_consumption.get_rate(self.clock_speed);
+            balance.power = -m.power_consumption.get_consumption_rate(self.clock_speed);
             let cycles_per_minute =
                 60.0 / m.cycle_time * self.clock_speed * self.purity.speed_multiplier();
 
@@ -486,7 +485,7 @@ impl GeneratorSettings {
                 });
             }
 
-            balance.power = g.power_production.get_rate(self.clock_speed);
+            balance.power = g.power_production.get_production_rate(self.clock_speed);
             if g.used_water > 0.0 {
                 balance
                     .balances
@@ -542,7 +541,7 @@ impl PumpSettings {
                 });
             }
 
-            balance.power = -p.power_consumption.get_rate(self.clock_speed);
+            balance.power = -p.power_consumption.get_consumption_rate(self.clock_speed);
             let base_cycles_per_minute = 60.0 / p.cycle_time * self.clock_speed;
             let mut total_items_per_minute = 0.0;
             for pad in &self.pads {

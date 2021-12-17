@@ -295,10 +295,16 @@ pub struct Power {
 }
 
 impl Power {
-    /// Get the rate of power production or consumption for these power settings at the
-    /// given clock speed.
-    pub fn get_rate(&self, clock_speed: f32) -> f32 {
+    /// Get the rate of power consumption for these power settings at the given clock
+    /// speed.
+    pub fn get_consumption_rate(&self, clock_speed: f32) -> f32 {
         self.power * clock_speed.powf(self.power_exponent)
+    }
+
+    /// Get the rate of power production for these power settings at the given clock
+    /// speed.
+    pub fn get_production_rate(&self, clock_speed: f32) -> f32 {
+        self.power * clock_speed.powf(1.0 / self.power_exponent)
     }
 }
 
