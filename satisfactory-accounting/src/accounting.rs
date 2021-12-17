@@ -506,9 +506,15 @@ pub struct PumpSettings {
     pub resource: Option<ItemId>,
     /// Clock setting of this building. Ranges from 0.01 to 2.50.
     pub clock_speed: f32,
-    /// How pure each resource pad is. If no pads are set, will still consume power but
+    /// Number of pure resource pads. If no pads are set, will still consume power but
     /// will not produce any resources.
-    pub pads: Vec<ResourcePurity>,
+    pub pure_pads: u32,
+    /// Number of normal resource pads. If no pads are set, will still consume power but
+    /// will not produce any resources.
+    pub normal_pads: u32,
+    /// Number of normal resource pads. If no pads are set, will still consume power but
+    /// will not produce any resources.
+    pub impure_pads: u32,
 }
 
 impl Default for PumpSettings {
@@ -516,7 +522,9 @@ impl Default for PumpSettings {
         Self {
             resource: None,
             clock_speed: 1.0,
-            pads: vec![Default::default()],
+            pure_pads: 0,
+            normal_pads: 0,
+            impure_pads: 0,
         }
     }
 }
@@ -543,11 +551,11 @@ impl PumpSettings {
 
             balance.power = -p.power_consumption.get_consumption_rate(self.clock_speed);
             let base_cycles_per_minute = 60.0 / p.cycle_time * self.clock_speed;
-            let mut total_items_per_minute = 0.0;
-            for pad in &self.pads {
-                total_items_per_minute +=
-                    base_cycles_per_minute * pad.speed_multiplier() * p.items_per_cycle;
-            }
+            let total_items_per_minute = base_cycles_per_minute
+                * p.items_per_cycle
+                * (self.pure_pads as f32 * ResourcePurity::Pure.speed_multiplier()
+                    + self.normal_pads as f32 * ResourcePurity::Normal.speed_multiplier()
+                    + self.impure_pads as f32 * ResourcePurity::Impure.speed_multiplier());
             balance.balances.insert(resource_id, total_items_per_minute);
         }
         Ok(balance)
