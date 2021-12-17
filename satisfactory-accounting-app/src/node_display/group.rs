@@ -1,12 +1,11 @@
 use log::warn;
 use satisfactory_accounting::accounting::{Building, Group};
-use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use crate::node_display::NodeMsg;
 
-use super::{NodeDisplay, DRAG_INSERT_POINT};
+use super::{get_value_from_input_event, NodeDisplay, DRAG_INSERT_POINT};
 
 impl NodeDisplay {
     /// Build the display for a Group.
@@ -205,11 +204,4 @@ impl GroupName {
             </form>
         }
     }
-}
-
-fn get_value_from_input_event(e: InputEvent) -> String {
-    let event: Event = e.dyn_into().unwrap();
-    let event_target = event.target().unwrap();
-    let target: HtmlInputElement = event_target.dyn_into().unwrap();
-    target.value()
 }

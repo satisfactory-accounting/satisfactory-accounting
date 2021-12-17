@@ -15,6 +15,7 @@ $teal: #20c997;
 $cyan: #5bc0de;
 $white: #fff;
 $gray: #868e96;
+$gray-light: color.scale(#868e96, $lightness: 20%);
 $gray-dark: #343a40;
 $primary: $bg-primary;
 $secondary: $bg-secondary;

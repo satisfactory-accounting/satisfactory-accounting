@@ -1,7 +1,8 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::Hash;
 use std::ops::Index;
-use std::cmp::Ordering;
 
 use internment::Intern;
 use serde::{Deserialize, Serialize};
@@ -41,7 +42,9 @@ impl<T: Id> Index<T> for Database {
 }
 
 /// Trait for symbol types.
-pub trait Id: private::Sealed {
+pub trait Id:
+    fmt::Display + fmt::Debug + Eq + PartialEq + Copy + Clone + Hash + private::Sealed
+{
     type Info;
 
     /// Fetch the item of the correct type with this id from the database.

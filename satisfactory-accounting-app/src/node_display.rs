@@ -1,7 +1,14 @@
 use log::warn;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use satisfactory_accounting::accounting::{Node, NodeKind};
+use satisfactory_accounting::{
+    accounting::{BuildNode, Node, NodeKind},
+    database::BuildingId,
+};
+
+use crate::GetDb;
 
 mod balance;
 mod building;
@@ -39,10 +46,15 @@ pub enum NodeMsg {
     DragOver { insert_pos: usize },
     /// When another dragging node leaves this one.
     DragLeave,
+    /// Move a node between positions.
     MoveNode {
         src_path: Vec<usize>,
         dest_path: Vec<usize>,
     },
+
+    // Messages for buildings:
+    /// Change the building type of this node.
+    ChangeType { id: BuildingId },
 }
 
 /// Display for a single AccountingGraph node.
@@ -65,6 +77,7 @@ impl Component for NodeDisplay {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let our_idx = ctx.props().path.last().copied().unwrap_or_default();
+        let db = ctx.db();
         match msg {
             NodeMsg::ReplaceChild { idx, replacement } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
@@ -169,6 +182,25 @@ impl Component for NodeDisplay {
                     false
                 }
             }
+            NodeMsg::ChangeType { id } => {
+                if let NodeKind::Building(building) = ctx.props().node.kind() {
+                    if building.building != Some(id) {
+                        let mut new_bldg = building.clone();
+                        new_bldg.building = Some(id);
+                        match db.get(id) {
+                            Some(building) => new_bldg.settings = building.get_default_settings(),
+                            None => warn!("New building ID is unknown."),
+                        }
+                        match new_bldg.build_node(&db) {
+                            Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                            Err(e) => warn!("Unable to build node: {}", e),
+                        }
+                    }
+                } else {
+                    warn!("Cannot change building type id of a non-building");
+                }
+                false
+            }
         }
     }
 
@@ -222,4 +254,11 @@ fn icon_missing() -> Html {
     html! {
         <span class="material-icons error">{"error"}</span>
     }
+}
+
+fn get_value_from_input_event(e: InputEvent) -> String {
+    let event: Event = e.dyn_into().unwrap();
+    let event_target = event.target().unwrap();
+    let target: HtmlInputElement = event_target.dyn_into().unwrap();
+    target.value()
 }

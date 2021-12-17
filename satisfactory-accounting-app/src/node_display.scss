@@ -18,6 +18,13 @@
         object-fit: contain;
     }
 
+    input[type="text"] {
+        background-color: colors.$white;
+        border: none;
+        outline: none;
+    }
+
+
     &.group {
         box-sizing: border-box;
         display: flex;
@@ -55,11 +62,6 @@
                         color: colors.$gray;
                     }
                 }
-                input.name {
-                        background-color: colors.$white;
-                        border: none;
-                        outline: none;
-                    }
 
                 .edit {
                     @include colors.green-button();
@@ -128,16 +130,6 @@
             border-radius: 5px;
             background-color: colors.$light;
             padding: 5px;
-
-            .entry-row {
-                box-sizing: border-box;
-
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-
-            }
         }
     }
 
@@ -145,7 +137,7 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: row;
-        justify-content: flex-start;
+        justify-content: space-between;
         align-items: center;
         padding: 2px 5px;
         gap: 5px;
@@ -153,6 +145,25 @@
         border-radius: 5px;
 
         background-color: colors.$light;
+
+        .name {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .section {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 5px;
+        }
 
         .balance {
             box-sizing: border-box;
@@ -162,14 +173,69 @@
             justify-content: flex-start;
             align-items: stretch;
             gap: 2px;
+        }
+    }
 
-            .entry-row {
+    .balance {
+        .entry-row {
+            box-sizing: border-box;
+
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            .balance-value {
+                min-width: 2em;
+                text-align: right;
+                &.negative {
+                    color: colors.$danger;
+                }
+                &.positive {
+                    color: color.scale(colors.$success, $lightness: -30%);
+                }
+            }
+        }
+    }
+
+    .ChooseFromList {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        position: relative;
+
+        .available {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: stretch;
+
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            max-height: 500px;
+            min-width: 300px;
+            overflow-y: auto;
+            background-color: colors.$dark;
+            color: colors.$gray-light;
+            border: 2px solid colors.$primary;
+            border-radius: 2px;
+
+            .available-item {
                 box-sizing: border-box;
-
                 display: flex;
                 flex-direction: row;
-                justify-content: space-between;
+                justify-content: flex-start;
                 align-items: center;
+                gap: 5px;
+                padding: 0 5px;
+
+                &.selected {
+                    background-color: colors.$light;
+                    color: colors.$gray-dark;
+                }
             }
         }
     }

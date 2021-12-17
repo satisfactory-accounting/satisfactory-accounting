@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 gloo = "0.5"
 console_log = "0.2"
+fuzzy-matcher = "0.3"
 # Not direclty used but `now` doesn't link properly if we don't set the wasm-bindgen
 # feature, and that's needed when actually using Serde or Serde-Json, and breaks the whole
 # app.
@@ -28,5 +29,8 @@ features = [
     "DragEvent",
     "Element",
     "Event",
+    "EventTarget",
+    "FocusEvent",
     "HtmlCollection",
+    "KeyboardEvent",
 ]
