@@ -1,21 +1,22 @@
 use std::mem;
 use std::rc::Rc;
 
+use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage};
 use log::warn;
-use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use satisfactory_accounting::accounting::{BuildNode, Group, Node};
+use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::Database;
 
 use crate::node_display::NodeDisplay;
 
 /// Key that the app state is stored under.
-const KEY: &str = "zstewart.satisfactorydb.state";
+const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
+const GRAPH_KEY: &str = "zstewart.satisfactorydb.state.graph";
 
 /// Stored state of the app.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 struct AppState {
     /// Database used in the app previously.
     database: Rc<Database>,
@@ -32,13 +33,38 @@ impl AppState {
             root: old_root,
         }
     }
+
+    /// Load AppState from LocalStorage, or create state if it can't be loaded.
+    fn load_or_create() -> Self {
+        let database = Rc::new(LocalStorage::get(DB_KEY).unwrap_or_else(|e| {
+            if !matches!(e, StorageError::KeyNotFound(_)) {
+                warn!("Failed to load database: {}", e);
+            }
+            Database::load_default()
+        }));
+        let root = LocalStorage::get(GRAPH_KEY).unwrap_or_else(|e| {
+            if !matches!(e, StorageError::KeyNotFound(_)) {
+                warn!("Failed to load graph: {}", e);
+            }
+            Group::default().into()
+        });
+        Self { database, root }
+    }
+
+    /// Save the current app state.
+    fn save(&self) {
+        if let Err(e) = LocalStorage::set(DB_KEY, &self.database) {
+            warn!("Unable to save database: {}", e);
+        }
+        if let Err(e) = LocalStorage::set(GRAPH_KEY, &self.root) {
+            warn!("Unable to save database: {}", e);
+        }
+    }
 }
 
 impl Default for AppState {
     fn default() -> Self {
-        let database = Rc::new(Database::load_default());
-        let root = Group::default().build_node(&database).unwrap();
-        Self { database, root }
+        Self::load_or_create()
     }
 }
 
@@ -61,11 +87,7 @@ impl Component for App {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        let state = LocalStorage::get(KEY).unwrap_or_default();
-        Self {
-            state,
-            ..Default::default()
-        }
+        Default::default()
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -77,14 +99,14 @@ impl Component for App {
                     self.undo_stack.drain(..num_to_remove);
                 }
                 self.redo_stack.clear();
-                self.save();
+                self.state.save();
                 true
             }
             Msg::Undo => match self.undo_stack.pop() {
                 Some(previous) => {
                     let next = mem::replace(&mut self.state, previous);
                     self.redo_stack.push(next);
-                    self.save();
+                    self.state.save();
                     true
                 }
                 None => {
@@ -96,7 +118,7 @@ impl Component for App {
                 Some(next) => {
                     let previous = mem::replace(&mut self.state, next);
                     self.undo_stack.push(previous);
-                    self.save();
+                    self.state.save();
                     true
                 }
                 None => {
@@ -143,15 +165,6 @@ impl Component for App {
                     </div>
                 </div>
             </ContextProvider<Rc<Database>>>
-        }
-    }
-}
-
-impl App {
-    /// Save the current state to local storage.
-    fn save(&self) {
-        if let Err(e) = LocalStorage::set(KEY, &self.state) {
-            warn!("Unable to save state: {}", e);
         }
     }
 }

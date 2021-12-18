@@ -223,7 +223,11 @@ fn main() {
                         .iter()
                         .map(|res| res.as_str().into())
                         .collect(),
-                    items_per_cycle: min.items_per_cycle,
+                    items_per_cycle: if building.class_name.as_str() == "Desc_OilPump_C" {
+                        min.items_per_cycle / 1000.0
+                    } else {
+                        min.items_per_cycle
+                    },
                     cycle_time: min.extract_cycle_time,
                     power_consumption: Power {
                         power: building
@@ -329,5 +333,6 @@ fn main() {
         buildings,
     };
 
-    serde_json::to_writer(std::io::stdout().lock(), &database).expect("Unable to write database");
+    serde_json::to_writer_pretty(std::io::stdout().lock(), &database)
+        .expect("Unable to write database");
 }

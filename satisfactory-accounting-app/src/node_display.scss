@@ -135,6 +135,7 @@
             border-radius: 5px;
             background-color: colors.$light;
             padding: 5px;
+            gap: 5px;
         }
     }
 
@@ -189,6 +190,7 @@
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
+            cursor: pointer;
 
             .balance-value {
                 min-width: 2em;
