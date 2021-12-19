@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -17,9 +18,9 @@ pub struct Choice<I> {
     /// ID of the choice.
     pub id: I,
     /// Name of the choice.
-    pub name: String,
+    pub name: Rc<str>,
     /// Name of the image to show. This should be the the slug for the icon.
-    pub image: Option<String>,
+    pub image: Option<Rc<str>>,
 }
 
 #[derive(PartialEq, Properties)]

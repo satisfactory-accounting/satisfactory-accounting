@@ -76,9 +76,9 @@ fn main() {
     let recipes: HashMap<_, _> = machine_recipes
         .iter()
         .map(|recipe| Recipe {
-            name: recipe.name.clone(),
+            name: recipe.name.as_str().into(),
             id: recipe.class_name.as_str().into(),
-            image: recipe.slug.clone(),
+            image: recipe.slug.as_str().into(),
             time: recipe.time,
             ingredients: recipe
                 .ingredients
@@ -105,9 +105,9 @@ fn main() {
         })
         // Patch a recipe for water using the water extractor.
         .chain(std::iter::once(Recipe {
-            name: "Extract Water".to_string(),
+            name: "Extract Water".into(),
             id: "_Patch_Recipe_ExtractWater_C".into(),
-            image: "water".to_string(),
+            image: "water".into(),
             time: 0.5,
             ingredients: Vec::new(),
             products: vec![ItemAmount {
@@ -125,9 +125,9 @@ fn main() {
         .values()
         .filter(|item| used_items.contains(item.class_name.as_str()))
         .map(|item| Item {
-            name: item.name.clone(),
+            name: item.name.as_str().into(),
             id: item.class_name.as_str().into(),
-            image: item.slug.clone(),
+            image: item.slug.as_str().into(),
             description: item.description.clone(),
             fuel: if fuels.contains(item.class_name.as_str()) {
                 Some(Fuel {
@@ -169,9 +169,9 @@ fn main() {
                 || matches!(building.metadata.power_consumption, Some(power) if power > 0.0)
         })
         .map(|building| BuildingType {
-            name: building.name.clone(),
+            name: building.name.as_str().into(),
             id: building.class_name.as_str().into(),
-            image: building.slug.clone(),
+            image: building.slug.as_str().into(),
             description: building.description.clone(),
             kind: if manufacturers.contains(building.class_name.as_str()) {
                 BuildingKind::Manufacturer(Manufacturer {

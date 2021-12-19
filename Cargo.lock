@@ -685,8 +685,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "yew"
 version = "0.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a1ccb53e57d3f7d847338cf5758befa811cabe207df07f543c06f502f9998cd"
+source = "git+https://github.com/zstewar1/yew.git?branch=patch#ecfbedd00b92d172a4941c217a5943e6cef63044"
 dependencies = [
  "console_error_panic_hook",
  "gloo 0.4.2",
@@ -704,8 +703,7 @@ dependencies = [
 [[package]]
 name = "yew-macro"
 version = "0.19.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fab79082b556d768d6e21811869c761893f0450e1d550a67892b9bce303b7bb"
+source = "git+https://github.com/zstewar1/yew.git?branch=patch#ecfbedd00b92d172a4941c217a5943e6cef63044"
 dependencies = [
  "boolinator",
  "lazy_static",

@@ -1,12 +1,14 @@
+use std::rc::Rc;
+
 use yew::prelude::*;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
     /// Reference to the icon slug.
     #[prop_or_default]
-    pub icon: Option<String>,
+    pub icon: Option<Rc<str>>,
     #[prop_or_default]
-    pub alt: Option<String>,
+    pub alt: Option<Rc<str>>,
 }
 
 #[function_component(Icon)]

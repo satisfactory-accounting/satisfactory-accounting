@@ -97,7 +97,7 @@ impl Component for RecipeDisplay {
                     },
                     None => Choice {
                         id: recipe_id,
-                        name: format!("Unknonw Recipe {}", recipe_id),
+                        name: format!("Unknonw Recipe {}", recipe_id).into(),
                         image: None,
                     },
                 })

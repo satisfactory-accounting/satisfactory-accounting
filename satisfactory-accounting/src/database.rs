@@ -1,8 +1,8 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
+use std::{cmp::Ordering, rc::Rc};
 
 use internment::Intern;
 use serde::{Deserialize, Serialize};
@@ -143,11 +143,11 @@ typed_symbol! {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Recipe {
     /// Name of the recipe. Typically similar to the name of the item(s) produced.
-    pub name: String,
+    pub name: Rc<str>,
     /// ID of this recipe.
     pub id: RecipeId,
     /// ID of the image for this recipe.
-    pub image: String,
+    pub image: Rc<str>,
     /// Time to produce this item at 100% speed, in seconds.
     pub time: f32,
     /// Number and types of ingredients needed for this recipe.
@@ -173,11 +173,11 @@ pub struct ItemAmount {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Item {
     /// Name of this item.
-    pub name: String,
+    pub name: Rc<str>,
     /// ID of this item.
     pub id: ItemId,
     /// ID of the image for this recipe.
-    pub image: String,
+    pub image: Rc<str>,
     /// Description of this item.
     pub description: String,
     /// Fuel settings of this item.
@@ -212,11 +212,11 @@ impl ItemId {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuildingType {
     /// Name of the building.
-    pub name: String,
+    pub name: Rc<str>,
     /// ID of the building.
     pub id: BuildingId,
     /// ID of the image for this building.
-    pub image: String,
+    pub image: Rc<str>,
     /// Description of the building.
     pub description: String,
     /// Kind of the building.
