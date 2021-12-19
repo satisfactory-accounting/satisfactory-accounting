@@ -3,7 +3,7 @@ use wasm_bindgen::JsCast;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 
-use super::{NodeDisplay, NodeMsg, DRAG_INSERT_POINT};
+use super::{NodeDisplay, Msg, DRAG_INSERT_POINT};
 
 /// Key used to store data about node being transferred in drag events.
 const TRANSFER_KEY: &str = "zstewart.satisfactory-accounting/drag-node.path";
@@ -29,9 +29,9 @@ impl NodeDisplay {
                 // But if the node would stay in place, hide the drop indicator.
                 if would_stay_in_place {
                     // Drag leave event is only used to clear the drop point indicator.
-                    Some(NodeMsg::DragLeave)
+                    Some(Msg::DragLeave)
                 } else {
-                    Some(NodeMsg::DragOver { insert_pos })
+                    Some(Msg::DragOver { insert_pos })
                 }
             } else {
                 None
@@ -51,18 +51,18 @@ impl NodeDisplay {
                 // propagation so we don't get two insert points.
                 e.stop_propagation();
                 if would_stay_in_place {
-                    NodeMsg::DragLeave
+                    Msg::DragLeave
                 } else {
                     let mut dest_path = chooser.path.clone();
                     dest_path.push(insert_pos);
-                    NodeMsg::MoveNode {
+                    Msg::MoveNode {
                         src_path,
                         dest_path,
                     }
                 }
             } else {
                 // Clear insert marker on an invalid drop.
-                NodeMsg::DragLeave
+                Msg::DragLeave
             }
         })
     }

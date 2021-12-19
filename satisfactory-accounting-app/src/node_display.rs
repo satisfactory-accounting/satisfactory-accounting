@@ -15,9 +15,10 @@ mod building;
 mod drag;
 mod graph_manipulation;
 mod group;
+mod icon;
 
 #[derive(Debug, PartialEq, Properties)]
-pub struct NodeDisplayProperties {
+pub struct Props {
     /// The node to display.
     pub node: Node,
     /// Path to this node in the tree.
@@ -35,7 +36,7 @@ pub struct NodeDisplayProperties {
 }
 
 /// Messages which can be sent to a Node.
-pub enum NodeMsg {
+pub enum Msg {
     // Messages for groups:
     /// Replace the child at the given index with the specified node.
     ReplaceChild { idx: usize, replacement: Node },
@@ -73,8 +74,8 @@ pub struct NodeDisplay {
 }
 
 impl Component for NodeDisplay {
-    type Message = NodeMsg;
-    type Properties = NodeDisplayProperties;
+    type Message = Msg;
+    type Properties = Props;
 
     fn create(_: &Context<Self>) -> Self {
         Default::default()
@@ -84,7 +85,7 @@ impl Component for NodeDisplay {
         let our_idx = ctx.props().path.last().copied().unwrap_or_default();
         let db = ctx.db();
         match msg {
-            NodeMsg::ReplaceChild { idx, replacement } => {
+            Msg::ReplaceChild { idx, replacement } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
@@ -101,7 +102,7 @@ impl Component for NodeDisplay {
                 }
                 false
             }
-            NodeMsg::DeleteChild { idx } => {
+            Msg::DeleteChild { idx } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
@@ -118,7 +119,7 @@ impl Component for NodeDisplay {
                 }
                 false
             }
-            NodeMsg::CopyChild { idx } => {
+            Msg::CopyChild { idx } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
@@ -136,7 +137,7 @@ impl Component for NodeDisplay {
                 }
                 false
             }
-            NodeMsg::AddChild { child } => {
+            Msg::AddChild { child } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     let mut new_group = group.clone();
                     new_group.children.push(child);
@@ -146,7 +147,7 @@ impl Component for NodeDisplay {
                 }
                 false
             }
-            NodeMsg::Rename { name } => {
+            Msg::Rename { name } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     let name = name.trim().to_owned();
                     if name != group.name {
@@ -159,15 +160,15 @@ impl Component for NodeDisplay {
                 }
                 false
             }
-            NodeMsg::DragOver { insert_pos } => {
+            Msg::DragOver { insert_pos } => {
                 self.insert_pos = Some(insert_pos);
                 true
             }
-            NodeMsg::DragLeave => {
+            Msg::DragLeave => {
                 self.insert_pos = None;
                 true
             }
-            NodeMsg::MoveNode {
+            Msg::MoveNode {
                 src_path,
                 dest_path,
             } => {
@@ -205,7 +206,7 @@ impl Component for NodeDisplay {
                     false
                 }
             }
-            NodeMsg::ChangeType { id } => {
+            Msg::ChangeType { id } => {
                 if let NodeKind::Building(building) = ctx.props().node.kind() {
                     if building.building != Some(id) {
                         let mut new_bldg = building.clone();
@@ -282,21 +283,6 @@ impl NodeDisplay {
             }
             None => html! {},
         }
-    }
-}
-
-/// Get the icon path for a given slug name.
-fn slug_to_icon(slug: impl AsRef<str>) -> String {
-    let mut icon = slug.as_ref().to_owned();
-    icon.insert_str(0, "/images/items/");
-    icon.push_str("_64.png");
-    icon
-}
-
-/// Get a span to use when an icon is unknown.
-fn icon_missing() -> Html {
-    html! {
-        <span class="material-icons error">{"error"}</span>
     }
 }
 

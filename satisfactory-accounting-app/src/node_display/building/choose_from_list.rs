@@ -9,6 +9,7 @@ use web_sys::{HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 
 use crate::node_display::get_value_from_input_event;
+use crate::node_display::icon::Icon;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
@@ -17,12 +18,12 @@ pub struct Choice<I> {
     pub id: I,
     /// Name of the choice.
     pub name: String,
-    /// Name of the image to show. This should be the actual image, not the slug.
-    pub image: String,
+    /// Name of the image to show. This should be the the slug for the icon.
+    pub image: Option<String>,
 }
 
 #[derive(PartialEq, Properties)]
-pub struct ChooseFromListProps<I: PartialEq> {
+pub struct Props<I: PartialEq> {
     /// Available choices for this chooser.
     pub choices: Vec<Choice<I>>,
     /// Callback for when an item is chosen.
@@ -32,7 +33,7 @@ pub struct ChooseFromListProps<I: PartialEq> {
 }
 
 /// Messages for [`ChooseFromList`].
-pub enum ChooseFromListMsg {
+pub enum Msg {
     /// Move up to the previous entry.
     Up,
     /// Move down to the next entry.
@@ -62,8 +63,8 @@ pub struct ChooseFromList<I> {
 }
 
 impl<I: Id + 'static> Component for ChooseFromList<I> {
-    type Message = ChooseFromListMsg;
-    type Properties = ChooseFromListProps<I>;
+    type Message = Msg;
+    type Properties = Props<I>;
 
     fn create(ctx: &Context<Self>) -> Self {
         let mut filtered: Vec<_> = ctx
@@ -86,7 +87,7 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            ChooseFromListMsg::Up => {
+            Msg::Up => {
                 if self.highlighted > 0 {
                     self.highlighted -= 1;
                     true
@@ -94,7 +95,7 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                     false
                 }
             }
-            ChooseFromListMsg::Down => {
+            Msg::Down => {
                 if self.highlighted + 1 < self.filtered.len() {
                     self.highlighted += 1;
                     true
@@ -102,7 +103,7 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                     false
                 }
             }
-            ChooseFromListMsg::Hover { filtered_idx } => {
+            Msg::Hover { filtered_idx } => {
                 if filtered_idx < self.filtered.len() {
                     self.highlighted = filtered_idx;
                     true
@@ -111,11 +112,11 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                     false
                 }
             }
-            ChooseFromListMsg::Cancel => {
+            Msg::Cancel => {
                 ctx.props().cancelled.emit(());
                 false
             }
-            ChooseFromListMsg::UpdateInput { input } => {
+            Msg::UpdateInput { input } => {
                 if input != self.input {
                     self.input = input;
                     self.filtered = ctx
@@ -137,7 +138,7 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                     false
                 }
             }
-            ChooseFromListMsg::Select { filtered_idx } => {
+            Msg::Select { filtered_idx } => {
                 if filtered_idx < self.filtered.len() {
                     ctx.props().selected.emit(self.filtered[filtered_idx].1.id);
                 } else {
@@ -154,16 +155,16 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
         let onkeydown = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
             "Up" | "ArrowUp" => {
                 e.prevent_default();
-                Some(ChooseFromListMsg::Up)
+                Some(Msg::Up)
             }
             "Down" | "ArrowDown" => {
                 e.prevent_default();
-                Some(ChooseFromListMsg::Down)
+                Some(Msg::Down)
             }
             _ => None,
         });
         let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
-            "Esc" | "Escape" => Some(ChooseFromListMsg::Cancel),
+            "Esc" | "Escape" => Some(Msg::Cancel),
             _ => None,
         });
         let onblur = link.batch_callback(|e: FocusEvent| {
@@ -177,14 +178,14 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                 }
             } else {
             }
-            Some(ChooseFromListMsg::Cancel)
+            Some(Msg::Cancel)
         });
-        let oninput = link.callback(|input| ChooseFromListMsg::UpdateInput {
+        let oninput = link.callback(|input| Msg::UpdateInput {
             input: get_value_from_input_event(input),
         });
         let onsubmit = link.callback(move |e: FocusEvent| {
             e.prevent_default();
-            ChooseFromListMsg::Select {
+            Msg::Select {
                 filtered_idx: highlighted,
             }
         });
@@ -197,16 +198,16 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                     { for self.filtered.iter().enumerate().map(|(i, (_, item))| {
                         let selected = (i == self.highlighted).then(|| "selected");
                         let onclick = link.callback(move |_|
-                            ChooseFromListMsg::Select {
+                            Msg::Select {
                             filtered_idx: i,
                         });
-                        let onmouseenter = link.callback(move |_| ChooseFromListMsg::Hover {
+                        let onmouseenter = link.callback(move |_| Msg::Hover {
                             filtered_idx: i,
                         });
                         html! {
                             <div tabindex="-1" class={classes!("available-item", selected)}
                                 {onclick} {onmouseenter}>
-                                <img class="icon" src={item.image.clone()} />
+                                <Icon icon={item.image.clone()} alt={item.name.clone()} />
                                 <span>{&item.name}</span>
                             </div>
                         }

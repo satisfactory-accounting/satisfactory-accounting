@@ -1,6 +1,7 @@
 use yew::prelude::*;
 
-use super::{icon_missing, slug_to_icon, NodeDisplay};
+use super::NodeDisplay;
+use crate::node_display::icon::Icon;
 use crate::GetDb;
 
 impl NodeDisplay {
@@ -11,8 +12,8 @@ impl NodeDisplay {
         html! {
             <div class="balance" title="Power">
                 <div class="entry-row">
-                    <img class="icon" alt="Power"
-                        src={slug_to_icon("power-line")} />
+                    <Icon icon={"power-line".to_string()}
+                        alt={"Power".to_string()} />
                     <div class={classes!("balance-value", balance_style(balance.power))}>
                         {balance.power}
                     </div>
@@ -20,8 +21,8 @@ impl NodeDisplay {
                 { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
                     Some(item) => html! {
                         <div class="entry-row" title={item.name.clone()}>
-                            <img class="icon" alt={item.name.clone()}
-                                src={slug_to_icon(&item.image)} />
+                            <Icon icon={item.image.clone()}
+                                alt={item.name.clone()} />
                             <div class={classes!("balance-value", balance_style(rate))}>
                                 {rate}
                             </div>
@@ -29,7 +30,7 @@ impl NodeDisplay {
                     },
                     None => html! {
                         <div class="entry-row" title="Unknown Item">
-                            {icon_missing()}
+                            <Icon />
                             <div class={classes!("balance-value", balance_style(rate))}>
                                 {rate}
                             </div>

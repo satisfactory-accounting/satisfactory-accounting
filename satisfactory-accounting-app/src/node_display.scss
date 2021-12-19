@@ -159,6 +159,21 @@
             justify-content: flex-start;
             align-items: center;
             gap: 5px;
+            cursor: text;
+        }
+
+        .recipe {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 5px;
+
+            // When there's only one recipe for this bulding.
+            &.no-choice {
+                cursor: default;
+            }
         }
 
         .section {
