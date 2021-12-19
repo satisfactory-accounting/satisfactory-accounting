@@ -12,8 +12,7 @@ impl NodeDisplay {
     /// Build the display for a Group.
     pub(super) fn view_group(&self, ctx: &Context<Self>, group: &Group) -> Html {
         let link = ctx.link();
-        let replace =
-            link.callback(|(idx, replacement)| Msg::ReplaceChild { idx, replacement });
+        let replace = link.callback(|(idx, replacement)| Msg::ReplaceChild { idx, replacement });
         let delete = link.callback(|idx| Msg::DeleteChild { idx });
         let copy = link.callback(|idx| Msg::CopyChild { idx });
         let move_node = link.callback(|(src_path, dest_path)| Msg::MoveNode {

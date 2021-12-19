@@ -3,7 +3,7 @@ use wasm_bindgen::JsCast;
 use web_sys::HtmlElement;
 use yew::prelude::*;
 
-use super::{NodeDisplay, Msg, DRAG_INSERT_POINT};
+use super::{Msg, NodeDisplay, DRAG_INSERT_POINT};
 
 /// Key used to store data about node being transferred in drag events.
 const TRANSFER_KEY: &str = "zstewart.satisfactory-accounting/drag-node.path";

@@ -7,7 +7,9 @@ use std::ops::Index;
 use internment::Intern;
 use serde::{Deserialize, Serialize};
 
-use crate::accounting::{BuildingSettings, ManufacturerSettings, MinerSettings, GeneratorSettings, PumpSettings};
+use crate::accounting::{
+    BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings, PumpSettings,
+};
 
 /// Database of satisfactory ... stuff.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -238,7 +240,7 @@ impl BuildingType {
                     settings.resource = m.allowed_resources.first().copied();
                 }
                 BuildingSettings::Miner(settings)
-            },
+            }
             BuildingKind::Generator(g) => {
                 let mut settings = GeneratorSettings::default();
                 if g.allowed_fuel.len() == 1 {
