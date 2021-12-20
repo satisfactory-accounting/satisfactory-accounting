@@ -1,16 +1,19 @@
-use satisfactory_accounting::accounting::{Building, BuildingSettings, ManufacturerSettings};
-use satisfactory_accounting::database::{BuildingId, Database};
+use satisfactory_accounting::accounting::{
+    Building, BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings,
+};
+use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
 use super::NodeDisplay;
 use crate::node_display::Msg;
-use crate::GetDb;
 
 use building_type::BuildingTypeDisplay;
+use item::ItemDisplay;
 use recipe::RecipeDisplay;
 
 mod building_type;
 mod choose_from_list;
+mod item;
 mod recipe;
 
 impl NodeDisplay {
@@ -42,6 +45,10 @@ impl NodeDisplay {
                 BuildingSettings::Manufacturer(settings) => {
                     self.view_manufacturer_settings(ctx, id, settings)
                 }
+                BuildingSettings::Miner(settings) => self.view_miner_settings(ctx, id, settings),
+                BuildingSettings::Generator(settings) => {
+                    self.view_generator_settings(ctx, id, settings)
+                }
                 _ => html! {},
             }
         } else {
@@ -60,6 +67,34 @@ impl NodeDisplay {
         html! {
             <RecipeDisplay building_id={building} recipe_id={settings.recipe}
                 {change_recipe} />
+        }
+    }
+
+    /// Display the settings for a manufacturer.
+    fn view_miner_settings(
+        &self,
+        ctx: &Context<Self>,
+        building: BuildingId,
+        settings: &MinerSettings,
+    ) -> Html {
+        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
+        html! {
+            <ItemDisplay building_id={building} item_id={settings.resource}
+                {change_item} />
+        }
+    }
+
+    /// Display the settings for a generator.
+    fn view_generator_settings(
+        &self,
+        ctx: &Context<Self>,
+        building: BuildingId,
+        settings: &GeneratorSettings,
+    ) -> Html {
+        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
+        html! {
+            <ItemDisplay building_id={building} item_id={settings.fuel}
+                {change_item} />
         }
     }
 }

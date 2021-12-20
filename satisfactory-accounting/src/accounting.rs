@@ -345,6 +345,26 @@ impl BuildingSettings {
     }
 }
 
+macro_rules! settings_from_inner {
+    ($($variant:ident ($inner:ident);)+) => {
+        $(
+            impl From<$inner> for BuildingSettings {
+                fn from(inner: $inner) -> Self {
+                    Self::$variant(inner)
+                }
+            }
+        )+
+    };
+}
+
+settings_from_inner! {
+    Manufacturer(ManufacturerSettings);
+    Miner(MinerSettings);
+    Generator(GeneratorSettings);
+    Pump(PumpSettings);
+    Geothermal(GeothermalSettings);
+}
+
 /// Building which manufactures items using a recipe that converts input items to output
 /// items.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

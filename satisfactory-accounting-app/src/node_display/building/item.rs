@@ -1,5 +1,5 @@
 use log::warn;
-use satisfactory_accounting::database::{BuildingId, BuildingKind, RecipeId};
+use satisfactory_accounting::database::{BuildingId, BuildingKind, ItemId};
 use yew::prelude::*;
 
 use crate::node_display::building::choose_from_list::{Choice, ChooseFromList};
@@ -11,9 +11,9 @@ pub struct Props {
     /// Building used to choose which recipes are available.
     pub building_id: BuildingId,
     /// ID of the selected building, if any.
-    pub recipe_id: Option<RecipeId>,
+    pub item_id: Option<ItemId>,
     /// Callback to change the type of this building.
-    pub change_recipe: Callback<RecipeId>,
+    pub change_item: Callback<ItemId>,
 }
 
 /// Messages for [`BuildingTypeDisplay`]
@@ -23,21 +23,21 @@ pub enum Msg {
         /// The new editing state.
         editing: bool,
     },
-    /// Select a new recipe ID.
+    /// Select a new item ID.
     Select {
         /// The new ID.
-        id: RecipeId,
+        id: ItemId,
     },
 }
 
-/// Displays and allows selection of the Building's recipe.
+/// Displays and allows selection of the Building's item (fuel or resource).
 #[derive(Default)]
-pub struct RecipeDisplay {
-    /// Whether a recipe is currently being entered.
+pub struct ItemDisplay {
+    /// Whether an item is currently being entered.
     editing: bool,
 }
 
-impl Component for RecipeDisplay {
+impl Component for ItemDisplay {
     type Message = Msg;
     type Properties = Props;
 
@@ -52,7 +52,7 @@ impl Component for RecipeDisplay {
                 true
             }
             Msg::Select { id } => {
-                ctx.props().change_recipe.emit(id);
+                ctx.props().change_item.emit(id);
                 self.editing = false;
                 true
             }
@@ -63,41 +63,44 @@ impl Component for RecipeDisplay {
         let db = ctx.db();
         let &Props {
             building_id,
-            recipe_id,
+            item_id,
             ..
         } = ctx.props();
         let building = match db.get(building_id) {
             None => {
                 warn!(
-                    "Cannot show recipes for building {}, it is unknown",
+                    "Cannot show items for building {}, it is unknown",
                     building_id
                 );
                 return html! {};
             }
             Some(building) => building,
         };
-        let recipes = if let BuildingKind::Manufacturer(m) = &building.kind {
-            &m.available_recipes
-        } else {
-            warn!(
-                "Cannot show recipes for building with kind {:?}",
-                building.kind.kind_id()
-            );
-            return html! {};
+        let items = match &building.kind {
+            BuildingKind::Miner(m) => &m.allowed_resources,
+            BuildingKind::Generator(g) => &g.allowed_fuel,
+            BuildingKind::Pump(p) => &p.allowed_resources,
+            _ => {
+                warn!(
+                    "Cannot show items for building with kind {:?}",
+                    building.kind.kind_id()
+                );
+                return html! {};
+            }
         };
         let link = ctx.link();
         if self.editing {
-            let choices: Vec<_> = recipes
+            let choices: Vec<_> = items
                 .iter()
-                .map(|&recipe_id| match db.get(recipe_id) {
-                    Some(recipe) => Choice {
-                        id: recipe.id,
-                        name: recipe.name.clone(),
-                        image: Some(recipe.image.clone()),
+                .map(|&item_id| match db.get(item_id) {
+                    Some(item) => Choice {
+                        id: item.id,
+                        name: item.name.clone(),
+                        image: Some(item.image.clone()),
                     },
                     None => Choice {
-                        id: recipe_id,
-                        name: format!("Unknown Recipe {}", recipe_id).into(),
+                        id: item_id,
+                        name: format!("Unknown Item {}", item_id).into(),
                         image: None,
                     },
                 })
@@ -107,24 +110,24 @@ impl Component for RecipeDisplay {
             let cancelled = link.callback(|()| Msg::ToggleEdit { editing: false });
             html! {
                 <span class="name">
-                    <ChooseFromList<RecipeId> {choices} {selected} {cancelled} />
+                    <ChooseFromList<ItemId> {choices} {selected} {cancelled} />
                 </span>
             }
         } else {
-            let edit = if recipes.len() > 1 {
+            let edit = if items.len() > 1 {
                 Some(link.callback(|_| Msg::ToggleEdit { editing: true }))
             } else {
                 None
             };
-            match recipe_id {
+            match item_id {
                 None => html! {
-                    <span class="name" onclick={edit}>{"select recipe"}</span>
+                    <span class="name" onclick={edit}>{"select item"}</span>
                 },
                 Some(id) => match db.get(id) {
                     None => html! {
                         <span class="name" onclick={edit}>
                             <Icon />
-                            <span>{"Unknown Recipe "}{id}</span>
+                            <span>{"Unknown Item "}{id}</span>
                         </span>
                     },
                     Some(building) => html! {

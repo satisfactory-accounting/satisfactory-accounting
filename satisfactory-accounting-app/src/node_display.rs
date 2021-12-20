@@ -4,9 +4,12 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, ManufacturerSettings, Node, NodeKind,
+    BuildNode, Building, BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings,
+    Node, NodeKind, PumpSettings,
 };
-use satisfactory_accounting::database::{BuildingId, BuildingKind, BuildingType, RecipeId};
+use satisfactory_accounting::database::{
+    BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
+};
 
 use crate::GetDb;
 
@@ -63,6 +66,8 @@ pub enum Msg {
     ChangeType { id: BuildingId },
     /// Change the recipe for the building, if a manufacturer.
     ChangeRecipe { id: RecipeId },
+    /// Change the item for the building, if a Generator, Miner, or Pump.
+    ChangeItem { id: ItemId },
 }
 
 /// Display for a single AccountingGraph node.
@@ -265,19 +270,139 @@ impl Component for NodeDisplay {
                     warn!("Cannot change recipe id, building not set");
                     return false;
                 };
-                let mut ms = match &building.settings {
-                    BuildingSettings::Manufacturer(ms) => ms.clone(),
-                    settings => {
+                let settings = ManufacturerSettings {
+                    recipe: Some(id),
+                    ..match &building.settings {
+                        BuildingSettings::Manufacturer(ms) => ms.clone(),
+                        settings => {
+                            warn!("Had to change building settings kind, did not match building kind in db");
+                            ManufacturerSettings {
+                                clock_speed: settings.clock_speed(),
+                                ..Default::default()
+                            }
+                        }
+                    }
+                }.into();
+                let new_bldg = Building {
+                    settings,
+                    ..building.clone()
+                };
+                match new_bldg.build_node(&db) {
+                    Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                    Err(e) => warn!("Unable to build node: {}", e),
+                }
+                false
+            }
+            Msg::ChangeItem { id } => {
+                let building = match ctx.props().node.kind() {
+                    NodeKind::Building(building) => building,
+                    _ => {
+                        warn!("Cannot change item id of a non-building");
+                        return false;
+                    }
+                };
+                let kind_id = if let Some(building_id) = building.building {
+                    match db.get(building_id) {
+                        Some(BuildingType {
+                            kind: BuildingKind::Miner(m),
+                            ..
+                        }) => {
+                            if !m.allowed_resources.contains(&id) {
+                                warn!(
+                                    "Resource {} is not available for building {}",
+                                    id, building_id
+                                );
+                                return false;
+                            }
+                            BuildingKindId::Miner
+                        }
+                        Some(BuildingType {
+                            kind: BuildingKind::Generator(g),
+                            ..
+                        }) => {
+                            if !g.allowed_fuel.contains(&id) {
+                                warn!("Fuel {} is not available for building {}", id, building_id);
+                                return false;
+                            }
+                            BuildingKindId::Generator
+                        }
+                        Some(BuildingType {
+                            kind: BuildingKind::Pump(p),
+                            ..
+                        }) => {
+                            if !p.allowed_resources.contains(&id) {
+                                warn!(
+                                    "Resource {} is not available for building {}",
+                                    id, building_id
+                                );
+                                return false;
+                            }
+                            BuildingKindId::Pump
+                        }
+                        Some(_) => {
+                            warn!("Cannot change item id, building is not a miner, generator, or pump");
+                            return false;
+                        }
+                        None => {
+                            warn!("Cannot change recipe id, unknown building");
+                            return false;
+                        }
+                    }
+                } else {
+                    warn!("Cannot change recipe id, building not set");
+                    return false;
+                };
+                let settings = match (kind_id, &building.settings) {
+                    (BuildingKindId::Miner, BuildingSettings::Miner(ms)) => MinerSettings {
+                        resource: Some(id),
+                        ..ms.clone()
+                    }
+                    .into(),
+                    (BuildingKindId::Miner, settings) => {
                         warn!("Had to change building settings kind, did not match building kind in db");
-                        ManufacturerSettings {
+                        MinerSettings {
+                            resource: Some(id),
                             clock_speed: settings.clock_speed(),
                             ..Default::default()
                         }
+                        .into()
                     }
+                    (BuildingKindId::Generator, BuildingSettings::Generator(gs)) => {
+                        GeneratorSettings {
+                            fuel: Some(id),
+                            ..gs.clone()
+                        }
+                        .into()
+                    }
+                    (BuildingKindId::Generator, settings) => {
+                        warn!("Had to change building settings kind, did not match building kind in db");
+                        GeneratorSettings {
+                            fuel: Some(id),
+                            clock_speed: settings.clock_speed(),
+                            ..Default::default()
+                        }
+                        .into()
+                    }
+                    (BuildingKindId::Pump, BuildingSettings::Pump(ms)) => PumpSettings {
+                        resource: Some(id),
+                        ..ms.clone()
+                    }
+                    .into(),
+                    (BuildingKindId::Pump, settings) => {
+                        warn!("Had to change building settings kind, did not match building kind in db");
+                        PumpSettings {
+                            resource: Some(id),
+                            clock_speed: settings.clock_speed(),
+                            ..Default::default()
+                        }
+                        .into()
+                    }
+                    // We know the other BuidingKindId values are impossible because we
+                    // only return these three from the previous match.
+                    _ => unreachable!(),
                 };
-                ms.recipe = Some(id);
                 let new_bldg = Building {
-                    settings: BuildingSettings::Manufacturer(ms),
+                    settings,
                     ..building.clone()
                 };
                 match new_bldg.build_node(&db) {
