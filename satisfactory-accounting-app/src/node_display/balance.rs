@@ -4,11 +4,11 @@ use yew::prelude::*;
 
 use super::NodeDisplay;
 use crate::node_display::icon::Icon;
-use crate::GetDb;
+use crate::CtxHelper;
 
 impl NodeDisplay {
     /// Build the display for a node's balance.
-    pub(super) fn view_balance(&self, ctx: &Context<Self>) -> Html {
+    pub(super) fn view_balance(&self, ctx: &Context<Self>, vertical: bool) -> Html {
         thread_local! {
             static POWER_LINE: Rc<str> = "power-line".into();
             static POWER: Rc<str> = "Power".into();
@@ -17,7 +17,7 @@ impl NodeDisplay {
         let balance = ctx.props().node.balance();
         let db = ctx.db();
         html! {
-            <div class="balance" title="Power">
+            <div class={classes!("balance", balance_block_style(vertical))} title="Power">
                 <div class="entry-row">
                     <Icon icon={POWER_LINE.with(Clone::clone)}
                         alt={POWER.with(Clone::clone)} />
@@ -46,6 +46,14 @@ impl NodeDisplay {
                 }) }
             </div>
         }
+    }
+}
+
+fn balance_block_style(vertical: bool) -> &'static str {
+    if vertical {
+        "vertical"
+    } else {
+        "horizontal"
     }
 }
 

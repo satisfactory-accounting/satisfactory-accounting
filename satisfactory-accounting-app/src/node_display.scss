@@ -16,6 +16,10 @@
         @include colors.green-button;
     }
 
+    .expand-collapse {
+        @include colors.primary-button;
+    }
+
     .icon {
         width: 24px;
         height: 24px;
@@ -50,27 +54,40 @@
             padding: 5px;
             gap: 5px;
 
-            .GroupName {
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-                flex-grow: 1;
-                gap: 5px;
+       }
 
-                .name {
-                    font-size: 20px;
-                    color: colors.$gray-dark;
+        .summary {
+            box-sizing: border-box;
 
-                    &.notset {
-                        color: colors.$gray;
-                    }
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            padding: 5px;
+            gap: 5px;
+
+       }
+
+        .GroupName {
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-grow: 1;
+            gap: 5px;
+
+            .name {
+                font-size: 20px;
+                color: colors.$gray-dark;
+
+                &.notset {
+                    color: colors.$gray;
                 }
+            }
 
-                .edit {
-                    @include colors.green-button();
-                }
+            .edit {
+                @include colors.green-button();
             }
         }
 
@@ -122,27 +139,6 @@
             }
         }
 
-        // Group balances lay out vertically, while building balances lay out
-        // horizontally.
-        .balance {
-            box-sizing: border-box;
-
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: stretch;
-
-            border-radius: 5px;
-            background-color: colors.$light;
-            padding: 5px;
-            gap: 5px;
-
-            .entry-row {
-                .balance-value {
-                    min-width: 2em;
-                }
-            }
-        }
     }
 
     &.building {
@@ -198,25 +194,14 @@
             gap: 5px;
         }
 
-        .balance {
-            box-sizing: border-box;
-
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: stretch;
-            gap: 10px;
-
-            .entry-row {
-                gap: 2px;
-                .balance-value {
-                    min-width: auto;
-                }
-            }
-        }
     }
 
     .balance {
+        box-sizing: border-box;
+        display: flex;
+        justify-content: flex-start;
+        align-items: stretch;
+
         .entry-row {
             box-sizing: border-box;
 
@@ -234,6 +219,30 @@
                 &.positive {
                     color: color.scale(colors.$success, $lightness: -30%);
                 }
+            }
+        }
+
+        &.vertical {
+            flex-direction: column;
+
+            border-radius: 5px;
+            background-color: colors.$light;
+            padding: 5px;
+            gap: 5px;
+
+            .entry-row {
+                .balance-value {
+                    min-width: 2em;
+                }
+            }
+        }
+
+        &.horizontal {
+            flex-direction: row;
+            gap: 10px;
+
+            .entry-row {
+                gap: 2px;
             }
         }
     }

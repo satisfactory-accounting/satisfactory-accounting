@@ -4,16 +4,18 @@ use std::rc::Rc;
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage};
 use log::warn;
+use uuid::Uuid;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::Database;
 
-use crate::node_display::NodeDisplay;
+use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata};
 
 /// Key that the app state is stored under.
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
 const GRAPH_KEY: &str = "zstewart.satisfactorydb.state.graph";
+const METADATA_KEY: &str = "zstewart.satisfactorydb.state.metadata";
 
 /// Stored state of the app.
 #[derive(Debug, Clone)]
@@ -29,8 +31,8 @@ impl AppState {
     fn update_root(&mut self, root: Node) -> Self {
         let old_root = mem::replace(&mut self.root, root);
         Self {
-            database: self.database.clone(),
             root: old_root,
+            ..self.clone()
         }
     }
 
@@ -46,7 +48,7 @@ impl AppState {
             if !matches!(e, StorageError::KeyNotFound(_)) {
                 warn!("Failed to load graph: {}", e);
             }
-            Group::default().into()
+            Group::empty().into()
         });
         Self { database, root }
     }
@@ -57,29 +59,34 @@ impl AppState {
             warn!("Unable to save database: {}", e);
         }
         if let Err(e) = LocalStorage::set(GRAPH_KEY, &self.root) {
-            warn!("Unable to save database: {}", e);
+            warn!("Unable to save graph: {}", e);
         }
-    }
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self::load_or_create()
     }
 }
 
 /// Messages for communicating with App.
 pub enum Msg {
     ReplaceRoot { replacement: Node },
+    UpdateMetadata { id: Uuid, meta: NodeMeta },
     Undo,
     Redo,
 }
 
-#[derive(Default)]
 pub struct App {
     state: AppState,
+    /// Non-undo metadata about nodes.
+    metadata: NodeMetadata,
     undo_stack: Vec<AppState>,
     redo_stack: Vec<AppState>,
+}
+
+impl App {
+    fn save(&self) {
+        self.state.save();
+        if let Err(e) = LocalStorage::set(METADATA_KEY, &self.metadata) {
+            warn!("Unable to save metadata: {}", e);
+        }
+    }
 }
 
 impl Component for App {
@@ -87,7 +94,18 @@ impl Component for App {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        Default::default()
+        let metadata = LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
+            if !matches!(e, StorageError::KeyNotFound(_)) {
+                warn!("Failed to load metadata: {}", e);
+            }
+            Default::default()
+        });
+        Self {
+            state: AppState::load_or_create(),
+            metadata,
+            undo_stack: Vec::new(),
+            redo_stack: Vec::new(),
+        }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -99,14 +117,19 @@ impl Component for App {
                     self.undo_stack.drain(..num_to_remove);
                 }
                 self.redo_stack.clear();
-                self.state.save();
+                self.save();
+                true
+            }
+            Msg::UpdateMetadata { id, meta } => {
+                self.metadata = self.metadata.set_meta(id, meta);
+                self.save();
                 true
             }
             Msg::Undo => match self.undo_stack.pop() {
                 Some(previous) => {
                     let next = mem::replace(&mut self.state, previous);
                     self.redo_stack.push(next);
-                    self.state.save();
+                    self.save();
                     true
                 }
                 None => {
@@ -118,7 +141,7 @@ impl Component for App {
                 Some(next) => {
                     let previous = mem::replace(&mut self.state, next);
                     self.undo_stack.push(previous);
-                    self.state.save();
+                    self.save();
                     true
                 }
                 None => {
@@ -135,35 +158,37 @@ impl Component for App {
             assert!(idx == 0, "Attempting to replace index {} at the root", idx);
             Msg::ReplaceRoot { replacement }
         });
+        let set_metadata = link.callback(|(id, meta)| Msg::UpdateMetadata { id, meta });
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
-                <div class="App">
-                    <div class="navbar">
-                        <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
+                <ContextProvider<NodeMetadata> context={self.metadata.clone()}>
+                    <div class="App">
+                        <div class="navbar">
+                            <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
+                        </div>
+                        <div class="menubar">
+                            <button class="unredo" title="undo"
+                                onclick={undo}
+                                disabled={self.undo_stack.is_empty()}>
+                                <span class="material-icons">{"undo"}</span>
+                            </button>
+                            <button class="unredo" title="redo"
+                                onclick={redo}
+                                disabled={self.redo_stack.is_empty()}>
+                                <span class="material-icons">{"redo"}</span>
+                            </button>
+                        </div>
+                        <div class="appbody">
+                            <NodeDisplay node={self.state.root.clone()}
+                                path={Vec::new()}
+                                {replace} {set_metadata} {move_node} />
+                        </div>
                     </div>
-                    <div class="menubar">
-                        <button class="unredo" title="undo"
-                            onclick={undo}
-                            disabled={self.undo_stack.is_empty()}>
-                            <span class="material-icons">{"undo"}</span>
-                        </button>
-                        <button class="unredo" title="redo"
-                            onclick={redo}
-                            disabled={self.redo_stack.is_empty()}>
-                            <span class="material-icons">{"redo"}</span>
-                        </button>
-                    </div>
-                    <div class="appbody">
-                        <NodeDisplay node={self.state.root.clone()}
-                            path={Vec::new()}
-                            {replace}
-                            {move_node} />
-                    </div>
-                </div>
+                </ContextProvider<NodeMetadata>>
             </ContextProvider<Rc<Database>>>
         }
     }

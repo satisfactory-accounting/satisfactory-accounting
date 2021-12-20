@@ -1,4 +1,9 @@
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use log::warn;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -11,7 +16,7 @@ use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
 };
 
-use crate::GetDb;
+use crate::CtxHelper;
 
 mod balance;
 mod building;
@@ -19,6 +24,33 @@ mod drag;
 mod graph_manipulation;
 mod group;
 mod icon;
+
+/// Mapping of node medatata by node id.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct NodeMetadata(Rc<HashMap<Uuid, NodeMeta>>);
+
+impl NodeMetadata {
+    /// Get the metadata for a particular node by id.
+    pub fn meta(&self, uuid: Uuid) -> NodeMeta {
+        self.0.get(&uuid).cloned().unwrap_or_default()
+    }
+
+    /// Build a version of the metadata with the given value updated.
+    pub fn set_meta(&self, uuid: Uuid, meta: NodeMeta) -> Self {
+        let mut map = HashMap::clone(&self.0);
+        map.insert(uuid, meta);
+        Self(Rc::new(map))
+    }
+}
+
+/// Metadata about a node which isn't stored in the tree and isn't available for
+/// undo/redo.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct NodeMeta {
+    /// Whether the node should be shown collapsed or expanded.
+    collapsed: bool,
+}
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
@@ -36,6 +68,8 @@ pub struct Props {
     pub replace: Callback<(usize, Node)>,
     /// Callback to tell the parent to move a node.
     pub move_node: Callback<(Vec<usize>, Vec<usize>)>,
+    /// Callback to set the metadata of a node.
+    pub set_metadata: Callback<(Uuid, NodeMeta)>,
 }
 
 /// Messages which can be sent to a Node.
@@ -130,7 +164,7 @@ impl Component for NodeDisplay {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
-                        let copied = new_group.children[idx].clone();
+                        let copied = new_group.children[idx].create_copy();
                         new_group.children.insert(idx + 1, copied);
                         ctx.props().replace.emit((our_idx, new_group.into()));
                     } else {

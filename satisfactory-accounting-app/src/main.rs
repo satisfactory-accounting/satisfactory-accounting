@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use node_display::{NodeMeta, NodeMetadata};
+use uuid::Uuid;
 use yew::prelude::*;
 
 use satisfactory_accounting::database::Database;
@@ -13,17 +15,29 @@ fn main() {
 }
 
 /// Helper to grab the database from Context.
-trait GetDb {
-    /// Get the database from context, throw if not set.
+trait CtxHelper {
+    /// Get the database from context, throw if context is missing.
     fn db(&self) -> Rc<Database>;
+
+    /// Get the metadata from context, throw if context is missing (gets default metadat
+    /// if not set).
+    fn meta(&self, id: Uuid) -> NodeMeta;
 }
 
-impl<T: Component> GetDb for Context<T> {
+impl<T: Component> CtxHelper for Context<T> {
     fn db(&self) -> Rc<Database> {
         let (db, _) = self
             .link()
             .context::<Rc<Database>>(Callback::noop())
             .expect("database context to be set");
         db
+    }
+
+    fn meta(&self, id: Uuid) -> NodeMeta {
+        let (meta, _) = self
+            .link()
+            .context::<NodeMetadata>(Callback::noop())
+            .expect("metadata context to be set");
+        meta.meta(id)
     }
 }

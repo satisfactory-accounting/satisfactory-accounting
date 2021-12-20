@@ -14,10 +14,11 @@ fuzzy-matcher = "0.3"
 # app.
 instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
-satisfactory-accounting = { path = "../satisfactory-accounting" }
+satisfactory-accounting = { path = "../satisfactory-accounting", features = ["wasm-bindgen"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 wasm-bindgen = "0.2"
+uuid = { version = "0.8", features = ["serde", "wasm-bindgen"] }
 yew = "0.19"
 
 [dependencies.web-sys]

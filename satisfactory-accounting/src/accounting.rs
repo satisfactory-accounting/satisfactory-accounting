@@ -1,7 +1,8 @@
-use std::rc::Rc;
+use std::{iter::FusedIterator, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 pub use self::balance::Balance;
 use crate::database::{
@@ -103,6 +104,53 @@ impl Node {
     pub fn building(&self) -> Option<&Building> {
         self.kind().building()
     }
+
+    /// Create a copy of this node. This is a true copy, with Uuids of Groups changed to
+    /// represent newly created, but identical groups.
+    pub fn create_copy(&self) -> Self {
+        match self.kind() {
+            NodeKind::Group(group) => group.create_copy().into(),
+            // Buidings have no identity and can be copied verbatim.
+            NodeKind::Building(_) => self.clone(),
+        }
+    }
+
+    /// Get the children of this node, if any.
+    pub fn children(
+        &self,
+    ) -> impl '_ + Iterator<Item = Node> + ExactSizeIterator + DoubleEndedIterator + FusedIterator
+    {
+        match self.kind() {
+            NodeKind::Group(group) => group.children.iter().cloned(),
+            NodeKind::Building(_) => [].iter().cloned(),
+        }
+    }
+
+    /// Pre-order traversal iterator of this node.
+    pub fn iter(&self) -> NodeIter {
+        NodeIter {
+            to_visit: vec![self.clone()],
+        }
+    }
+}
+
+pub struct NodeIter {
+    // Node stack.
+    to_visit: Vec<Node>,
+}
+
+impl Iterator for NodeIter {
+    type Item = Node;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.to_visit.pop() {
+            Some(node) => {
+                self.to_visit.extend(node.children());
+                Some(node)
+            }
+            None => None,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -154,20 +202,32 @@ impl From<Building> for NodeKind {
     }
 }
 
-/// A grouping of other nodes. It's balance is based
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+/// A grouping of other nodes. It's balance is based on its child nodes.
+///
+/// Note that cloning groups is used to update groups. When creating a new a copy of a
+/// group, a new [`Uuid`] needs to be created, and this must be recursive, since two
+/// groups with the same `Uuid` in the same tree is not allowed.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Group {
     /// Name of this group. May be empty.
     pub name: String,
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
     pub children: Vec<Node>,
+
+    /// Uniquely identifies a group, even when the node is shared between trees (e.g. when
+    /// saving nodes for undo/redo purposes).
+    pub id: Uuid,
 }
 
 impl Group {
     /// Create a new empty group.
     pub fn empty() -> Self {
-        Default::default()
+        Group {
+            name: Default::default(),
+            children: Default::default(),
+            id: Uuid::new_v4(),
+        }
     }
 
     /// Create a new empty group wrapped in a node.
@@ -184,6 +244,21 @@ impl Group {
     /// Get a child of this node by index.
     pub fn get_child(&self, index: usize) -> Option<&Node> {
         self.children.get(index)
+    }
+
+    /// Create a true copy of this group, with a newly assigned Uuid. Unlike the result of
+    /// `Clone`, the new value doesn't represent the same group, so can be used in the
+    /// same tree as the original.
+    pub fn create_copy(&self) -> Self {
+        Group {
+            name: self.name.clone(),
+            children: self
+                .children
+                .iter()
+                .map(|child| child.create_copy())
+                .collect(),
+            id: Uuid::new_v4(),
+        }
     }
 }
 
