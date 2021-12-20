@@ -291,6 +291,58 @@ impl BuildingSettings {
             Self::PowerConsumer => BuildingKindId::PowerConsumer,
         }
     }
+
+    /// Get the clock speed of the building.
+    pub fn clock_speed(&self) -> f32 {
+        match self {
+            Self::Manufacturer(m) => m.clock_speed,
+            Self::Miner(m) => m.clock_speed,
+            Self::Generator(g) => g.clock_speed,
+            Self::Pump(p) => p.clock_speed,
+            Self::Geothermal(_) => 1.0,
+            Self::PowerConsumer => 1.0,
+        }
+    }
+
+    /// Set the clock speed of the building if possible.
+    pub fn set_clock_speed(&mut self, clock_speed: f32) {
+        match self {
+            Self::Manufacturer(m) => m.clock_speed = clock_speed,
+            Self::Miner(m) => m.clock_speed = clock_speed,
+            Self::Generator(g) => g.clock_speed = clock_speed,
+            Self::Pump(p) => p.clock_speed = clock_speed,
+            Self::Geothermal(_) => {}
+            Self::PowerConsumer => {}
+        }
+    }
+
+    /// Get replacment settings for changing a building, by copying the settings a much as
+    /// possible.
+    pub fn build_new_settings(&self, new_kind: &BuildingKind) -> Self {
+        match (self, new_kind) {
+            (BuildingSettings::Manufacturer(ms), BuildingKind::Manufacturer(m)) => {
+                BuildingSettings::Manufacturer(ms.copy_settings(m))
+            }
+            (BuildingSettings::Miner(ms), BuildingKind::Miner(m)) => {
+                BuildingSettings::Miner(ms.copy_settings(m))
+            }
+            (BuildingSettings::Generator(gs), BuildingKind::Generator(g)) => {
+                BuildingSettings::Generator(gs.copy_settings(g))
+            }
+            (BuildingSettings::Pump(ps), BuildingKind::Pump(p)) => {
+                BuildingSettings::Pump(ps.copy_settings(p))
+            }
+            (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(_)) => {
+                BuildingSettings::Geothermal(gs.clone())
+            }
+            _ => {
+                // For mismatched types, just copy the clock speed.
+                let mut new_settings = new_kind.get_default_settings();
+                new_settings.set_clock_speed(self.clock_speed());
+                new_settings
+            }
+        }
+    }
 }
 
 /// Building which manufactures items using a recipe that converts input items to output
@@ -348,6 +400,25 @@ impl ManufacturerSettings {
             }
         }
         Ok(balance)
+    }
+
+    /// Create a copy of these settings for a different manufacturer.
+    fn copy_settings(&self, m: &Manufacturer) -> Self {
+        let mut ms = self.clone();
+        // leave clock the same and reset the recipe if our current recipe isn't allowed.
+        // If the new building allows only one recipe, choose that.
+        if let Some(recipe) = ms.recipe {
+            if !m.available_recipes.contains(&recipe) {
+                ms.recipe = if m.available_recipes.len() == 1 {
+                    m.available_recipes.first().copied()
+                } else {
+                    None
+                }
+            }
+        } else if m.available_recipes.len() == 1 {
+            ms.recipe = m.available_recipes.first().copied();
+        }
+        ms
     }
 }
 
@@ -443,6 +514,25 @@ impl MinerSettings {
         }
         Ok(balance)
     }
+
+    /// Create a copy of these settings for a different miner.
+    fn copy_settings(&self, m: &Miner) -> Self {
+        let mut ms = self.clone();
+        // leave clock and purity the same and reset the resource if our current resource
+        // isn't allowed.  If the new building allows only one resourece, choose that.
+        if let Some(resource) = ms.resource {
+            if !m.allowed_resources.contains(&resource) {
+                ms.resource = if m.allowed_resources.len() == 1 {
+                    m.allowed_resources.first().copied()
+                } else {
+                    None
+                }
+            }
+        } else if m.allowed_resources.len() == 1 {
+            ms.resource = m.allowed_resources.first().copied();
+        }
+        ms
+    }
 }
 
 /// Building which produces power by burning items.
@@ -496,6 +586,25 @@ impl GeneratorSettings {
             *balance.balances.entry(fuel_id).or_default() -= 60.0 / fuel_burn_time;
         }
         Ok(balance)
+    }
+
+    /// Create a copy of these settings for a different generator.
+    fn copy_settings(&self, g: &Generator) -> Self {
+        let mut gs = self.clone();
+        // leave clock the same and reset the fuel if our current fuel isn't allowed.
+        // If the new building allows only one fuel, choose that.
+        if let Some(fuel) = gs.fuel {
+            if !g.allowed_fuel.contains(&fuel) {
+                gs.fuel = if g.allowed_fuel.len() == 1 {
+                    g.allowed_fuel.first().copied()
+                } else {
+                    None
+                }
+            }
+        } else if g.allowed_fuel.len() == 1 {
+            gs.fuel = g.allowed_fuel.first().copied();
+        }
+        gs
     }
 }
 
@@ -559,6 +668,25 @@ impl PumpSettings {
             balance.balances.insert(resource_id, total_items_per_minute);
         }
         Ok(balance)
+    }
+
+    /// Create a copy of these settings for a different pump.
+    fn copy_settings(&self, p: &Pump) -> Self {
+        let mut ps = self.clone();
+        // leave clock the same and reset the fuel if our current fuel isn't allowed.
+        // If the new building allows only one fuel, choose that.
+        if let Some(resource) = ps.resource {
+            if !p.allowed_resources.contains(&resource) {
+                ps.resource = if p.allowed_resources.len() == 1 {
+                    p.allowed_resources.first().copied()
+                } else {
+                    None
+                }
+            }
+        } else if p.allowed_resources.len() == 1 {
+            ps.resource = p.allowed_resources.first().copied();
+        }
+        ps
     }
 }
 

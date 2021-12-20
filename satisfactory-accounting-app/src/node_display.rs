@@ -3,10 +3,10 @@ use wasm_bindgen::JsCast;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use satisfactory_accounting::{
-    accounting::{BuildNode, Node, NodeKind},
-    database::BuildingId,
+use satisfactory_accounting::accounting::{
+    BuildNode, Building, BuildingSettings, ManufacturerSettings, Node, NodeKind,
 };
+use satisfactory_accounting::database::{BuildingId, BuildingKind, BuildingType, RecipeId};
 
 use crate::GetDb;
 
@@ -61,6 +61,8 @@ pub enum Msg {
     // Messages for buildings:
     /// Change the building type of this node.
     ChangeType { id: BuildingId },
+    /// Change the recipe for the building, if a manufacturer.
+    ChangeRecipe { id: RecipeId },
 }
 
 /// Display for a single AccountingGraph node.
@@ -212,7 +214,10 @@ impl Component for NodeDisplay {
                         let mut new_bldg = building.clone();
                         new_bldg.building = Some(id);
                         match db.get(id) {
-                            Some(building) => new_bldg.settings = building.get_default_settings(),
+                            Some(building) => {
+                                new_bldg.settings =
+                                    new_bldg.settings.build_new_settings(&building.kind);
+                            }
                             None => warn!("New building ID is unknown."),
                         }
                         match new_bldg.build_node(&db) {
@@ -223,6 +228,63 @@ impl Component for NodeDisplay {
                 } else {
                     warn!("Cannot change building type id of a non-building");
                 }
+                false
+            }
+            Msg::ChangeRecipe { id } => {
+                let building = match ctx.props().node.kind() {
+                    NodeKind::Building(building) => building,
+                    _ => {
+                        warn!("Cannot change recipe id of a non-building");
+                        return false;
+                    }
+                };
+                if let Some(building_id) = building.building {
+                    match db.get(building_id) {
+                        Some(BuildingType {
+                            kind: BuildingKind::Manufacturer(m),
+                            ..
+                        }) => {
+                            if !m.available_recipes.contains(&id) {
+                                warn!(
+                                    "Recipe {} is not available for building {}",
+                                    id, building_id
+                                );
+                                return false;
+                            }
+                        }
+                        Some(_) => {
+                            warn!("Cannot change recipe id, building is not a manufacturer");
+                            return false;
+                        }
+                        None => {
+                            warn!("Cannot change recipe id, unknown building");
+                            return false;
+                        }
+                    }
+                } else {
+                    warn!("Cannot change recipe id, building not set");
+                    return false;
+                };
+                let mut ms = match &building.settings {
+                    BuildingSettings::Manufacturer(ms) => ms.clone(),
+                    settings => {
+                        warn!("Had to change building settings kind, did not match building kind in db");
+                        ManufacturerSettings {
+                            clock_speed: settings.clock_speed(),
+                            ..Default::default()
+                        }
+                    }
+                };
+                ms.recipe = Some(id);
+                let new_bldg = Building {
+                    settings: BuildingSettings::Manufacturer(ms),
+                    ..building.clone()
+                };
+                match new_bldg.build_node(&db) {
+                    Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                    Err(e) => warn!("Unable to build node: {}", e),
+                }
+
                 false
             }
         }

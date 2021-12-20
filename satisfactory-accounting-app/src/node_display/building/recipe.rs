@@ -111,14 +111,14 @@ impl Component for RecipeDisplay {
                 </span>
             }
         } else {
-            let edit = if recipes.len() < 2 {
+            let edit = if recipes.len() > 1 {
                 Some(link.callback(|_| Msg::ToggleEdit { editing: true }))
             } else {
                 None
             };
             match recipe_id {
                 None => html! {
-                    <span class="name" onclick={edit}>{"select building"}</span>
+                    <span class="name" onclick={edit}>{"select recipe"}</span>
                 },
                 Some(id) => match db.get(id) {
                     None => html! {

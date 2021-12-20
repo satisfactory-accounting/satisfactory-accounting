@@ -136,6 +136,12 @@
             background-color: colors.$light;
             padding: 5px;
             gap: 5px;
+
+            .entry-row {
+                .balance-value {
+                    min-width: 2em;
+                }
+            }
         }
     }
 
@@ -152,6 +158,10 @@
 
         background-color: colors.$light;
 
+        .section.spaced {
+            gap: 10px;
+        }
+
         .name {
             box-sizing: border-box;
             display: flex;
@@ -160,6 +170,7 @@
             align-items: center;
             gap: 5px;
             cursor: text;
+            min-width: 250px;
         }
 
         .recipe {
@@ -169,6 +180,7 @@
             justify-content: flex-start;
             align-items: center;
             gap: 5px;
+            min-width: 250px;
 
             // When there's only one recipe for this bulding.
             &.no-choice {
@@ -193,7 +205,14 @@
             flex-direction: row;
             justify-content: flex-start;
             align-items: stretch;
-            gap: 2px;
+            gap: 10px;
+
+            .entry-row {
+                gap: 2px;
+                .balance-value {
+                    min-width: auto;
+                }
+            }
         }
     }
 
@@ -208,7 +227,6 @@
             cursor: pointer;
 
             .balance-value {
-                min-width: 2em;
                 text-align: right;
                 &.negative {
                     color: colors.$danger;

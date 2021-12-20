@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use regex::Regex;
 use satisfactory_accounting::database::{
     BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item, ItemAmount, ItemId,
     Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe,
@@ -73,12 +74,13 @@ fn main() {
         .chain(std::iter::once("Desc_FrackingSmasher_C".to_string()))
         .collect();
 
+    let bad_icon_names = Regex::new(r"-\(.*\)").unwrap();
     let recipes: HashMap<_, _> = machine_recipes
         .iter()
         .map(|recipe| Recipe {
             name: recipe.name.as_str().into(),
             id: recipe.class_name.as_str().into(),
-            image: recipe.slug.as_str().into(),
+            image: bad_icon_names.replace(recipe.slug.as_str(), "").into(),
             time: recipe.time,
             ingredients: recipe
                 .ingredients

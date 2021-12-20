@@ -226,38 +226,7 @@ pub struct BuildingType {
 impl BuildingType {
     /// Gets the settings
     pub fn get_default_settings(&self) -> BuildingSettings {
-        match &self.kind {
-            BuildingKind::Manufacturer(m) => {
-                let mut settings = ManufacturerSettings::default();
-                if m.available_recipes.len() == 1 {
-                    settings.recipe = m.available_recipes.first().copied();
-                }
-                BuildingSettings::Manufacturer(settings)
-            }
-            BuildingKind::Miner(m) => {
-                let mut settings = MinerSettings::default();
-                if m.allowed_resources.len() == 1 {
-                    settings.resource = m.allowed_resources.first().copied();
-                }
-                BuildingSettings::Miner(settings)
-            }
-            BuildingKind::Generator(g) => {
-                let mut settings = GeneratorSettings::default();
-                if g.allowed_fuel.len() == 1 {
-                    settings.fuel = g.allowed_fuel.first().copied();
-                }
-                BuildingSettings::Generator(settings)
-            }
-            BuildingKind::Pump(p) => {
-                let mut settings = PumpSettings::default();
-                if p.allowed_resources.len() == 1 {
-                    settings.resource = p.allowed_resources.first().copied();
-                }
-                BuildingSettings::Pump(settings)
-            }
-            BuildingKind::Geothermal(_) => BuildingSettings::Geothermal(Default::default()),
-            BuildingKind::PowerConsumer(_) => BuildingSettings::PowerConsumer,
-        }
+        self.kind.get_default_settings()
     }
 }
 
@@ -289,6 +258,42 @@ impl BuildingKind {
             Self::Pump(_) => BuildingKindId::Pump,
             Self::Geothermal(_) => BuildingKindId::Geothermal,
             Self::PowerConsumer(_) => BuildingKindId::PowerConsumer,
+        }
+    }
+
+    /// Gets the settings for a new building of this kind.
+    pub fn get_default_settings(&self) -> BuildingSettings {
+        match self {
+            BuildingKind::Manufacturer(m) => {
+                let mut settings = ManufacturerSettings::default();
+                if m.available_recipes.len() == 1 {
+                    settings.recipe = m.available_recipes.first().copied();
+                }
+                BuildingSettings::Manufacturer(settings)
+            }
+            BuildingKind::Miner(m) => {
+                let mut settings = MinerSettings::default();
+                if m.allowed_resources.len() == 1 {
+                    settings.resource = m.allowed_resources.first().copied();
+                }
+                BuildingSettings::Miner(settings)
+            }
+            BuildingKind::Generator(g) => {
+                let mut settings = GeneratorSettings::default();
+                if g.allowed_fuel.len() == 1 {
+                    settings.fuel = g.allowed_fuel.first().copied();
+                }
+                BuildingSettings::Generator(settings)
+            }
+            BuildingKind::Pump(p) => {
+                let mut settings = PumpSettings::default();
+                if p.allowed_resources.len() == 1 {
+                    settings.resource = p.allowed_resources.first().copied();
+                }
+                BuildingSettings::Pump(settings)
+            }
+            BuildingKind::Geothermal(_) => BuildingSettings::Geothermal(Default::default()),
+            BuildingKind::PowerConsumer(_) => BuildingSettings::PowerConsumer,
         }
     }
 }
