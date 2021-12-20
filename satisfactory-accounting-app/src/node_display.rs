@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use log::warn;
@@ -37,10 +37,20 @@ impl NodeMetadata {
     }
 
     /// Build a version of the metadata with the given value updated.
-    pub fn set_meta(&self, uuid: Uuid, meta: NodeMeta) -> Self {
-        let mut map = HashMap::clone(&self.0);
-        map.insert(uuid, meta);
-        Self(Rc::new(map))
+    pub fn set_meta(&mut self, uuid: Uuid, meta: NodeMeta) {
+        Rc::make_mut(&mut self.0).insert(uuid, meta);
+    }
+
+    /// Prune metadata for anything that isn't referenced from the given node.
+    pub fn prune(&mut self, root: &Node) {
+        let used_uuids: HashSet<_> = root
+            .iter()
+            .filter_map(|node| match node.kind() {
+                NodeKind::Group(g) => Some(g.id),
+                NodeKind::Building(_) => None,
+            })
+            .collect();
+        Rc::make_mut(&mut self.0).retain(|k, _| used_uuids.contains(k));
     }
 }
 

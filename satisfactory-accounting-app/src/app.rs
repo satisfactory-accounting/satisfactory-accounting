@@ -94,14 +94,18 @@ impl Component for App {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        let metadata = LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
+        let state = AppState::load_or_create();
+        let mut metadata: NodeMetadata = LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
             if !matches!(e, StorageError::KeyNotFound(_)) {
                 warn!("Failed to load metadata: {}", e);
             }
             Default::default()
         });
+        // Remove metadata from deleted groups that are definitely no longer in the
+        // undo/redo history.
+        metadata.prune(&state.root);
         Self {
-            state: AppState::load_or_create(),
+            state,
             metadata,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -121,7 +125,7 @@ impl Component for App {
                 true
             }
             Msg::UpdateMetadata { id, meta } => {
-                self.metadata = self.metadata.set_meta(id, meta);
+                self.metadata.set_meta(id, meta);
                 self.save();
                 true
             }

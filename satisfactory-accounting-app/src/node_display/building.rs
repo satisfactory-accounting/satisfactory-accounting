@@ -31,8 +31,8 @@ impl NodeDisplay {
                 </div>
                 <div class="section">
                     {self.view_balance(ctx, false)}
-                    {self.delete_button(ctx)}
                     {self.copy_button(ctx)}
+                    {self.delete_button(ctx)}
                 </div>
             </div>
         }

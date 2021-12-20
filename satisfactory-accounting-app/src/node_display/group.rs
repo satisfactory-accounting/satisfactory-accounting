@@ -47,9 +47,9 @@ impl NodeDisplay {
                 <div class="header">
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
-                    {self.delete_button(ctx)}
-                    {self.copy_button(ctx)}
                     {self.collapse_button(ctx, group)}
+                    {self.copy_button(ctx)}
+                    {self.delete_button(ctx)}
                 </div>
                 <div class="body">
                     <div class="children-display"
@@ -100,9 +100,9 @@ impl NodeDisplay {
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
                     {self.view_balance(ctx, false)}
-                    {self.delete_button(ctx)}
-                    {self.copy_button(ctx)}
                     {self.collapse_button(ctx, group)}
+                    {self.copy_button(ctx)}
+                    {self.delete_button(ctx)}
                 </div>
             </div>
         }
