@@ -1,4 +1,4 @@
-use std::{iter::FusedIterator, rc::Rc};
+use std::{fmt, iter::FusedIterator, rc::Rc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -555,6 +555,47 @@ impl ResourcePurity {
             Self::Pure => Self::Normal,
             _ => Self::Impure,
         }
+    }
+
+    /// Get a string suitable for human display of this purity.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Impure => "Impure",
+            Self::Normal => "Normal",
+            Self::Pure => "Pure",
+        }
+    }
+
+    /// Get a string suitable for identifying this purity.
+    pub fn ident(self) -> &'static str {
+        match self {
+            Self::Impure => "impure",
+            Self::Normal => "normal",
+            Self::Pure => "pure",
+        }
+    }
+
+    /// Gets the purity matching an ident from [`Self::ident`].
+    pub fn from_ident(ident: &str) -> Result<Self, ()> {
+        match ident {
+            "impure" => Ok(Self::Impure),
+            "normal" => Ok(Self::Normal),
+            "pure" => Ok(Self::Pure),
+            _ => Err(()),
+        }
+    }
+
+    /// Get an iterator over the values of this enum.
+    pub fn values(
+    ) -> impl Iterator<Item = ResourcePurity> + DoubleEndedIterator + ExactSizeIterator + FusedIterator
+    {
+        (&[Self::Impure, Self::Normal, Self::Pure]).iter().copied()
+    }
+}
+
+impl fmt::Display for ResourcePurity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.name())
     }
 }
 

@@ -93,12 +93,14 @@ impl Component for RecipeDisplay {
                     Some(recipe) => Choice {
                         id: recipe.id,
                         name: recipe.name.clone(),
-                        image: Some(recipe.image.clone()),
+                        image: html! {
+                            <Icon icon={recipe.image.clone()} alt={recipe.name.clone()} />
+                        },
                     },
                     None => Choice {
                         id: recipe_id,
                         name: format!("Unknown Recipe {}", recipe_id).into(),
-                        image: None,
+                        image: html! { <Icon /> },
                     },
                 })
                 .collect();

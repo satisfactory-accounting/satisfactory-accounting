@@ -66,7 +66,9 @@ impl Component for BuildingTypeDisplay {
                 .map(|building| Choice {
                     id: building.id,
                     name: building.name.clone(),
-                    image: Some(building.image.clone()),
+                    image: html! {
+                        <Icon icon={building.image.clone()} alt={building.name.clone()} />
+                    },
                 })
                 .collect();
 

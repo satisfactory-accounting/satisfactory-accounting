@@ -4,23 +4,21 @@ use std::rc::Rc;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use log::warn;
-use satisfactory_accounting::database::Id;
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 
 use crate::node_display::get_value_from_input_event;
-use crate::node_display::icon::Icon;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
-pub struct Choice<I> {
+pub struct Choice<Id> {
     /// ID of the choice.
-    pub id: I,
+    pub id: Id,
     /// Name of the choice.
     pub name: Rc<str>,
     /// Name of the image to show. This should be the the slug for the icon.
-    pub image: Option<Rc<str>>,
+    pub image: Html,
 }
 
 #[derive(PartialEq, Properties)]
@@ -63,7 +61,7 @@ pub struct ChooseFromList<I> {
     _phantom: PhantomData<I>,
 }
 
-impl<I: Id + 'static> Component for ChooseFromList<I> {
+impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
     type Message = Msg;
     type Properties = Props<I>;
 
@@ -208,7 +206,7 @@ impl<I: Id + 'static> Component for ChooseFromList<I> {
                         html! {
                             <div tabindex="-1" class={classes!("available-item", selected)}
                                 {onclick} {onmouseenter}>
-                                <Icon icon={item.image.clone()} alt={item.name.clone()} />
+                                {item.image.clone()}
                                 <span>{&item.name}</span>
                             </div>
                         }

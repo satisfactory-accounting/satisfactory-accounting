@@ -96,12 +96,14 @@ impl Component for ItemDisplay {
                     Some(item) => Choice {
                         id: item.id,
                         name: item.name.clone(),
-                        image: Some(item.image.clone()),
+                        image: html! {
+                            <Icon icon={item.image.clone()} alt={item.name.clone()} />
+                        },
                     },
                     None => Choice {
                         id: item_id,
                         name: format!("Unknown Item {}", item_id).into(),
-                        image: None,
+                        image: html! { <Icon /> },
                     },
                 })
                 .collect();

@@ -1,5 +1,6 @@
 use satisfactory_accounting::accounting::{
-    Building, BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings,
+    Building, BuildingSettings, GeneratorSettings, GeothermalSettings, ManufacturerSettings,
+    MinerSettings, PumpSettings,
 };
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
@@ -9,12 +10,14 @@ use crate::node_display::{Msg, NodeDisplay};
 use building_type::BuildingTypeDisplay;
 use clock::ClockSpeed;
 use item::ItemDisplay;
+use purity::Purity;
 use recipe::RecipeDisplay;
 
 mod building_type;
 mod choose_from_list;
 mod clock;
 mod item;
+mod purity;
 mod recipe;
 
 impl NodeDisplay {
@@ -50,7 +53,11 @@ impl NodeDisplay {
                 BuildingSettings::Generator(settings) => {
                     self.view_generator_settings(ctx, id, settings)
                 }
-                _ => html! {},
+                BuildingSettings::Pump(settings) => self.view_pump_settings(ctx, id, settings),
+                BuildingSettings::Geothermal(settings) => {
+                    self.view_geothermal_settings(ctx, settings)
+                }
+                BuildingSettings::PowerConsumer => html! {},
             }
         } else {
             html! {}
@@ -76,7 +83,7 @@ impl NodeDisplay {
         }
     }
 
-    /// Display the settings for a manufacturer.
+    /// Display the settings for a miner.
     fn view_miner_settings(
         &self,
         ctx: &Context<Self>,
@@ -86,11 +93,13 @@ impl NodeDisplay {
         let link = ctx.link();
         let change_item = link.callback(|id| Msg::ChangeItem { id });
         let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+        let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {change_item} />
                 <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                <Purity purity={settings.purity} {set_purity} />
             </>
         }
     }
@@ -111,6 +120,34 @@ impl NodeDisplay {
                     {change_item} />
                 <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
             </>
+        }
+    }
+
+    /// Display the settings for a pump.
+    fn view_pump_settings(
+        &self,
+        ctx: &Context<Self>,
+        building: BuildingId,
+        settings: &PumpSettings,
+    ) -> Html {
+        let link = ctx.link();
+        let change_item = link.callback(|id| Msg::ChangeItem { id });
+        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+        html! {
+            <>
+                <ItemDisplay building_id={building} item_id={settings.resource}
+                    {change_item} />
+                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+            </>
+        }
+    }
+
+    /// Display the settings for a geothermal plant.
+    fn view_geothermal_settings(&self, ctx: &Context<Self>, settings: &GeothermalSettings) -> Html {
+        let link = ctx.link();
+        let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
+        html! {
+            <Purity purity={settings.purity} {set_purity} />
         }
     }
 }

@@ -9,8 +9,8 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings,
-    Node, NodeKind, PumpSettings,
+    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
+    ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings, ResourcePurity,
 };
 use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
@@ -114,6 +114,8 @@ pub enum Msg {
     ChangeItem { id: ItemId },
     /// Change the clock speed for the building.
     ChangeClockSpeed { clock_speed: f32 },
+    /// Change the resource purity for the node the building is on.
+    ChangePurity { purity: ResourcePurity },
 }
 
 /// Display for a single AccountingGraph node.
@@ -471,6 +473,48 @@ impl Component for NodeDisplay {
                 } else {
                     warn!("Cannot change clock speed of a non-building");
                 }
+                false
+            }
+            Msg::ChangePurity { purity } => {
+                let building = match ctx.props().node.kind() {
+                    NodeKind::Building(building) => building,
+                    _ => {
+                        warn!("Cannot change item id of a non-building");
+                        return false;
+                    }
+                };
+                if building.building.is_none() {
+                    warn!("Cannot change purity, building not set");
+                    return false;
+                };
+                let settings = match &building.settings {
+                    BuildingSettings::Miner(ms) => MinerSettings {
+                        purity,
+                        ..ms.clone()
+                    }
+                    .into(),
+                    BuildingSettings::Geothermal(gs) => GeothermalSettings {
+                        purity,
+                        ..gs.clone()
+                    }
+                    .into(),
+                    _ => {
+                        warn!(
+                            "Building kind {:?} does not support purity",
+                            building.settings.kind_id()
+                        );
+                        return false;
+                    }
+                };
+                let new_bldg = Building {
+                    settings,
+                    ..building.clone()
+                };
+                match new_bldg.build_node(&db) {
+                    Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                    Err(e) => warn!("Unable to build node: {}", e),
+                }
+
                 false
             }
         }
