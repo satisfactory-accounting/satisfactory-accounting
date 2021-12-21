@@ -22,7 +22,7 @@ impl NodeDisplay {
                     <Icon icon={POWER_LINE.with(Clone::clone)}
                         alt={POWER.with(Clone::clone)} />
                     <div class={classes!("balance-value", balance_style(balance.power))}>
-                        {balance.power}
+                        {rounded(balance.power)}
                     </div>
                 </div>
                 { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
@@ -31,7 +31,7 @@ impl NodeDisplay {
                             <Icon icon={item.image.clone()}
                                 alt={item.name.clone()} />
                             <div class={classes!("balance-value", balance_style(rate))}>
-                                {rate}
+                                {rounded(rate)}
                             </div>
                         </div>
                     },
@@ -39,7 +39,7 @@ impl NodeDisplay {
                         <div class="entry-row" title="Unknown Item">
                             <Icon />
                             <div class={classes!("balance-value", balance_style(rate))}>
-                                {rate}
+                                {rounded(rate)}
                             </div>
                         </div>
                     }
@@ -47,6 +47,10 @@ impl NodeDisplay {
             </div>
         }
     }
+}
+
+fn rounded(val: f32) -> f32 {
+    (val * 100.0).round() / 100.0
 }
 
 fn balance_block_style(vertical: bool) -> &'static str {

@@ -288,4 +288,24 @@
             }
         }
     }
+
+    .ClockSpeed {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
+
+        width: 70px;
+
+        .current-speed {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        span.current-speed {
+            cursor: text;
+        }
+    }
 }

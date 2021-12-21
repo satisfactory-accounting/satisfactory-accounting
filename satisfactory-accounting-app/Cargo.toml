@@ -33,5 +33,7 @@ features = [
     "EventTarget",
     "FocusEvent",
     "HtmlCollection",
+    "HtmlElement",
+    "HtmlInputElement",
     "KeyboardEvent",
 ]

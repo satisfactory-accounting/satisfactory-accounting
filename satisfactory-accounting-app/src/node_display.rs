@@ -112,6 +112,8 @@ pub enum Msg {
     ChangeRecipe { id: RecipeId },
     /// Change the item for the building, if a Generator, Miner, or Pump.
     ChangeItem { id: ItemId },
+    /// Change the clock speed for the building.
+    ChangeClockSpeed { clock_speed: f32 },
 }
 
 /// Display for a single AccountingGraph node.
@@ -454,6 +456,21 @@ impl Component for NodeDisplay {
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
 
+                false
+            }
+            Msg::ChangeClockSpeed { clock_speed } => {
+                if let NodeKind::Building(building) = ctx.props().node.kind() {
+                    if building.settings.clock_speed() != clock_speed {
+                        let mut new_bldg = building.clone();
+                        new_bldg.settings.set_clock_speed(clock_speed);
+                        match new_bldg.build_node(&db) {
+                            Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                            Err(e) => warn!("Unable to build node: {}", e),
+                        }
+                    }
+                } else {
+                    warn!("Cannot change clock speed of a non-building");
+                }
                 false
             }
         }

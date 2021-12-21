@@ -4,15 +4,16 @@ use satisfactory_accounting::accounting::{
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
-use super::NodeDisplay;
-use crate::node_display::Msg;
+use crate::node_display::{Msg, NodeDisplay};
 
 use building_type::BuildingTypeDisplay;
+use clock::ClockSpeed;
 use item::ItemDisplay;
 use recipe::RecipeDisplay;
 
 mod building_type;
 mod choose_from_list;
+mod clock;
 mod item;
 mod recipe;
 
@@ -63,10 +64,15 @@ impl NodeDisplay {
         building: BuildingId,
         settings: &ManufacturerSettings,
     ) -> Html {
-        let change_recipe = ctx.link().callback(|id| Msg::ChangeRecipe { id });
+        let link = ctx.link();
+        let change_recipe = link.callback(|id| Msg::ChangeRecipe { id });
+        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
         html! {
-            <RecipeDisplay building_id={building} recipe_id={settings.recipe}
-                {change_recipe} />
+            <>
+                <RecipeDisplay building_id={building} recipe_id={settings.recipe}
+                    {change_recipe} />
+                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+            </>
         }
     }
 
@@ -77,10 +83,15 @@ impl NodeDisplay {
         building: BuildingId,
         settings: &MinerSettings,
     ) -> Html {
-        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
+        let link = ctx.link();
+        let change_item = link.callback(|id| Msg::ChangeItem { id });
+        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
         html! {
-            <ItemDisplay building_id={building} item_id={settings.resource}
-                {change_item} />
+            <>
+                <ItemDisplay building_id={building} item_id={settings.resource}
+                    {change_item} />
+                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+            </>
         }
     }
 
@@ -91,10 +102,15 @@ impl NodeDisplay {
         building: BuildingId,
         settings: &GeneratorSettings,
     ) -> Html {
-        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
+        let link = ctx.link();
+        let change_item = link.callback(|id| Msg::ChangeItem { id });
+        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
         html! {
-            <ItemDisplay building_id={building} item_id={settings.fuel}
-                {change_item} />
+            <>
+                <ItemDisplay building_id={building} item_id={settings.fuel}
+                    {change_item} />
+                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+            </>
         }
     }
 }
