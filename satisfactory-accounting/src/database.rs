@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::accounting::{
     BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings, PumpSettings,
+    StationSettings,
 };
 
 /// Database of satisfactory ... stuff.
@@ -246,6 +247,8 @@ pub enum BuildingKind {
     Geothermal(Geothermal),
     /// General power consumer with no production.
     PowerConsumer(PowerConsumer),
+    /// A station which refuels vehicles.
+    Station(Station),
 }
 
 impl BuildingKind {
@@ -258,6 +261,7 @@ impl BuildingKind {
             Self::Pump(_) => BuildingKindId::Pump,
             Self::Geothermal(_) => BuildingKindId::Geothermal,
             Self::PowerConsumer(_) => BuildingKindId::PowerConsumer,
+            Self::Station(_) => BuildingKindId::Station,
         }
     }
 
@@ -294,6 +298,13 @@ impl BuildingKind {
             }
             BuildingKind::Geothermal(_) => BuildingSettings::Geothermal(Default::default()),
             BuildingKind::PowerConsumer(_) => BuildingSettings::PowerConsumer,
+            BuildingKind::Station(s) => {
+                let mut settings = StationSettings::default();
+                if s.allowed_fuel.len() == 1 {
+                    settings.fuel = s.allowed_fuel.first().copied();
+                }
+                BuildingSettings::Station(settings)
+            }
         }
     }
 }
@@ -314,6 +325,8 @@ pub enum BuildingKindId {
     Geothermal,
     /// General power consumer with no production.
     PowerConsumer,
+    /// A station which refuels vehicles.
+    Station,
 }
 
 /// Power-usage information for a building.
@@ -399,6 +412,15 @@ pub struct Geothermal {
 pub struct PowerConsumer {
     /// Amount of power consumed.
     pub power: f32,
+}
+
+/// A vehicle station which can refuel vehicles which stop at it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Station {
+    /// Amount of power consumed.
+    pub power: f32,
+    /// Allowed fuels for vehicles at this station.
+    pub allowed_fuel: Vec<ItemId>,
 }
 
 mod private {

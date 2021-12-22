@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub use self::balance::Balance;
 use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
-    Manufacturer, Miner, Pump, RecipeId,
+    Manufacturer, Miner, Pump, RecipeId, Station,
 };
 
 mod balance;
@@ -322,6 +322,9 @@ impl BuildNode for Building {
                 (BuildingSettings::PowerConsumer, BuildingKind::PowerConsumer(p)) => {
                     balance = Balance::power_only(-p.power);
                 }
+                (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
+                    balance = ss.get_balance(building_id, s, database)?;
+                }
                 (settings, building_kind) => {
                     return Err(BuildError::MismatchedKind {
                         settings_kind: settings.kind_id(),
@@ -352,6 +355,7 @@ pub enum BuildingSettings {
     Pump(PumpSettings),
     Geothermal(GeothermalSettings),
     PowerConsumer,
+    Station(StationSettings),
 }
 
 impl BuildingSettings {
@@ -364,6 +368,7 @@ impl BuildingSettings {
             Self::Pump(_) => BuildingKindId::Pump,
             Self::Geothermal(_) => BuildingKindId::Geothermal,
             Self::PowerConsumer => BuildingKindId::PowerConsumer,
+            Self::Station(_) => BuildingKindId::Station,
         }
     }
 
@@ -376,6 +381,7 @@ impl BuildingSettings {
             Self::Pump(p) => p.clock_speed,
             Self::Geothermal(_) => 1.0,
             Self::PowerConsumer => 1.0,
+            Self::Station(_) => 1.0,
         }
     }
 
@@ -388,6 +394,7 @@ impl BuildingSettings {
             Self::Pump(p) => p.clock_speed = clock_speed,
             Self::Geothermal(_) => {}
             Self::PowerConsumer => {}
+            Self::Station(_) => {}
         }
     }
 
@@ -409,6 +416,9 @@ impl BuildingSettings {
             }
             (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(_)) => {
                 BuildingSettings::Geothermal(gs.clone())
+            }
+            (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
+                BuildingSettings::Station(ss.copy_settings(s))
             }
             _ => {
                 // For mismatched types, just copy the clock speed.
@@ -844,6 +854,61 @@ impl Default for GeothermalSettings {
 impl GeothermalSettings {
     fn get_balance(&self, g: &Geothermal) -> Balance {
         Balance::power_only(self.purity.speed_multiplier() * g.power)
+    }
+}
+
+/// Building which pumps resources from multiple pads.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct StationSettings {
+    /// Fuel type being used.
+    pub fuel: Option<ItemId>,
+    /// Configured fuel consumption rate.
+    pub consumption: f32,
+}
+
+impl StationSettings {
+    fn get_balance(
+        &self,
+        building_id: BuildingId,
+        s: &Station,
+        database: &Database,
+    ) -> Result<Balance, BuildError> {
+        let mut balance = Balance::empty();
+        if let Some(fuel_id) = self.fuel {
+            database
+                .get(fuel_id)
+                .ok_or(BuildError::UnknownItem(fuel_id))?;
+
+            if !s.allowed_fuel.contains(&fuel_id) {
+                return Err(BuildError::IncompatibleItem {
+                    item: fuel_id,
+                    building: building_id,
+                });
+            }
+
+            balance.power = -s.power;
+            balance.balances.insert(fuel_id, -self.consumption);
+        }
+        Ok(balance)
+    }
+
+    /// Create a copy of these settings for a different pump.
+    fn copy_settings(&self, s: &Station) -> Self {
+        let mut ss = self.clone();
+        // leave clock the same and reset the fuel if our current fuel isn't allowed.
+        // If the new building allows only one fuel, choose that.
+        if let Some(fuel) = ss.fuel {
+            if !s.allowed_fuel.contains(&fuel) {
+                ss.fuel = if s.allowed_fuel.len() == 1 {
+                    s.allowed_fuel.first().copied()
+                } else {
+                    None
+                }
+            }
+        } else if s.allowed_fuel.len() == 1 {
+            ss.fuel = s.allowed_fuel.first().copied();
+        }
+        ss
     }
 }
 
