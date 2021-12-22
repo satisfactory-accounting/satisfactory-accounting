@@ -59,6 +59,20 @@ input {
         .unredo {
             @include colors.primary-button;
         }
+
+        .empty-balance-toggle {
+            @include colors.primary-button;
+            input {
+                // Hide the default checkbox. The rest is to hide and allow tabbing, which
+                // display:none prevents.
+                visibility: hidden;
+                display: block;
+                height: 0;
+                width: 0;
+                position: absolute;
+                overflow: hidden;
+            }
+        }
     }
 
     .appbody {

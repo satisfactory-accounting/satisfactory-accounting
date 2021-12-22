@@ -4,6 +4,7 @@ use std::rc::Rc;
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage};
 use log::warn;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -16,6 +17,7 @@ use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata};
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
 const GRAPH_KEY: &str = "zstewart.satisfactorydb.state.graph";
 const METADATA_KEY: &str = "zstewart.satisfactorydb.state.metadata";
+const GLOBAL_METADATA_KEY: &str = "zstewart.satisfactorydb.state.globalmetadata";
 
 /// Stored state of the app.
 #[derive(Debug, Clone)]
@@ -64,10 +66,17 @@ impl AppState {
     }
 }
 
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct GlobalMetadata {
+    /// Whether empty balance values should be hidden.
+    hide_empty_balances: bool,
+}
+
 /// Messages for communicating with App.
 pub enum Msg {
     ReplaceRoot { replacement: Node },
     UpdateMetadata { id: Uuid, meta: NodeMeta },
+    ToggleEmptyBalances { hide_empty_balances: bool },
     Undo,
     Redo,
 }
@@ -76,6 +85,8 @@ pub struct App {
     state: AppState,
     /// Non-undo metadata about nodes.
     metadata: NodeMetadata,
+    /// Non-undo metadata about the global app state.
+    global_metadata: GlobalMetadata,
     undo_stack: Vec<AppState>,
     redo_stack: Vec<AppState>,
 }
@@ -85,6 +96,9 @@ impl App {
         self.state.save();
         if let Err(e) = LocalStorage::set(METADATA_KEY, &self.metadata) {
             warn!("Unable to save metadata: {}", e);
+        }
+        if let Err(e) = LocalStorage::set(GLOBAL_METADATA_KEY, &self.global_metadata) {
+            warn!("Unable to save global metadata: {}", e);
         }
     }
 }
@@ -104,9 +118,17 @@ impl Component for App {
         // Remove metadata from deleted groups that are definitely no longer in the
         // undo/redo history.
         metadata.prune(&state.root);
+        let global_metadata: GlobalMetadata = LocalStorage::get(GLOBAL_METADATA_KEY)
+            .unwrap_or_else(|e| {
+                if !matches!(e, StorageError::KeyNotFound(_)) {
+                    warn!("Failed to load global metadata: {}", e);
+                }
+                Default::default()
+            });
         Self {
             state,
             metadata,
+            global_metadata,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
@@ -126,6 +148,13 @@ impl Component for App {
             }
             Msg::UpdateMetadata { id, meta } => {
                 self.metadata.set_meta(id, meta);
+                self.save();
+                true
+            }
+            Msg::ToggleEmptyBalances {
+                hide_empty_balances,
+            } => {
+                self.global_metadata.hide_empty_balances = hide_empty_balances;
                 self.save();
                 true
             }
@@ -167,6 +196,11 @@ impl Component for App {
         let redo = link.callback(|_| Msg::Redo);
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
+        let hide_empty_balances = self.global_metadata.hide_empty_balances;
+        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
+            hide_empty_balances: !hide_empty_balances,
+        });
+        let hidden_balances = hide_empty_balances.then(|| "hide-empty-balances");
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
                 <ContextProvider<NodeMetadata> context={self.metadata.clone()}>
@@ -185,8 +219,18 @@ impl Component for App {
                                 disabled={self.redo_stack.is_empty()}>
                                 <span class="material-icons">{"redo"}</span>
                             </button>
+                            <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
+                                <input type="checkbox" checked={hide_empty_balances}
+                                    onchange={toggle_empty_balances} />
+                                <span class="material-icons">{"exposure_zero"}</span>
+                                if hide_empty_balances {
+                                    <span class="material-icons">{"visibility_off"}</span>
+                                } else {
+                                    <span class="material-icons">{"visibility"}</span>
+                                }
+                            </label>
                         </div>
-                        <div class="appbody">
+                        <div class={classes!("appbody", hidden_balances)}>
                             <NodeDisplay node={self.state.root.clone()}
                                 path={Vec::new()}
                                 {replace} {set_metadata} {move_node} />

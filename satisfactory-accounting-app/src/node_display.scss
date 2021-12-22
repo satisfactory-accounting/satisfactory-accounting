@@ -213,10 +213,15 @@
 
             .balance-value {
                 text-align: right;
-                &.negative {
+            }
+
+            &.negative {
+                .balance-value {
                     color: colors.$danger;
                 }
-                &.positive {
+            }
+            &.positive {
+                .balance-value {
                     color: color.scale(colors.$success, $lightness: -30%);
                 }
             }
@@ -232,7 +237,7 @@
 
             .entry-row {
                 .balance-value {
-                    min-width: 2em;
+                    min-width: 3em;
                 }
             }
         }
@@ -377,6 +382,17 @@
         }
         span.current-consumption {
             cursor: text;
+        }
+    }
+}
+
+.hide-empty-balances {
+    .balance {
+        .entry-row.neutral {
+            display: none;
+            &.power-entry {
+                display: flex;
+            }
         }
     }
 }

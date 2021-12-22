@@ -18,29 +18,25 @@ impl NodeDisplay {
         let db = ctx.db();
         html! {
             <div class={classes!("balance", balance_block_style(vertical))} title="Power">
-                <div class="entry-row">
+                <div class={classes!("entry-row", "power-entry", balance_style(balance.power))}>
                     <Icon icon={POWER_LINE.with(Clone::clone)}
                         alt={POWER.with(Clone::clone)} />
-                    <div class={classes!("balance-value", balance_style(balance.power))}>
-                        {rounded(balance.power)}
-                    </div>
+                    <div class="balance-value">{rounded(balance.power)}</div>
                 </div>
                 { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
                     Some(item) => html! {
-                        <div class="entry-row" title={Some(item.name.clone())}>
+                        <div class={classes!("entry-row", balance_style(rate))}
+                            title={Some(item.name.clone())}>
                             <Icon icon={item.image.clone()}
                                 alt={item.name.clone()} />
-                            <div class={classes!("balance-value", balance_style(rate))}>
-                                {rounded(rate)}
-                            </div>
+                            <div class="balance-value">{rounded(rate)}</div>
                         </div>
                     },
                     None => html! {
-                        <div class="entry-row" title="Unknown Item">
+                        <div class={classes!("entry-row", balance_style(rate))}
+                            title="Unknown Item">
                             <Icon />
-                            <div class={classes!("balance-value", balance_style(rate))}>
-                                {rounded(rate)}
-                            </div>
+                            <div class="balance-value">{rounded(rate)}</div>
                         </div>
                     }
                 }) }
