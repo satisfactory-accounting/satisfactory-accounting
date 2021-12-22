@@ -1,6 +1,6 @@
 use satisfactory_accounting::accounting::{
     Building, BuildingSettings, GeneratorSettings, GeothermalSettings, ManufacturerSettings,
-    MinerSettings, PumpSettings, ResourcePurity,
+    MinerSettings, PumpSettings, ResourcePurity, StationSettings,
 };
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
@@ -13,6 +13,7 @@ use item::ItemDisplay;
 use multi_purity::MultiPurity;
 use purity::Purity;
 use recipe::RecipeDisplay;
+use station_consumption::StationConsumption;
 
 mod building_type;
 mod choose_from_list;
@@ -21,6 +22,7 @@ mod item;
 mod multi_purity;
 mod purity;
 mod recipe;
+mod station_consumption;
 
 impl NodeDisplay {
     /// Build display for a building.
@@ -60,6 +62,9 @@ impl NodeDisplay {
                     self.view_geothermal_settings(ctx, settings)
                 }
                 BuildingSettings::PowerConsumer => html! {},
+                BuildingSettings::Station(settings) => {
+                    self.view_station_settings(ctx, id, settings)
+                }
             }
         } else {
             html! {}
@@ -158,6 +163,26 @@ impl NodeDisplay {
         let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
         html! {
             <Purity purity={settings.purity} {set_purity} />
+        }
+    }
+
+    /// Display the settings for a station.
+    fn view_station_settings(
+        &self,
+        ctx: &Context<Self>,
+        building: BuildingId,
+        settings: &StationSettings,
+    ) -> Html {
+        let link = ctx.link();
+        let change_item = link.callback(|id| Msg::ChangeItem { id });
+        let update_consumption =
+            link.callback(|consumption| Msg::ChangeConsumption { consumption });
+        html! {
+            <>
+                <ItemDisplay building_id={building} item_id={settings.fuel}
+                    {change_item} />
+                <StationConsumption consumption={settings.consumption} {update_consumption} />
+            </>
         }
     }
 }

@@ -80,6 +80,7 @@ impl Component for ItemDisplay {
             BuildingKind::Miner(m) => &m.allowed_resources,
             BuildingKind::Generator(g) => &g.allowed_fuel,
             BuildingKind::Pump(p) => &p.allowed_resources,
+            BuildingKind::Station(s) => &s.allowed_fuel,
             _ => {
                 warn!(
                     "Cannot show items for building with kind {:?}",

@@ -11,6 +11,7 @@ use yew::prelude::*;
 use satisfactory_accounting::accounting::{
     BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
     ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings, ResourcePurity,
+    StationSettings,
 };
 use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
@@ -123,6 +124,8 @@ pub enum Msg {
         /// New number of pads of that type.
         num_pads: u32,
     },
+    /// Change the consumption of a Station.
+    ChangeConsumption { consumption: f32 },
 }
 
 /// Display for a single AccountingGraph node.
@@ -394,8 +397,18 @@ impl Component for NodeDisplay {
                             }
                             BuildingKindId::Pump
                         }
+                        Some(BuildingType {
+                            kind: BuildingKind::Station(s),
+                            ..
+                        }) => {
+                            if !s.allowed_fuel.contains(&id) {
+                                warn!("Fuel {} is not available for building {}", id, building_id);
+                                return false;
+                            }
+                            BuildingKindId::Station
+                        }
                         Some(_) => {
-                            warn!("Cannot change item id, building is not a miner, generator, or pump");
+                            warn!("Cannot change item id, building is not a miner, generator, pump, or station");
                             return false;
                         }
                         None => {
@@ -448,6 +461,19 @@ impl Component for NodeDisplay {
                         PumpSettings {
                             resource: Some(id),
                             clock_speed: settings.clock_speed(),
+                            ..Default::default()
+                        }
+                        .into()
+                    }
+                    (BuildingKindId::Station, BuildingSettings::Station(ss)) => StationSettings {
+                        fuel: Some(id),
+                        ..ss.clone()
+                    }
+                    .into(),
+                    (BuildingKindId::Station, _) => {
+                        warn!("Had to change building settings kind, did not match building kind in db");
+                        StationSettings {
+                            fuel: Some(id),
                             ..Default::default()
                         }
                         .into()
@@ -528,7 +554,7 @@ impl Component for NodeDisplay {
                 let building = match ctx.props().node.kind() {
                     NodeKind::Building(building) => building,
                     _ => {
-                        warn!("Cannot change item id of a non-building");
+                        warn!("Cannot change purity of a non-building");
                         return false;
                     }
                 };
@@ -549,6 +575,43 @@ impl Component for NodeDisplay {
                     _ => {
                         warn!(
                             "Building kind {:?} does not support multi-purity",
+                            building.settings.kind_id()
+                        );
+                        return false;
+                    }
+                };
+                let new_bldg = Building {
+                    settings,
+                    ..building.clone()
+                };
+                match new_bldg.build_node(&db) {
+                    Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                    Err(e) => warn!("Unable to build node: {}", e),
+                }
+
+                false
+            }
+            Msg::ChangeConsumption { consumption } => {
+                let building = match ctx.props().node.kind() {
+                    NodeKind::Building(building) => building,
+                    _ => {
+                        warn!("Cannot change station consumption of a non-building");
+                        return false;
+                    }
+                };
+                if building.building.is_none() {
+                    warn!("Cannot change station consumption, building not set");
+                    return false;
+                };
+                let settings = match &building.settings {
+                    BuildingSettings::Station(ss) => StationSettings {
+                        consumption,
+                        ..ss.clone()
+                    }
+                    .into(),
+                    _ => {
+                        warn!(
+                            "Building kind {:?} does not support directly setting consumption",
                             building.settings.kind_id()
                         );
                         return false;

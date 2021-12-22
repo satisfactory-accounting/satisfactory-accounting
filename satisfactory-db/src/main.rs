@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use satisfactory_accounting::database::{
     BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item, ItemAmount, ItemId,
-    Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe,
+    Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe, Station,
 };
 
 mod rawdata;
@@ -42,6 +42,39 @@ fn main() {
         .flat_map(|gen| gen.fuel.iter().cloned())
         .collect();
 
+    /// Leaves, Flower Petals, Wood, Mycelia, Fabric,
+    /// Alien Carapace, Alien Organs, Color Cartridge,
+    /// Biomass, Solid Biofuel, Packaged Liquid Biofuel,
+    /// Coal, Compacted Coal, Petroleum Coke, Packaged Oil,
+    /// Packaged Heavy Oil Residue, Packaged Fuel, Packaged Turbofuel,
+    /// Battery, Uranium Fuel Rod, Plutonium Fuel Rod
+    const TRUCK_FUELS: &[&str] = &[
+        "Desc_Leaves_C",
+        "Desc_FlowerPetals_C",
+        "Desc_Wood_C",
+        "Desc_Mycelia_C",
+        "Desc_Fabric_C",
+        "Desc_HogParts_C",
+        "Desc_SpitterParts_C",
+        "Desc_ColorCartridge_C",
+        "Desc_GenericBiomass_C",
+        "Desc_Biofuel_C",
+        "Desc_PackagedBiofuel_C",
+        "Desc_Coal_C",
+        "Desc_CompactedCoal_C",
+        "Desc_PetroleumCoke_C",
+        "Desc_PackagedOil_C",
+        "Desc_PackagedOilResidue_C",
+        "Desc_Fuel_C",
+        "Desc_TurboFuel_C",
+        "Desc_Battery_C",
+        "Desc_NuclearFuelRod_C",
+        "Desc_PlutoniumFuelRod_C",
+    ];
+
+    /// Battery
+    const DRONE_FUELS: &[&str] = &["Desc_Battery_C"];
+
     let miners: HashMap<_, _> = raw
         .miners
         .values()
@@ -64,6 +97,8 @@ fn main() {
         .chain(fuels.iter().cloned())
         // Special case to make sure water is included.
         .chain(std::iter::once(ItemId::water().into()))
+        .chain(TRUCK_FUELS.iter().map(|fuel| fuel.to_string()))
+        .chain(DRONE_FUELS.iter().map(|fuel| fuel.to_string()))
         .collect();
 
     let used_buildings: HashSet<_> = manufacturers
@@ -261,6 +296,22 @@ fn main() {
                             .power_consumption_exponent
                             .expect("Pump missing power consumption exponent"),
                     },
+                })
+            } else if building.class_name == "Desc_TruckStation_C" {
+                BuildingKind::Station(Station {
+                    allowed_fuel: TRUCK_FUELS.iter().map(|&fuel| fuel.into()).collect(),
+                    power: building
+                        .metadata
+                        .power_consumption
+                        .expect("Power consumer missing power consumption"),
+                })
+            } else if building.class_name == "Desc_DroneStation_C" {
+                BuildingKind::Station(Station {
+                    allowed_fuel: DRONE_FUELS.iter().map(|&fuel| fuel.into()).collect(),
+                    power: building
+                        .metadata
+                        .power_consumption
+                        .expect("Power consumer missing power consumption"),
                 })
             } else {
                 BuildingKind::PowerConsumer(PowerConsumer {

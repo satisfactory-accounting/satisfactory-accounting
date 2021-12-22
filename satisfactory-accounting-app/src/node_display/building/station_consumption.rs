@@ -1,34 +1,31 @@
 use log::warn;
-use satisfactory_accounting::accounting::ResourcePurity;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::node_display::{building::purity::purity_icon, get_value_from_input_event};
+use crate::node_display::get_value_from_input_event;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
-    /// Resource purity being set.
-    pub purity: ResourcePurity,
-    /// Last set value for the number of pads of this type.
-    pub num_pads: u32,
+    /// Last set value for the clock speed.
+    pub consumption: f32,
     /// Callback to change the actual value.
-    pub update_pads: Callback<(ResourcePurity, u32)>,
+    pub update_consumption: Callback<f32>,
 }
 
 pub enum Msg {
     /// Message during editing to update the edited text.
     UpdateInput { input: String },
     /// Message while not editing to start editing.
-    StartEdit { input: u32 },
+    StartEdit { input: f32 },
     /// Message to finish editing.
     FinishEdit,
     /// Cancel editing without changing the value.
     Cancel,
 }
 
-/// Display and editing for one purity type on a node that supports multiple.
+/// Display and editing for clock speed.
 #[derive(Default)]
-pub struct MultiPurity {
+pub struct StationConsumption {
     /// Pending edit text if clock speed is being changed.
     edit_text: Option<String>,
     /// Whether we did focus since last committing an edit.
@@ -37,7 +34,7 @@ pub struct MultiPurity {
     input: NodeRef,
 }
 
-impl Component for MultiPurity {
+impl Component for StationConsumption {
     type Message = Msg;
     type Properties = Props;
 
@@ -58,9 +55,8 @@ impl Component for MultiPurity {
             }
             Msg::FinishEdit => {
                 if let Some(edit_text) = self.edit_text.take() {
-                    if let Ok(value) = edit_text.parse::<u32>() {
-                        let purity = ctx.props().purity;
-                        ctx.props().update_pads.emit((purity, value));
+                    if let Ok(value) = edit_text.parse::<f32>() {
+                        ctx.props().update_consumption.emit(value.max(0.0));
                     }
                     true
                 } else {
@@ -77,7 +73,6 @@ impl Component for MultiPurity {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let purity = ctx.props().purity;
         if let Some(edit_text) = &self.edit_text {
             let oninput = link.callback(|input| Msg::UpdateInput {
                 input: get_value_from_input_event(input),
@@ -92,21 +87,21 @@ impl Component for MultiPurity {
                 Msg::FinishEdit
             });
             html! {
-                <form class="MultiPurity" {onsubmit}
-                    title={format!("Number of {} Nodes", purity.name())}>
-                    {purity_icon(purity)}
-                    <input class="current-num-pads" type="text" value={edit_text.clone()}
+                <form class="StationConsumption" {onsubmit}
+                    title="Fuel Consumption of Fueled Vehicles">
+                    <span class="material-icons">{"trending_down"}</span>
+                    <input class="current-consumption" type="text" value={edit_text.clone()}
                         {oninput} {onblur} {onkeyup} ref={self.input.clone()} />
                 </form>
             }
         } else {
-            let value = ctx.props().num_pads;
+            let value = ctx.props().consumption;
             let onclick = link.callback(move |_| Msg::StartEdit { input: value });
             html! {
-                <div class="MultiPurity" {onclick}
-                    title={format!("Number of {} Nodes", purity.name())}>
-                    {purity_icon(purity)}
-                    <span class="current-num-pads">{value.to_string()}</span>
+                <div class="StationConsumption" {onclick}
+                    title="Fuel Consumption of Fueled Vehicles">
+                    <span class="material-icons">{"trending_down"}</span>
+                    <span class="current-consumption">{value.to_string()}</span>
                 </div>
             }
         }

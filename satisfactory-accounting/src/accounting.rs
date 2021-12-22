@@ -448,6 +448,7 @@ settings_from_inner! {
     Generator(GeneratorSettings);
     Pump(PumpSettings);
     Geothermal(GeothermalSettings);
+    Station(StationSettings);
 }
 
 /// Building which manufactures items using a recipe that converts input items to output

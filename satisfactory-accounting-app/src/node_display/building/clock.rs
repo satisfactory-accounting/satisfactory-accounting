@@ -19,6 +19,8 @@ pub enum Msg {
     StartEdit { input: f32 },
     /// Message to finish editing.
     FinishEdit,
+    /// Cancel editing without changing the value.
+    Cancel,
 }
 
 /// Display and editing for clock speed.
@@ -62,6 +64,10 @@ impl Component for ClockSpeed {
                     false
                 }
             }
+            Msg::Cancel => {
+                self.edit_text = None;
+                true
+            }
         }
     }
 
@@ -71,18 +77,20 @@ impl Component for ClockSpeed {
             let oninput = link.callback(|input| Msg::UpdateInput {
                 input: get_value_from_input_event(input),
             });
+            let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
+                "Esc" | "Escape" => Some(Msg::Cancel),
+                _ => None,
+            });
             let onblur = link.callback(|_| Msg::FinishEdit);
             let onsubmit = link.callback(|e: FocusEvent| {
                 e.prevent_default();
                 Msg::FinishEdit
             });
             html! {
-                <form class="ClockSpeed" {onsubmit}>
-                    <span class="material-icons-outlined" title="Clock Speed">
-                        {"timer"}
-                    </span>
+                <form class="ClockSpeed" title="Clock Speed" {onsubmit}>
+                    <span class="material-icons-outlined">{"timer"}</span>
                     <input class="current-speed" type="text" value={edit_text.clone()}
-                        {oninput} {onblur} ref={self.input.clone()} />
+                        {oninput} {onblur} {onkeyup} ref={self.input.clone()} />
                 </form>
             }
         } else {
