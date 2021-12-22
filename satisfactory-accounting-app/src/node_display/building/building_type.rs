@@ -75,7 +75,7 @@ impl Component for BuildingTypeDisplay {
             let selected = link.callback(|id| Msg::Select { id });
             let cancelled = link.callback(|()| Msg::ToggleEdit { editing: false });
             html! {
-                <span class="name">
+                <span class="name" title="Building Type">
                     <ChooseFromList<BuildingId> {choices} {selected} {cancelled} />
                 </span>
             }
@@ -87,13 +87,13 @@ impl Component for BuildingTypeDisplay {
                 },
                 Some(id) => match db.get(id) {
                     None => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" title="Building Type" onclick={edit}>
                             <Icon />
                             <span>{"Unknown Building "}{id}</span>
                         </span>
                     },
                     Some(building) => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" title="Building Type" onclick={edit}>
                             <Icon icon={building.image.clone()}
                                 alt={building.name.clone()} />
                             <span>{&building.name}</span>

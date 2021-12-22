@@ -108,7 +108,7 @@ impl Component for RecipeDisplay {
             let selected = link.callback(|id| Msg::Select { id });
             let cancelled = link.callback(|()| Msg::ToggleEdit { editing: false });
             html! {
-                <span class="name">
+                <span class="name" title="Recipe">
                     <ChooseFromList<RecipeId> {choices} {selected} {cancelled} />
                 </span>
             }
@@ -120,17 +120,17 @@ impl Component for RecipeDisplay {
             };
             match recipe_id {
                 None => html! {
-                    <span class="name" onclick={edit}>{"select recipe"}</span>
+                    <span class="name" title="Recipe" onclick={edit}>{"select recipe"}</span>
                 },
                 Some(id) => match db.get(id) {
                     None => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" title="Recipe" onclick={edit}>
                             <Icon />
                             <span>{"Unknown Recipe "}{id}</span>
                         </span>
                     },
                     Some(building) => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" title="Recipe" onclick={edit}>
                             <Icon icon={building.image.clone()}
                                 alt={building.name.clone()} />
                             <span>{&building.name}</span>

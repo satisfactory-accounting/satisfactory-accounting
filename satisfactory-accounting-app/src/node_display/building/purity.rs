@@ -59,7 +59,7 @@ impl Component for Purity {
             let selected = link.callback(|purity| Msg::Select { purity });
             let cancelled = link.callback(|()| Msg::ToggleEdit { editing: false });
             html! {
-                <div class="Purity">
+                <div class="Purity" title="Resource Node Purity">
                     <ChooseFromList<ResourcePurity> {choices} {selected} {cancelled} />
                 </div>
             }
@@ -67,7 +67,7 @@ impl Component for Purity {
             let purity = ctx.props().purity;
             let onclick = link.callback(|_| Msg::ToggleEdit { editing: true });
             html! {
-                <div class="Purity" {onclick}>
+                <div class="Purity" {onclick} title="Resource Node Purity">
                     {purity_icon(purity)}
                     <span>{purity.name()}</span>
                 </div>

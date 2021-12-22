@@ -76,11 +76,11 @@ impl Component for ItemDisplay {
             }
             Some(building) => building,
         };
-        let items = match &building.kind {
-            BuildingKind::Miner(m) => &m.allowed_resources,
-            BuildingKind::Generator(g) => &g.allowed_fuel,
-            BuildingKind::Pump(p) => &p.allowed_resources,
-            BuildingKind::Station(s) => &s.allowed_fuel,
+        let (items, title) = match &building.kind {
+            BuildingKind::Miner(m) => (&m.allowed_resources, "Mined Resource"),
+            BuildingKind::Generator(g) => (&g.allowed_fuel, "Consumed Fuel"),
+            BuildingKind::Pump(p) => (&p.allowed_resources, "Extracted Resource"),
+            BuildingKind::Station(s) => (&s.allowed_fuel, "Consumed Fuel"),
             _ => {
                 warn!(
                     "Cannot show items for building with kind {:?}",
@@ -112,7 +112,7 @@ impl Component for ItemDisplay {
             let selected = link.callback(|id| Msg::Select { id });
             let cancelled = link.callback(|()| Msg::ToggleEdit { editing: false });
             html! {
-                <span class="name">
+                <span class="name" {title}>
                     <ChooseFromList<ItemId> {choices} {selected} {cancelled} />
                 </span>
             }
@@ -124,17 +124,17 @@ impl Component for ItemDisplay {
             };
             match item_id {
                 None => html! {
-                    <span class="name" onclick={edit}>{"select item"}</span>
+                    <span class="name" {title} onclick={edit}>{"select item"}</span>
                 },
                 Some(id) => match db.get(id) {
                     None => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" {title} onclick={edit}>
                             <Icon />
                             <span>{"Unknown Item "}{id}</span>
                         </span>
                     },
                     Some(building) => html! {
-                        <span class="name" onclick={edit}>
+                        <span class="name" {title} onclick={edit}>
                             <Icon icon={building.image.clone()}
                                 alt={building.name.clone()} />
                             <span>{&building.name}</span>
