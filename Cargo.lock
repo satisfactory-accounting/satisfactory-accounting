@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "satisfactory-accounting-app"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "console_log",
  "fuzzy-matcher",
