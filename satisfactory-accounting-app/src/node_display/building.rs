@@ -1,6 +1,6 @@
 use satisfactory_accounting::accounting::{
     Building, BuildingSettings, GeneratorSettings, GeothermalSettings, ManufacturerSettings,
-    MinerSettings, PumpSettings,
+    MinerSettings, PumpSettings, ResourcePurity,
 };
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
@@ -10,6 +10,7 @@ use crate::node_display::{Msg, NodeDisplay};
 use building_type::BuildingTypeDisplay;
 use clock::ClockSpeed;
 use item::ItemDisplay;
+use multi_purity::MultiPurity;
 use purity::Purity;
 use recipe::RecipeDisplay;
 
@@ -17,6 +18,7 @@ mod building_type;
 mod choose_from_list;
 mod clock;
 mod item;
+mod multi_purity;
 mod purity;
 mod recipe;
 
@@ -133,11 +135,19 @@ impl NodeDisplay {
         let link = ctx.link();
         let change_item = link.callback(|id| Msg::ChangeItem { id });
         let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+        let update_pads =
+            link.callback(|(purity, num_pads)| Msg::ChangePumpPurity { purity, num_pads });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {change_item} />
                 <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                <MultiPurity purity={ResourcePurity::Impure}
+                    num_pads={settings.impure_pads} update_pads={update_pads.clone()} />
+                <MultiPurity purity={ResourcePurity::Normal}
+                    num_pads={settings.normal_pads} update_pads={update_pads.clone()} />
+                <MultiPurity purity={ResourcePurity::Pure}
+                    num_pads={settings.pure_pads} {update_pads} />
             </>
         }
     }

@@ -318,16 +318,6 @@
         gap: 5px;
         width: 90px;
 
-        .icon.impure-node {
-            color: colors.$danger;
-        }
-        .icon.normal-node {
-            color: colors.$warning;
-        }
-        .icon.pure-node {
-            color: colors.$success;
-        }
-
         .ChooseFromList {
             flex-shrink: 1;
             min-width: 0;
@@ -337,5 +327,36 @@
                 flex-shrink: 1;
             }
         }
+    }
+
+    .MultiPurity {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
+
+        width: 70px;
+
+        .current-num-pads {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-width: 0;
+        }
+        span.current-num-pads {
+            cursor: text;
+        }
+    }
+
+
+    .icon.impure-node {
+        color: colors.$danger;
+    }
+    .icon.normal-node {
+        color: colors.$warning;
+    }
+    .icon.pure-node {
+        color: colors.$success;
     }
 }

@@ -76,7 +76,7 @@ impl Component for Purity {
     }
 }
 
-fn purity_icon(purity: ResourcePurity) -> Html {
+pub fn purity_icon(purity: ResourcePurity) -> Html {
     match purity {
         ResourcePurity::Impure => html! {
             <span class="icon material-icons impure-node">

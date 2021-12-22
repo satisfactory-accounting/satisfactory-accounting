@@ -1,29 +1,32 @@
 use log::warn;
+use satisfactory_accounting::accounting::ResourcePurity;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::node_display::get_value_from_input_event;
+use crate::node_display::{building::purity::purity_icon, get_value_from_input_event};
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
-    /// Last set value for the clock speed.
-    pub clock_speed: f32,
+    /// Resource purity being set.
+    pub purity: ResourcePurity,
+    /// Last set value for the number of pads of this type.
+    pub num_pads: u32,
     /// Callback to change the actual value.
-    pub update_speed: Callback<f32>,
+    pub update_pads: Callback<(ResourcePurity, u32)>,
 }
 
 pub enum Msg {
     /// Message during editing to update the edited text.
     UpdateInput { input: String },
     /// Message while not editing to start editing.
-    StartEdit { input: f32 },
+    StartEdit { input: u32 },
     /// Message to finish editing.
     FinishEdit,
 }
 
-/// Display and editing for clock speed.
+/// Display and editing for one purity type on a node that supports multiple.
 #[derive(Default)]
-pub struct ClockSpeed {
+pub struct MultiPurity {
     /// Pending edit text if clock speed is being changed.
     edit_text: Option<String>,
     /// Whether we did focus since last committing an edit.
@@ -32,7 +35,7 @@ pub struct ClockSpeed {
     input: NodeRef,
 }
 
-impl Component for ClockSpeed {
+impl Component for MultiPurity {
     type Message = Msg;
     type Properties = Props;
 
@@ -53,8 +56,9 @@ impl Component for ClockSpeed {
             }
             Msg::FinishEdit => {
                 if let Some(edit_text) = self.edit_text.take() {
-                    if let Ok(value) = edit_text.parse::<f32>() {
-                        ctx.props().update_speed.emit(value.clamp(0.01, 2.5));
+                    if let Ok(value) = edit_text.parse::<u32>() {
+                        let purity = ctx.props().purity;
+                        ctx.props().update_pads.emit((purity, value));
                     }
                     true
                 } else {
@@ -67,6 +71,7 @@ impl Component for ClockSpeed {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
+        let purity = ctx.props().purity;
         if let Some(edit_text) = &self.edit_text {
             let oninput = link.callback(|input| Msg::UpdateInput {
                 input: get_value_from_input_event(input),
@@ -77,21 +82,20 @@ impl Component for ClockSpeed {
                 Msg::FinishEdit
             });
             html! {
-                <form class="ClockSpeed" {onsubmit}>
-                    <span class="material-icons-outlined" title="Clock Speed">
-                        {"timer"}
-                    </span>
-                    <input class="current-speed" type="text" value={edit_text.clone()}
+                <form class="MultiPurity" {onsubmit}>
+                    {purity_icon(purity)}
+                    <input class="current-num-pads" type="text" value={edit_text.clone()}
                         {oninput} {onblur} ref={self.input.clone()} />
                 </form>
             }
         } else {
-            let value = ctx.props().clock_speed;
+            let value = ctx.props().num_pads;
             let onclick = link.callback(move |_| Msg::StartEdit { input: value });
             html! {
-                <div class="ClockSpeed" title="Clock Speed" {onclick}>
-                    <span class="material-icons-outlined">{"timer"}</span>
-                    <span class="current-speed">{value.to_string()}</span>
+                <div class="MultiPurity" {onclick}
+                    title={format!("Number of {} Nodes", purity.name())}>
+                    {purity_icon(purity)}
+                    <span class="current-num-pads">{value.to_string()}</span>
                 </div>
             }
         }
