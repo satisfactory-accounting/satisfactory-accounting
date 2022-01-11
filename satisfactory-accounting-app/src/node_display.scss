@@ -384,6 +384,27 @@
             cursor: text;
         }
     }
+
+    .VirtualCopies {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 5px;
+
+        width: 60px;
+
+        .current-virt-copies {
+            flex-grow: 1;
+            flex-shrink: 1;
+            min-width: 0;
+            text-align: right;
+        }
+        span.current-virt-copies {
+            cursor: text;
+        }
+    }
 }
 
 .hide-empty-balances {

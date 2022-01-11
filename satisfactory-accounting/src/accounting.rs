@@ -1,4 +1,4 @@
-// Copyright 2021 Zachary Stewart
+// Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -209,6 +209,12 @@ impl From<Building> for NodeKind {
     }
 }
 
+/// Provides the default number of virtual copies for Serde to allow deserializing from
+/// before that field was added.
+fn default_copies() -> u32 {
+    1
+}
+
 /// A grouping of other nodes. It's balance is based on its child nodes.
 ///
 /// Note that cloning groups is used to update groups. When creating a new a copy of a
@@ -221,6 +227,9 @@ pub struct Group {
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
     pub children: Vec<Node>,
+    /// Number of virtual copies of this group. This acts as a multiplier on the balance.
+    #[serde(default = "default_copies")]
+    pub copies: u32,
 
     /// Uniquely identifies a group, even when the node is shared between trees (e.g. when
     /// saving nodes for undo/redo purposes).
@@ -233,6 +242,7 @@ impl Group {
         Group {
             name: Default::default(),
             children: Default::default(),
+            copies: 1,
             id: Uuid::new_v4(),
         }
     }
@@ -245,7 +255,9 @@ impl Group {
     /// Compute the net balance for this group, using the *cached* values of child nodes.
     /// Caller is responsible for recaching child balances first if necessary.
     fn compute_balance(&self) -> Balance {
-        self.children.iter().map(|node| node.balance()).sum()
+        let mut balance = self.children.iter().map(|node| node.balance()).sum();
+        balance *= self.copies as f32;
+        balance
     }
 
     /// Get a child of this node by index.
@@ -264,6 +276,7 @@ impl Group {
                 .iter()
                 .map(|child| child.create_copy())
                 .collect(),
+            copies: self.copies,
             id: Uuid::new_v4(),
         }
     }
@@ -289,6 +302,9 @@ pub struct Building {
     pub building: Option<BuildingId>,
     /// Settings for this building. Must match the BuildingKind of the building.
     pub settings: BuildingSettings,
+    /// Number of copies of this building.
+    #[serde(default = "default_copies")]
+    pub copies: u32,
 }
 
 impl Building {
@@ -340,6 +356,7 @@ impl BuildNode for Building {
                 }
             }
         }
+        balance *= self.copies as f32;
         Ok(Node::new(self, balance))
     }
 }
@@ -349,6 +366,7 @@ impl Default for Building {
         Self {
             building: None,
             settings: BuildingSettings::PowerConsumer,
+            copies: 1,
         }
     }
 }

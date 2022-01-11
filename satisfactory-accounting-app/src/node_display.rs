@@ -1,4 +1,4 @@
-// Copyright 2021 Zachary Stewart
+// Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ use crate::CtxHelper;
 
 mod balance;
 mod building;
+mod copies;
 mod drag;
 mod graph_manipulation;
 mod group;
@@ -92,6 +93,10 @@ pub struct Props {
 
 /// Messages which can be sent to a Node.
 pub enum Msg {
+    // Shared messages:
+    /// Set the number of virtual copies of this building or group.
+    SetCopyCount { copies: u32 },
+
     // Messages for groups:
     /// Replace the child at the given index with the specified node.
     ReplaceChild { idx: usize, replacement: Node },
@@ -157,6 +162,24 @@ impl Component for NodeDisplay {
         let our_idx = ctx.props().path.last().copied().unwrap_or_default();
         let db = ctx.db();
         match msg {
+            Msg::SetCopyCount { copies } => {
+                match ctx.props().node.kind() {
+                    NodeKind::Group(group) => {
+                        let mut new_group = group.clone();
+                        new_group.copies = copies;
+                        ctx.props().replace.emit((our_idx, new_group.into()));
+                    }
+                    NodeKind::Building(building) => {
+                        let mut new_bldg = building.clone();
+                        new_bldg.copies = copies;
+                        match new_bldg.build_node(&db) {
+                            Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                            Err(e) => warn!("Unable to build node: {}", e),
+                        }
+                    }
+                }
+                false
+            }
             Msg::ReplaceChild { idx, replacement } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {

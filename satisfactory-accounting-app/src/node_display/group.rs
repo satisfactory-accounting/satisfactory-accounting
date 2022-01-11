@@ -1,4 +1,4 @@
-// Copyright 2021 Zachary Stewart
+// Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -8,6 +8,7 @@
 use satisfactory_accounting::accounting::{Building, Group};
 use yew::prelude::*;
 
+use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay, NodeMeta, DRAG_INSERT_POINT};
 use crate::CtxHelper;
 
@@ -29,6 +30,7 @@ impl NodeDisplay {
     /// Get the expanded view of a group.
     fn view_group_expanded(&self, ctx: &Context<Self>, group: &Group) -> Html {
         let link = ctx.link();
+        let update_copies = link.callback(|copies| Msg::SetCopyCount { copies });
         let replace = link.callback(|(idx, replacement)| Msg::ReplaceChild { idx, replacement });
         let delete = link.callback(|idx| Msg::DeleteChild { idx });
         let copy = link.callback(|idx| Msg::CopyChild { idx });
@@ -55,6 +57,9 @@ impl NodeDisplay {
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
                     {self.collapse_button(ctx, group)}
+                    if !ctx.props().path.is_empty() {
+                        <VirtualCopies copies={group.copies} {update_copies} />
+                    }
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
@@ -101,6 +106,7 @@ impl NodeDisplay {
 
     fn view_group_collapsed(&self, ctx: &Context<Self>, group: &Group) -> Html {
         let rename = ctx.link().callback(|name| Msg::Rename { name });
+        let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
         html! {
             <div class="NodeDisplay group collapsed" key={group.id.as_u128()}>
                 <div class="summary">
@@ -108,6 +114,9 @@ impl NodeDisplay {
                     <GroupName name={group.name.clone()} {rename} />
                     {self.view_balance(ctx, false)}
                     {self.collapse_button(ctx, group)}
+                    if !ctx.props().path.is_empty() {
+                        <VirtualCopies copies={group.copies} {update_copies} />
+                    }
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
