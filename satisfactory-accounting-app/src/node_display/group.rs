@@ -51,6 +51,7 @@ impl NodeDisplay {
         let ondrop = self.drop_handler(ctx);
 
         let set_metadata = ctx.props().set_metadata.clone();
+        let batch_set_metadata = ctx.props().batch_set_metadata.clone();
         html! {
             <div class="NodeDisplay group expanded" key={group.id.as_u128()}>
                 <div class="header">
@@ -80,7 +81,8 @@ impl NodeDisplay {
                                         delete={delete.clone()}
                                         copy={copy.clone()}
                                         move_node={move_node.clone()}
-                                        set_metadata={set_metadata.clone()} />
+                                        set_metadata={set_metadata.clone()}
+                                        batch_set_metadata={batch_set_metadata.clone()} />
                                 </>
                             }
                         }) }

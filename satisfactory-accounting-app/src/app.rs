@@ -1,10 +1,11 @@
-// Copyright 2021 Zachary Stewart
+// Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
 
@@ -81,9 +82,20 @@ pub struct GlobalMetadata {
 
 /// Messages for communicating with App.
 pub enum Msg {
-    ReplaceRoot { replacement: Node },
-    UpdateMetadata { id: Uuid, meta: NodeMeta },
-    ToggleEmptyBalances { hide_empty_balances: bool },
+    ReplaceRoot {
+        replacement: Node,
+    },
+    UpdateMetadata {
+        id: Uuid,
+        meta: NodeMeta,
+    },
+    /// Apply multiple metadata updates in a single step without saving in between.
+    BatchUpdateMetadata {
+        updates: HashMap<Uuid, NodeMeta>,
+    },
+    ToggleEmptyBalances {
+        hide_empty_balances: bool,
+    },
     Undo,
     Redo,
 }
@@ -158,6 +170,11 @@ impl Component for App {
                 self.save();
                 true
             }
+            Msg::BatchUpdateMetadata { updates } => {
+                self.metadata.batch_update(updates.into_iter());
+                self.save();
+                true
+            }
             Msg::ToggleEmptyBalances {
                 hide_empty_balances,
             } => {
@@ -199,6 +216,7 @@ impl Component for App {
             Msg::ReplaceRoot { replacement }
         });
         let set_metadata = link.callback(|(id, meta)| Msg::UpdateMetadata { id, meta });
+        let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
         let move_node =
@@ -240,7 +258,8 @@ impl Component for App {
                         <div class={classes!("appbody", hidden_balances)}>
                             <NodeDisplay node={self.state.root.clone()}
                                 path={Vec::new()}
-                                {replace} {set_metadata} {move_node} />
+                                {replace} {set_metadata} {batch_set_metadata}
+                                {move_node} />
                         </div>
                     </div>
                 </ContextProvider<NodeMetadata>>
