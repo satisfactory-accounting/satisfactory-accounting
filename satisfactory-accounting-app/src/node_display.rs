@@ -5,6 +5,7 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
@@ -16,7 +17,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
+    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings, Group,
     ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings, ResourcePurity,
     StationSettings,
 };
@@ -48,6 +49,11 @@ impl NodeMetadata {
     /// Build a version of the metadata with the given value updated.
     pub fn set_meta(&mut self, uuid: Uuid, meta: NodeMeta) {
         Rc::make_mut(&mut self.0).insert(uuid, meta);
+    }
+
+    /// Build a version of the metadata with the given values updated.
+    pub fn batch_update(&mut self, update: impl IntoIterator<Item = (Uuid, NodeMeta)>) {
+        Rc::make_mut(&mut self.0).extend(update);
     }
 
     /// Prune metadata for anything that isn't referenced from the given node.
@@ -89,6 +95,8 @@ pub struct Props {
     pub move_node: Callback<(Vec<usize>, Vec<usize>)>,
     /// Callback to set the metadata of a node.
     pub set_metadata: Callback<(Uuid, NodeMeta)>,
+    /// Callback to set the metadata of many nodes at once.
+    pub batch_set_metadata: Callback<HashMap<Uuid, NodeMeta>>,
 }
 
 /// Messages which can be sent to a Node.
@@ -218,8 +226,15 @@ impl Component for NodeDisplay {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
-                        let copied = new_group.children[idx].create_copy();
+                        let new_meta = RefCell::new(HashMap::new());
+                        let copied = new_group.children[idx].create_copy_with_visitor(
+                            &|old: &Group, new: &mut Group| {
+                                let meta = ctx.meta(old.id);
+                                new_meta.borrow_mut().insert(new.id, meta);
+                            },
+                        );
                         new_group.children.insert(idx + 1, copied);
+                        ctx.props().batch_set_metadata.emit(new_meta.into_inner());
                         ctx.props().replace.emit((our_idx, new_group.into()));
                     } else {
                         warn!(

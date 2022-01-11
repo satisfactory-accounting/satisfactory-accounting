@@ -19,6 +19,20 @@ use crate::database::{
 
 mod balance;
 
+/// Trait for types which can visit groups when creating copies.
+pub trait GroupCopyVisitor {
+    fn visit(&self, original: &Group, copy: &mut Group);
+}
+
+impl<F> GroupCopyVisitor for F
+where
+    F: Fn(&Group, &mut Group),
+{
+    fn visit(&self, original: &Group, copy: &mut Group) {
+        self(original, copy)
+    }
+}
+
 /// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
 /// or consumes and how much power it generates or uses.
 ///
@@ -117,6 +131,14 @@ impl Node {
     pub fn create_copy(&self) -> Self {
         match self.kind() {
             NodeKind::Group(group) => group.create_copy().into(),
+            // Buidings have no identity and can be copied verbatim.
+            NodeKind::Building(_) => self.clone(),
+        }
+    }
+
+    pub fn create_copy_with_visitor(&self, visitor: &impl GroupCopyVisitor) -> Self {
+        match self.kind() {
+            NodeKind::Group(group) => group.create_copy_with_visitor(visitor).into(),
             // Buidings have no identity and can be copied verbatim.
             NodeKind::Building(_) => self.clone(),
         }
@@ -279,6 +301,26 @@ impl Group {
             copies: self.copies,
             id: Uuid::new_v4(),
         }
+    }
+
+    /// Create a true copy of this group, with a newly assigned Uuid. Unlike the result of
+    /// `Clone`, the new value doesn't represent the same group, so can be used in the
+    /// same tree as the original. A visitor can be used to view the original group and
+    /// copy simultaneously. This can be used e.g. to copy out-of-tree related data such
+    /// as metadata.
+    pub fn create_copy_with_visitor(&self, visitor: &impl GroupCopyVisitor) -> Self {
+        let mut copy = Group {
+            name: self.name.clone(),
+            children: self
+                .children
+                .iter()
+                .map(|child| child.create_copy_with_visitor(visitor))
+                .collect(),
+            copies: self.copies,
+            id: Uuid::new_v4(),
+        };
+        visitor.visit(self, &mut copy);
+        copy
     }
 }
 
