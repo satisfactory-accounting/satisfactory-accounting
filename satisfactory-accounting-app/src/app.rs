@@ -171,9 +171,13 @@ impl Component for App {
                 true
             }
             Msg::BatchUpdateMetadata { updates } => {
-                self.metadata.batch_update(updates.into_iter());
-                self.save();
-                true
+                if updates.is_empty() {
+                    false
+                } else {
+                    self.metadata.batch_update(updates.into_iter());
+                    self.save();
+                    true
+                }
             }
             Msg::ToggleEmptyBalances {
                 hide_empty_balances,
