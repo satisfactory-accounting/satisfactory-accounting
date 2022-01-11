@@ -7,7 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::{fmt, iter::FusedIterator, rc::Rc};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -32,13 +32,6 @@ where
         self(original, copy)
     }
 }
-
-/// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
-/// or consumes and how much power it generates or uses.
-///
-/// Nodes are immutable. Modifying them requires creating new nodes.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Node(Rc<NodeInner>);
 
 /// Trait for types that can be turned into nodes.
 pub trait BuildNode: private::Sealed {
@@ -79,6 +72,25 @@ impl BuildError {
     #[inline]
     pub fn into_warning_node(self, kind: impl Into<NodeKind>) -> Node {
         Node::warn(kind, self)
+    }
+}
+
+/// Accounting node. Each node has a [`Balance`] telling how much of each item it produces
+/// or consumes and how much power it generates or uses.
+///
+/// Nodes are immutable. Modifying them requires creating new nodes.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Node(Rc<NodeInner>);
+
+impl<'de> Deserialize<'de> for Node {
+    fn deserialize<D>(deserializer: D) -> Result<Node, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Recompute children_had_warnings on deserialization.
+        let mut node_inner = NodeInner::deserialize(deserializer)?;
+        node_inner.children_had_warnings = check_for_child_warnings(&node_inner.kind);
+        Ok(Node(Rc::new(node_inner)))
     }
 }
 
@@ -229,6 +241,7 @@ struct NodeInner {
     warning: Option<BuildError>,
 
     /// Whether this node has any children with warnings.
+    #[serde(skip)]
     children_had_warnings: bool,
 }
 
