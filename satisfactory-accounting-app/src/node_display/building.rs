@@ -1,4 +1,4 @@
-// Copyright 2021 Zachary Stewart
+// Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@ use satisfactory_accounting::accounting::{
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
+use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay};
 
 use building_type::BuildingTypeDisplay;
@@ -34,6 +35,7 @@ mod station_consumption;
 impl NodeDisplay {
     /// Build display for a building.
     pub(super) fn view_building(&self, ctx: &Context<Self>, building: &Building) -> Html {
+        let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
         let change_type = ctx.link().callback(|id| Msg::ChangeType { id });
         html! {
             <div class="NodeDisplay building">
@@ -46,6 +48,7 @@ impl NodeDisplay {
                 </div>
                 <div class="section">
                     {self.view_balance(ctx, false)}
+                    <VirtualCopies copies={building.copies} {update_copies} />
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
