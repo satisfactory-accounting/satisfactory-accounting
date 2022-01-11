@@ -60,6 +60,10 @@ input {
             @include colors.primary-button;
         }
 
+        .update-db {
+            @include colors.primary-button;
+        }
+
         .empty-balance-toggle {
             @include colors.primary-button;
             input {

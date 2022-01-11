@@ -82,22 +82,40 @@ impl BuildError {
     }
 }
 
+/// Checks if any child of this node kind has warnings or any of its descendents have
+/// warnings.
+fn check_for_child_warnings(kind: &NodeKind) -> bool {
+    match kind {
+        NodeKind::Group(group) => group
+            .children
+            .iter()
+            .any(|child| child.warning().is_some() || child.children_had_warnings()),
+        NodeKind::Building(_) => false,
+    }
+}
+
 impl Node {
     /// Create a new tree node.
     fn new(kind: impl Into<NodeKind>, balance: Balance) -> Node {
+        let kind = kind.into();
+        let children_had_warnings = check_for_child_warnings(&kind);
         Self(Rc::new(NodeInner {
-            kind: kind.into(),
+            kind,
             balance,
             warning: None,
+            children_had_warnings,
         }))
     }
 
     /// Create a node that has no balance because of an error.
     fn warn(kind: impl Into<NodeKind>, warning: BuildError) -> Node {
+        let kind = kind.into();
+        let children_had_warnings = check_for_child_warnings(&kind);
         Self(Rc::new(NodeInner {
-            kind: kind.into(),
+            kind,
             balance: Balance::empty(),
             warning: Some(warning),
+            children_had_warnings,
         }))
     }
 
@@ -114,6 +132,12 @@ impl Node {
     /// Get the warning for this error.
     pub fn warning(&self) -> Option<BuildError> {
         self.0.warning
+    }
+
+    /// Returns true if any child of this node (but not the node itself) has a build
+    /// warning. Always false for buildings, since buildings cannot have children.
+    pub fn children_had_warnings(&self) -> bool {
+        self.0.children_had_warnings
     }
 
     /// Get the Group if this is a Group, otherwise None.
@@ -136,11 +160,22 @@ impl Node {
         }
     }
 
+    /// Create a copy of this node. This is a true copy, with Uuids of Groups changed to
+    /// represent newly created, but identical groups. A visitor can be provided to view
+    /// the newly created groups, e.g. to copy non-tree data such as metadata.
     pub fn create_copy_with_visitor(&self, visitor: &impl GroupCopyVisitor) -> Self {
         match self.kind() {
             NodeKind::Group(group) => group.create_copy_with_visitor(visitor).into(),
             // Buidings have no identity and can be copied verbatim.
             NodeKind::Building(_) => self.clone(),
+        }
+    }
+
+    /// Rebuild this node with a new database.
+    pub fn rebuild(&self, new_db: &Database) -> Self {
+        match self.kind() {
+            NodeKind::Group(group) => group.rebuild(new_db),
+            NodeKind::Building(building) => building.rebuild(new_db),
         }
     }
 
@@ -192,6 +227,9 @@ struct NodeInner {
 
     /// Warnings generated when building this node.
     warning: Option<BuildError>,
+
+    /// Whether this node has any children with warnings.
+    children_had_warnings: bool,
 }
 
 /// Kind of node.
@@ -322,6 +360,15 @@ impl Group {
         visitor.visit(self, &mut copy);
         copy
     }
+
+    /// Rebuild this node with a new database.
+    fn rebuild(&self, new_db: &Database) -> Node {
+        let mut copy = self.clone();
+        for child in &mut copy.children {
+            *child = child.rebuild(new_db);
+        }
+        copy.into()
+    }
 }
 
 impl From<Group> for Node {
@@ -358,6 +405,14 @@ impl Building {
     /// Create a new node for an unassigned building.
     pub fn empty_node() -> Node {
         Node::new(Self::empty(), Balance::empty())
+    }
+
+    /// Rebuild this node with a new database, converting errors to warnings.
+    fn rebuild(&self, new_db: &Database) -> Node {
+        match self.clone().build_node(new_db) {
+            Ok(node) => node,
+            Err(err) => err.into_warning_node(self.clone()),
+        }
     }
 }
 
