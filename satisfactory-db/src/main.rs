@@ -122,7 +122,11 @@ fn main() {
         .map(|recipe| Recipe {
             name: recipe.name.as_str().into(),
             id: recipe.class_name.as_str().into(),
-            image: bad_icon_names.replace(recipe.slug.as_str(), "").into(),
+            image: if let Some(nonresidual) = recipe.slug.strip_prefix("residual-") {
+                nonresidual.into()
+            } else {
+                bad_icon_names.replace(recipe.slug.as_str(), "").into()
+            },
             time: recipe.time,
             ingredients: recipe
                 .ingredients
@@ -164,6 +168,13 @@ fn main() {
         .map(|recipe| (recipe.id, recipe))
         .collect();
 
+    const LIQUID_FUELS: &[&str] = &[
+        "Desc_LiquidBiofuel_C",
+        "Desc_LiquidFuel_C",
+        "Desc_LiquidOil_C",
+        "Desc_LiquidTurboFuel_C",
+    ];
+
     let mut items: HashMap<_, _> = raw
         .items
         .values()
@@ -175,7 +186,18 @@ fn main() {
             description: item.description.clone(),
             fuel: if fuels.contains(item.class_name.as_str()) {
                 Some(Fuel {
-                    energy: item.energy_value,
+                    // For some reason liquid fuels are inconsistently treated as if they
+                    // are in fractional (1/1000th) units instead of whole units by the
+                    // source DB. E.g. the recipe for packaging uses whole units (2 liquid
+                    // fuel -> 2 packaged fuel), but the oil extractor's extraction rate
+                    // and the state energy content are based on 1/1000th unit of fuel, so
+                    // we have to multiply the energy content (and see below for where we
+                    // divide the production output of the oil extractor).
+                    energy: if LIQUID_FUELS.contains(&item.class_name.as_str()) {
+                        item.energy_value * 1000.0
+                    } else {
+                        item.energy_value
+                    },
                     // Patch in nuclear byproducts.
                     byproducts: match item.class_name.as_str() {
                         "Desc_NuclearFuelRod_C" => vec![ItemAmount {
