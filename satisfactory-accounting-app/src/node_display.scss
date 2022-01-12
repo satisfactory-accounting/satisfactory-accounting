@@ -405,6 +405,10 @@
             cursor: text;
         }
     }
+
+    .BuildError {
+        cursor: pointer;
+    }
 }
 
 .hide-empty-balances {

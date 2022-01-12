@@ -57,6 +57,7 @@ impl NodeDisplay {
                 <div class="header">
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
+                    {self.child_warnings(ctx)}
                     {self.collapse_button(ctx, group)}
                     if !ctx.props().path.is_empty() {
                         <VirtualCopies copies={group.copies} {update_copies} />
@@ -115,6 +116,7 @@ impl NodeDisplay {
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
                     {self.view_balance(ctx, false)}
+                    {self.child_warnings(ctx)}
                     {self.collapse_button(ctx, group)}
                     if !ctx.props().path.is_empty() {
                         <VirtualCopies copies={group.copies} {update_copies} />
@@ -154,6 +156,20 @@ impl NodeDisplay {
                     </span>
                 </button>
             }
+        }
+    }
+
+    /// Show an icon to notify if any children have warnings.
+    fn child_warnings(&self, ctx: &Context<Self>) -> Html {
+        if ctx.props().node.children_had_warnings() {
+            html! {
+                <span class="BuildError material-icons warning"
+                    title="One or more children had errors">
+                    {"warning"}
+                </span>
+            }
+        } else {
+            html! {}
         }
     }
 }

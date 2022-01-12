@@ -34,6 +34,9 @@ struct AppState {
     database: Rc<Database>,
     /// Root node of the accounting tree.
     root: Node,
+    /// Cached value tracking whether the database is out of date, so we don't have to
+    /// repeatedly compare the database.
+    database_outdated: bool,
 }
 
 impl AppState {
@@ -48,19 +51,30 @@ impl AppState {
 
     /// Load AppState from LocalStorage, or create state if it can't be loaded.
     fn load_or_create() -> Self {
-        let database = Rc::new(LocalStorage::get(DB_KEY).unwrap_or_else(|e| {
-            if !matches!(e, StorageError::KeyNotFound(_)) {
-                warn!("Failed to load database: {}", e);
+        let default = Database::load_default();
+        let (database, database_outdated) = match LocalStorage::get(DB_KEY) {
+            Ok(database) => {
+                let database_outdated = database != default;
+                (Rc::new(database), database_outdated)
             }
-            Database::load_default()
-        }));
+            Err(e) => {
+                if !matches!(e, StorageError::KeyNotFound(_)) {
+                    warn!("Failed to load database: {}", e);
+                }
+                (Rc::new(default), false)
+            }
+        };
         let root = LocalStorage::get(GRAPH_KEY).unwrap_or_else(|e| {
             if !matches!(e, StorageError::KeyNotFound(_)) {
                 warn!("Failed to load graph: {}", e);
             }
             Group::empty().into()
         });
-        Self { database, root }
+        Self {
+            database,
+            root,
+            database_outdated,
+        }
     }
 
     /// Save the current app state.
@@ -98,6 +112,7 @@ pub enum Msg {
     },
     Undo,
     Redo,
+    UpdateDb,
 }
 
 pub struct App {
@@ -119,6 +134,17 @@ impl App {
         if let Err(e) = LocalStorage::set(GLOBAL_METADATA_KEY, &self.global_metadata) {
             warn!("Unable to save global metadata: {}", e);
         }
+    }
+
+    /// Add a state to the Undo stack, clearing the redo stack and any history beyond 100
+    /// items.
+    fn add_undo_state(&mut self, previous_state: AppState) {
+        self.undo_stack.push(previous_state);
+        if self.undo_stack.len() > 100 {
+            let num_to_remove = self.undo_stack.len() - 100;
+            self.undo_stack.drain(..num_to_remove);
+        }
+        self.redo_stack.clear();
     }
 }
 
@@ -156,12 +182,8 @@ impl Component for App {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ReplaceRoot { replacement } => {
-                self.undo_stack.push(self.state.update_root(replacement));
-                if self.undo_stack.len() > 100 {
-                    let num_to_remove = self.undo_stack.len() - 100;
-                    self.undo_stack.drain(..num_to_remove);
-                }
-                self.redo_stack.clear();
+                let previous = self.state.update_root(replacement);
+                self.add_undo_state(previous);
                 self.save();
                 true
             }
@@ -210,6 +232,16 @@ impl Component for App {
                     false
                 }
             },
+            Msg::UpdateDb => {
+                let mut new_state = self.state.clone();
+                new_state.database = Rc::new(Database::load_default());
+                new_state.database_outdated = false;
+                new_state.root = self.state.root.rebuild(&*new_state.database);
+                let previous = mem::replace(&mut self.state, new_state);
+                self.add_undo_state(previous);
+                self.save();
+                true
+            }
         }
     }
 
@@ -223,6 +255,7 @@ impl Component for App {
         let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
+        let update_db = link.callback(|_| Msg::UpdateDb);
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
         let hide_empty_balances = self.global_metadata.hide_empty_balances;
@@ -258,6 +291,12 @@ impl Component for App {
                                     <span class="material-icons">{"visibility"}</span>
                                 }
                             </label>
+                            if self.state.database_outdated {
+                                <button class="update-db" onclick={update_db}
+                                    title="Update the database of structures and recipes. This could break existing buildings (but you *can* undo this).">
+                                    <span class="material-icons">{"browser_updated"}</span>
+                                </button>
+                            }
                         </div>
                         <div class={classes!("appbody", hidden_balances)}>
                             <NodeDisplay node={self.state.root.clone()}
