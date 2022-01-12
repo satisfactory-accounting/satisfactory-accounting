@@ -6,8 +6,8 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use satisfactory_accounting::accounting::{
-    Building, BuildingSettings, GeneratorSettings, GeothermalSettings, ManufacturerSettings,
-    MinerSettings, PumpSettings, ResourcePurity, StationSettings,
+    BuildError, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
+    ManufacturerSettings, MinerSettings, PumpSettings, ResourcePurity, StationSettings,
 };
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
@@ -47,12 +47,25 @@ impl NodeDisplay {
                     </div>
                 </div>
                 <div class="section">
-                    {self.view_balance(ctx, false)}
+                    if let Some(warning) = ctx.props().node.warning() {
+                        {self.view_warning(warning)}
+                    } else {
+                        {self.view_balance(ctx, false)}
+                    }
                     <VirtualCopies copies={building.copies} {update_copies} />
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
             </div>
+        }
+    }
+
+    fn view_warning(&self, err: BuildError) -> Html {
+        // TODO: give better error messages.
+        html! {
+            <span class="BuildError material-icons error" title={err.to_string()}>
+                {"warning"}
+            </span>
         }
     }
 
