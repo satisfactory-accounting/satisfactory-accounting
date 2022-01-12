@@ -101,7 +101,7 @@ impl Component for RecipeDisplay {
                         id: recipe.id,
                         name: recipe.name.clone(),
                         image: html! {
-                            <Icon icon={recipe.image.clone()} alt={recipe.name.clone()} />
+                            <Icon icon={recipe.image.clone()} />
                         },
                     },
                     None => Choice {
@@ -138,8 +138,7 @@ impl Component for RecipeDisplay {
                     },
                     Some(building) => html! {
                         <span class="name" title="Recipe" onclick={edit}>
-                            <Icon icon={building.image.clone()}
-                                alt={building.name.clone()} />
+                            <Icon icon={building.image.clone()} />
                             <span>{&building.name}</span>
                         </span>
                     },

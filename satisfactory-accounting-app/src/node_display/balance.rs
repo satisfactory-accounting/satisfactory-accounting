@@ -18,7 +18,6 @@ impl NodeDisplay {
     pub(super) fn view_balance(&self, ctx: &Context<Self>, vertical: bool) -> Html {
         thread_local! {
             static POWER_LINE: Rc<str> = "power-line".into();
-            static POWER: Rc<str> = "Power".into();
         }
 
         let balance = ctx.props().node.balance();
@@ -26,16 +25,14 @@ impl NodeDisplay {
         html! {
             <div class={classes!("balance", balance_block_style(vertical))} title="Power">
                 <div class={classes!("entry-row", "power-entry", balance_style(balance.power))}>
-                    <Icon icon={POWER_LINE.with(Clone::clone)}
-                        alt={POWER.with(Clone::clone)} />
+                    <Icon icon={POWER_LINE.with(Clone::clone)}/>
                     <div class="balance-value">{rounded(balance.power)}</div>
                 </div>
                 { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
                     Some(item) => html! {
                         <div class={classes!("entry-row", balance_style(rate))}
                             title={Some(item.name.clone())}>
-                            <Icon icon={item.image.clone()}
-                                alt={item.name.clone()} />
+                            <Icon icon={item.image.clone()}/>
                             <div class="balance-value">{rounded(rate)}</div>
                         </div>
                     },

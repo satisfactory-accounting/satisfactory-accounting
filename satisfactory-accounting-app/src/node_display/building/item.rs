@@ -105,7 +105,7 @@ impl Component for ItemDisplay {
                         id: item.id,
                         name: item.name.clone(),
                         image: html! {
-                            <Icon icon={item.image.clone()} alt={item.name.clone()} />
+                            <Icon icon={item.image.clone()}/>
                         },
                     },
                     None => Choice {
@@ -142,8 +142,7 @@ impl Component for ItemDisplay {
                     },
                     Some(building) => html! {
                         <span class="name" {title} onclick={edit}>
-                            <Icon icon={building.image.clone()}
-                                alt={building.name.clone()} />
+                            <Icon icon={building.image.clone()} />
                             <span>{&building.name}</span>
                         </span>
                     },

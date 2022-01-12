@@ -74,7 +74,7 @@ impl Component for BuildingTypeDisplay {
                     id: building.id,
                     name: building.name.clone(),
                     image: html! {
-                        <Icon icon={building.image.clone()} alt={building.name.clone()} />
+                        <Icon icon={building.image.clone()}/>
                     },
                 })
                 .collect();
@@ -101,8 +101,7 @@ impl Component for BuildingTypeDisplay {
                     },
                     Some(building) => html! {
                         <span class="name" title="Building Type" onclick={edit}>
-                            <Icon icon={building.image.clone()}
-                                alt={building.name.clone()} />
+                            <Icon icon={building.image.clone()}/>
                             <span>{&building.name}</span>
                         </span>
                     },
