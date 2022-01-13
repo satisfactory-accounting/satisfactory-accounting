@@ -271,32 +271,42 @@ impl Component for App {
                             <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
                         </div>
                         <div class="menubar">
-                            <button class="unredo" title="Undo"
-                                onclick={undo}
-                                disabled={self.undo_stack.is_empty()}>
-                                <span class="material-icons">{"undo"}</span>
-                            </button>
-                            <button class="unredo" title="Redo"
-                                onclick={redo}
-                                disabled={self.redo_stack.is_empty()}>
-                                <span class="material-icons">{"redo"}</span>
-                            </button>
-                            <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
-                                <input type="checkbox" checked={hide_empty_balances}
-                                    onchange={toggle_empty_balances} />
-                                <span class="material-icons">{"exposure_zero"}</span>
-                                if hide_empty_balances {
-                                    <span class="material-icons">{"visibility_off"}</span>
-                                } else {
-                                    <span class="material-icons">{"visibility"}</span>
-                                }
-                            </label>
-                            if self.state.database_outdated {
-                                <button class="update-db" onclick={update_db}
-                                    title="Update the database of structures and recipes. This could break existing buildings (but you *can* undo this).">
-                                    <span class="material-icons">{"browser_updated"}</span>
+                            <span class="section">
+                                <button class="unredo" title="Undo"
+                                    onclick={undo}
+                                    disabled={self.undo_stack.is_empty()}>
+                                    <span class="material-icons">{"undo"}</span>
                                 </button>
-                            }
+                                <button class="unredo" title="Redo"
+                                    onclick={redo}
+                                    disabled={self.redo_stack.is_empty()}>
+                                    <span class="material-icons">{"redo"}</span>
+                                </button>
+                                <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
+                                    <input type="checkbox" checked={hide_empty_balances}
+                                        onchange={toggle_empty_balances} />
+                                    <span class="material-icons">{"exposure_zero"}</span>
+                                    if hide_empty_balances {
+                                        <span class="material-icons">{"visibility_off"}</span>
+                                    } else {
+                                        <span class="material-icons">{"visibility"}</span>
+                                    }
+                                </label>
+                                if self.state.database_outdated {
+                                    <button class="update-db" onclick={update_db}
+                                        title="Update the database of structures and recipes. This could break existing buildings (but you *can* undo this).">
+                                        <span class="material-icons">
+                                            {"browser_updated"}
+                                        </span>
+                                    </button>
+                                }
+                            </span>
+                            <a class="bug-report" target="_blank"
+                                href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
+                                <span class="material-icons">
+                                    {"bug_report"}
+                                </span>
+                            </a>
                         </div>
                         <div class={classes!("appbody", hidden_balances)}>
                             <NodeDisplay node={self.state.root.clone()}
