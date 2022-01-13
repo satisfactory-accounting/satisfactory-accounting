@@ -462,7 +462,7 @@ checksum = "3c9613b5a66ab9ba26415184cfc41156594925a9cf3a2057e57f31ff145f6568"
 
 [[package]]
 name = "satisfactory-accounting"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "internment",
  "serde",
@@ -473,7 +473,7 @@ dependencies = [
 
 [[package]]
 name = "satisfactory-accounting-app"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "console_log",
  "fuzzy-matcher",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "satisfactory-db"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "regex",
  "satisfactory-accounting",
