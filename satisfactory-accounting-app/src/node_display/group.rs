@@ -46,12 +46,13 @@ impl NodeDisplay {
         });
         let rename = link.callback(|name| Msg::Rename { name });
 
-        let ondragover = self.drag_over_handler(ctx);
+        let ondragover = self.drag_over_handler(ctx, |insert_pos| Msg::DragOver { insert_pos });
+        let ondragenter = self.drag_over_handler(ctx, |insert_pos| Msg::DragEnter { insert_pos });
         let ondragleave = link.callback(|_| Msg::DragLeave);
         let ondrop = self.drop_handler(ctx);
 
-        let set_metadata = ctx.props().set_metadata.clone();
-        let batch_set_metadata = ctx.props().batch_set_metadata.clone();
+        let set_metadata = &ctx.props().set_metadata;
+        let batch_set_metadata = &ctx.props().batch_set_metadata;
         html! {
             <div class="NodeDisplay group expanded" key={group.id.as_u128()}>
                 <div class="header">
@@ -67,7 +68,7 @@ impl NodeDisplay {
                 </div>
                 <div class="body">
                     <div class="children-display"
-                        {ondragover} {ondragleave} {ondrop}
+                        {ondragover} {ondragenter} {ondragleave} {ondrop}
                         ref={self.children.clone()}>
                         { for group.children.iter().cloned().enumerate().map(|(i, node)| {
                             let mut path = ctx.props().path.clone();

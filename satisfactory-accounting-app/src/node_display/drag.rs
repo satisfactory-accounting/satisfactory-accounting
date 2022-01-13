@@ -5,6 +5,8 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::cell::RefCell;
+
 use log::warn;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlElement;
@@ -12,8 +14,9 @@ use yew::prelude::*;
 
 use super::{Msg, NodeDisplay, DRAG_INSERT_POINT};
 
-/// Key used to store data about node being transferred in drag events.
-const TRANSFER_KEY: &str = "zstewart.satisfactory-accounting/drag-node.path";
+thread_local! {
+    static DRAGGING: RefCell<Option<Vec<usize>>> = RefCell::new(None);
+}
 
 impl NodeDisplay {
     /// Get the insert_pos_chooser for this node.
@@ -24,7 +27,11 @@ impl NodeDisplay {
     }
 
     /// Build an event handler for the ondragover event.
-    pub(super) fn drag_over_handler(&self, ctx: &Context<Self>) -> Callback<DragEvent> {
+    pub(super) fn drag_over_handler(
+        &self,
+        ctx: &Context<Self>,
+        msgmaker: fn(usize) -> Msg,
+    ) -> Callback<DragEvent> {
         let chooser = self.insert_pos_chooser(ctx);
         ctx.link().batch_callback(move |e: DragEvent| {
             if let Some((insert_pos, would_stay_in_place, _)) = chooser.choose_insert_pos(&e) {
@@ -38,7 +45,7 @@ impl NodeDisplay {
                     // Drag leave event is only used to clear the drop point indicator.
                     Some(Msg::DragLeave)
                 } else {
-                    Some(Msg::DragOver { insert_pos })
+                    Some(msgmaker(insert_pos))
                 }
             } else {
                 None
@@ -58,8 +65,10 @@ impl NodeDisplay {
                 // propagation so we don't get two insert points.
                 e.stop_propagation();
                 if would_stay_in_place {
+                    DRAGGING.with(|dragging| *dragging.borrow_mut() = None);
                     Msg::DragLeave
                 } else {
+                    DRAGGING.with(|dragging| *dragging.borrow_mut() = None);
                     let mut dest_path = chooser.path.clone();
                     dest_path.push(insert_pos);
                     Msg::MoveNode {
@@ -70,6 +79,8 @@ impl NodeDisplay {
             } else {
                 // Clear insert marker on an invalid drop.
                 Msg::DragLeave
+                // Cannot clear DRAGGING because we don't know if something higher in the
+                // bubble chain may yet handle it.
             }
         })
     }
@@ -79,16 +90,9 @@ impl NodeDisplay {
         if ctx.props().path.is_empty() {
             html! {}
         } else {
-            let dragdata = serde_json::to_string(&ctx.props().path).unwrap();
-            let ondragstart = Callback::from(move |e: DragEvent| match e.data_transfer() {
-                Some(transfer) => {
-                    if let Err(e) = transfer.set_data(TRANSFER_KEY, &dragdata) {
-                        warn!("Unable to set drag data: {:?}", e);
-                    }
-                }
-                None => {
-                    warn!("Unable to get transfer data to set for drag event");
-                }
+            let srcpath = ctx.props().path.clone();
+            let ondragstart = Callback::from(move |_| {
+                DRAGGING.with(|dragging| *dragging.borrow_mut() = Some(srcpath.clone()));
             });
             html! {
                 <div class="drag-handle" draggable="true" {ondragstart}>
@@ -118,7 +122,7 @@ impl InsertPosChooser {
     ///
     /// Return the src path to use when finding the element to move.
     fn choose_insert_pos(&self, event: &DragEvent) -> Option<(usize, bool, Vec<usize>)> {
-        let src_path = get_transfer_data(event)?;
+        let src_path = DRAGGING.with(|dragging| dragging.borrow().clone())?;
         // If the source path is longer than ours, the node may be a child or a peer's
         // child, but it cannot be a parent or ourself.
         if src_path.len() <= self.path.len() {
@@ -132,6 +136,7 @@ impl InsertPosChooser {
         let drop_y = event.client_y() as f64;
         let mut child_idx = 0;
         let mut insert_idx = 0;
+
         while child_idx < children.length() {
             let child = match children.item(child_idx) {
                 Some(child) => match child.dyn_into::<HtmlElement>() {
@@ -176,28 +181,5 @@ impl InsertPosChooser {
         }
 
         Some((insert_idx, false, src_path))
-    }
-}
-
-/// Retrieve the transfer data from a drag event, if present.
-fn get_transfer_data(event: &DragEvent) -> Option<Vec<usize>> {
-    match event.data_transfer() {
-        Some(transfer) => match transfer.get_data(TRANSFER_KEY) {
-            Ok(data) => match serde_json::from_str::<Vec<usize>>(&data) {
-                Ok(data) => Some(data),
-                Err(err) => {
-                    warn!("Unable to parse transfer data: {}", err);
-                    None
-                }
-            },
-            Err(err) => {
-                warn!("Unable to retrieve transfer data: {:?}", err);
-                None
-            }
-        },
-        None => {
-            warn!("No transfer available");
-            None
-        }
     }
 }

@@ -258,6 +258,7 @@ impl Component for App {
         let update_db = link.callback(|_| Msg::UpdateDb);
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
+
         let hide_empty_balances = self.global_metadata.hide_empty_balances;
         let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
             hide_empty_balances: !hide_empty_balances,
