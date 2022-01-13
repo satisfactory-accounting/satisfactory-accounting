@@ -116,6 +116,8 @@ pub enum Msg {
     AddChild { child: Node },
     /// Rename this node.
     Rename { name: String },
+    /// When another node starts being dragged over this one.
+    DragEnter { insert_pos: usize },
     /// When another node is dragged over this one.
     DragOver { insert_pos: usize },
     /// When another dragging node leaves this one.
@@ -156,6 +158,9 @@ pub struct NodeDisplay {
     /// When a drag is in progress and over our children area, this is the proposed insert
     /// position.
     insert_pos: Option<usize>,
+    /// Number of virtual insert markers requested. Used to prevent flicker, since
+    /// dragenter happens for a new element before dragleave for the prior element.
+    insert_count: usize,
 }
 
 impl Component for NodeDisplay {
@@ -270,13 +275,34 @@ impl Component for NodeDisplay {
                 }
                 false
             }
+            Msg::DragEnter { insert_pos } => {
+                self.insert_count = self
+                    .insert_count
+                    .checked_add(1)
+                    .expect("overflowed insert count");
+                if self.insert_pos != Some(insert_pos) {
+                    self.insert_pos = Some(insert_pos);
+                    true
+                } else {
+                    false
+                }
+            }
             Msg::DragOver { insert_pos } => {
-                self.insert_pos = Some(insert_pos);
-                true
+                if self.insert_pos != Some(insert_pos) {
+                    self.insert_pos = Some(insert_pos);
+                    true
+                } else {
+                    false
+                }
             }
             Msg::DragLeave => {
-                self.insert_pos = None;
-                true
+                self.insert_count = self.insert_count.saturating_sub(1);
+                if self.insert_count == 0 {
+                    self.insert_pos = None;
+                    true
+                } else {
+                    false
+                }
             }
             Msg::MoveNode {
                 src_path,
