@@ -23,6 +23,8 @@ pub struct Props {
 pub enum Msg {
     /// Start editing.
     StartEdit,
+    /// Cancel editing.
+    CancelEdit,
     /// Change the pending value to the given value.
     UpdatePending {
         /// New value of `pending`.
@@ -30,6 +32,8 @@ pub enum Msg {
     },
     /// Save the value by passing it to the parent.
     CommitEdit,
+    /// Do nothing.
+    NoOp,
 }
 
 #[derive(Default)]
@@ -55,6 +59,10 @@ impl Component for GroupName {
                 self.did_focus = false;
                 true
             }
+            Msg::CancelEdit => {
+                self.pending = None;
+                true
+            }
             Msg::UpdatePending { pending } => {
                 self.pending = Some(pending);
                 true
@@ -68,6 +76,9 @@ impl Component for GroupName {
                     false
                 }
             }
+            Msg::NoOp => {
+                true
+            },
         }
     }
 
@@ -124,13 +135,21 @@ impl GroupName {
         let oninput = link.callback(|input| Msg::UpdatePending {
             pending: get_value_from_input_event(input),
         });
+        let onkeydown = link.callback(|e: KeyboardEvent| {
+            if e.key() == "Escape" {
+                e.prevent_default();
+                Msg::CancelEdit
+            } else {
+                Msg::NoOp
+            }
+        });
         let commitedit = link.callback(|e: FocusEvent| {
             e.prevent_default();
             Msg::CommitEdit
         });
         html! {
             <form class="GroupName" onsubmit={commitedit}>
-                <input class="name" type="text" value={pending} {oninput} ref={self.input.clone()}/>
+                <input class="name" type="text" value={pending} {oninput} {onkeydown} ref={self.input.clone()}/>
                 <button class="edit" type="submit">
                     <span class="material-icons">{"save"}</span>
                 </button>
