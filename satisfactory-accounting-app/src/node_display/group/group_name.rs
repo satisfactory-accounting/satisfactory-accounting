@@ -130,21 +130,17 @@ impl GroupName {
         let oninput = link.callback(|input| Msg::UpdatePending {
             pending: get_value_from_input_event(input),
         });
-        let onkeydown = link.batch_callback(|e: KeyboardEvent| {
-            if e.key() == "Escape" {
-                e.prevent_default();
-                Some(Msg::CancelEdit)
-            } else {
-                None
-            }
-        });
+        let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
+                "Esc" | "Escape" => Some(Msg::CancelEdit),
+                _ => None,
+            });
         let commitedit = link.callback(|e: FocusEvent| {
             e.prevent_default();
             Msg::CommitEdit
         });
         html! {
             <form class="GroupName" onsubmit={commitedit}>
-                <input class="name" type="text" value={pending} {oninput} {onkeydown} ref={self.input.clone()}/>
+                <input class="name" type="text" value={pending} {oninput} {onkeyup} ref={self.input.clone()}/>
                 <button class="edit" type="submit">
                     <span class="material-icons">{"save"}</span>
                 </button>
