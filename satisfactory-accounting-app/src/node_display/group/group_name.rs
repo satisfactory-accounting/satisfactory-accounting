@@ -23,6 +23,8 @@ pub struct Props {
 pub enum Msg {
     /// Start editing.
     StartEdit,
+    /// Cancel editing.
+    CancelEdit,
     /// Change the pending value to the given value.
     UpdatePending {
         /// New value of `pending`.
@@ -53,6 +55,10 @@ impl Component for GroupName {
             Msg::StartEdit => {
                 self.pending = Some(ctx.props().name.to_owned());
                 self.did_focus = false;
+                true
+            }
+            Msg::CancelEdit => {
+                self.pending = None;
                 true
             }
             Msg::UpdatePending { pending } => {
@@ -124,13 +130,17 @@ impl GroupName {
         let oninput = link.callback(|input| Msg::UpdatePending {
             pending: get_value_from_input_event(input),
         });
+        let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
+                "Esc" | "Escape" => Some(Msg::CancelEdit),
+                _ => None,
+            });
         let commitedit = link.callback(|e: FocusEvent| {
             e.prevent_default();
             Msg::CommitEdit
         });
         html! {
             <form class="GroupName" onsubmit={commitedit}>
-                <input class="name" type="text" value={pending} {oninput} ref={self.input.clone()}/>
+                <input class="name" type="text" value={pending} {oninput} {onkeyup} ref={self.input.clone()}/>
                 <button class="edit" type="submit">
                     <span class="material-icons">{"save"}</span>
                 </button>
