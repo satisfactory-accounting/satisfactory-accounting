@@ -32,8 +32,6 @@ pub enum Msg {
     },
     /// Save the value by passing it to the parent.
     CommitEdit,
-    /// Do nothing.
-    NoOp,
 }
 
 #[derive(Default)]
@@ -76,9 +74,6 @@ impl Component for GroupName {
                     false
                 }
             }
-            Msg::NoOp => {
-                true
-            },
         }
     }
 
@@ -135,12 +130,12 @@ impl GroupName {
         let oninput = link.callback(|input| Msg::UpdatePending {
             pending: get_value_from_input_event(input),
         });
-        let onkeydown = link.callback(|e: KeyboardEvent| {
+        let onkeydown = link.batch_callback(|e: KeyboardEvent| {
             if e.key() == "Escape" {
                 e.prevent_default();
-                Msg::CancelEdit
+                Some(Msg::CancelEdit)
             } else {
-                Msg::NoOp
+                None
             }
         });
         let commitedit = link.callback(|e: FocusEvent| {
