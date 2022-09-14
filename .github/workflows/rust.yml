@@ -21,6 +21,7 @@ jobs:
     - name: Install wasm
       uses: actions-rs/toolchain@v1
       with:
+        toolchain: stable
         target: wasm32-unknown-unknown
     - name: Install Trunk
       uses: actions-rs/install@v0.1
