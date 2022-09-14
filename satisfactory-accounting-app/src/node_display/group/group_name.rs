@@ -131,9 +131,9 @@ impl GroupName {
             pending: get_value_from_input_event(input),
         });
         let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
-                "Esc" | "Escape" => Some(Msg::CancelEdit),
-                _ => None,
-            });
+            "Esc" | "Escape" => Some(Msg::CancelEdit),
+            _ => None,
+        });
         let commitedit = link.callback(|e: FocusEvent| {
             e.prevent_default();
             Msg::CommitEdit
