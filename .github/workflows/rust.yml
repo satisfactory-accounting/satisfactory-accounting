@@ -19,7 +19,7 @@ jobs:
     - name: Check Formatting
       run: cargo fmt --all -- --check
     - name: Install wasm
-      uses: action-rs/toolchain@v1
+      uses: actions-rs/toolchain@v1
       with:
         target: wasm32-unknown-unknown
     - name: Install Trunk
