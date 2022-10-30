@@ -1,5 +1,5 @@
 {
-  "version": {"major": "U5", "minor": "Final"},
+  "icon_prefix": "u5/",
   "recipes": {
     "Recipe_PackagedNitricAcid_C": {
       "name": "Packaged Nitric Acid",

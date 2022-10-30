@@ -7,7 +7,6 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::rc::Rc;
 
-use satisfactory_accounting::database::DatabaseVersion;
 use yew::prelude::*;
 
 use crate::db_ctx;
@@ -21,10 +20,9 @@ pub struct Props {
 
 #[function_component(Icon)]
 pub fn icon(props: &Props) -> Html {
-    let version = db_ctx().version;
     match &props.icon {
         Some(icon) => html! {
-            <img src={slug_to_icon(icon, version)} class="icon" alt="?" />
+            <img src={slug_to_icon(icon, &db_ctx().icon_prefix)} class="icon" alt="?" />
         },
         None => html! {
             <span class="icon material-icons error">{"error"}</span>
@@ -33,12 +31,7 @@ pub fn icon(props: &Props) -> Html {
 }
 
 /// Get the icon path for a given slug name.
-fn slug_to_icon(slug: impl AsRef<str>, db_version: Option<DatabaseVersion>) -> String {
-    let prefix = match db_version {
-        Some(DatabaseVersion::U5(_)) => "u5/",
-        Some(DatabaseVersion::U6(_)) => "u6/",
-        None => "",
-    };
+fn slug_to_icon(slug: impl AsRef<str>, icon_prefix: &str) -> String {
     let slug = slug.as_ref();
-    format!("/images/items/{prefix}{slug}_64.png")
+    format!("/images/{icon_prefix}items/{slug}_64.png")
 }

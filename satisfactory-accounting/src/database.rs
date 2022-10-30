@@ -6,7 +6,7 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
@@ -38,6 +38,9 @@ impl DatabaseVersion {
         DatabaseVersion::U6(U6Subversion::Beta),
     ];
 
+    /// Latest version of the database.
+    pub const LATEST: DatabaseVersion = Self::ALL[Self::ALL.len() - 1];
+
     /// Identifies which database versions are considered deprecated.
     pub fn is_deprecated(self) -> bool {
         match self {
@@ -49,7 +52,7 @@ impl DatabaseVersion {
 
     /// Load this version of the database from the included database string.
     pub fn load_database(self) -> Database {
-        let db: Database = match self {
+        match self {
             DatabaseVersion::U5(U5Subversion::Initial) => {
                 const SERIALIZED_DB: &str = include_str!("../db-u5-initial.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u5-initial.json")
@@ -62,9 +65,7 @@ impl DatabaseVersion {
                 const SERIALIZED_DB: &str = include_str!("../db-u6-beta.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u6-beta.json")
             }
-        };
-        assert!(db.version == Some(self));
-        db
+        }
     }
 
     /// Get the description for this version.
@@ -115,13 +116,14 @@ impl fmt::Display for DatabaseVersion {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Database {
     /// Which version of the database this is, if it corresponds to a particular version.
-    pub version: Option<DatabaseVersion>,
+    #[serde(default)]
+    pub icon_prefix: String,
     /// Core recipe storage. We only store machine recipes.
-    pub recipes: HashMap<RecipeId, Recipe>,
+    pub recipes: BTreeMap<RecipeId, Recipe>,
     /// Core item storage.
-    pub items: HashMap<ItemId, Item>,
+    pub items: BTreeMap<ItemId, Item>,
     /// Core buildings storage.
-    pub buildings: HashMap<BuildingId, BuildingType>,
+    pub buildings: BTreeMap<BuildingId, BuildingType>,
 }
 
 impl Database {
@@ -133,6 +135,13 @@ impl Database {
     /// Load the default version of the database.
     pub fn load_default() -> Database {
         DatabaseVersion::U6(U6Subversion::Beta).load_database()
+    }
+
+    /// Compare this database to another database, ignoring their icon prefixes.
+    pub fn compare_ignore_prefix(&self, other: &Database) -> bool {
+        self.recipes == other.recipes
+            && self.items == other.items
+            && self.buildings == other.buildings
     }
 }
 
@@ -241,6 +250,8 @@ typed_symbol! {
 }
 
 /// Recipe for crafting an item or items.
+///
+/// Recipies sort only by ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Recipe {
     /// Name of the recipe. Typically similar to the name of the item(s) produced.
@@ -271,6 +282,8 @@ pub struct ItemAmount {
 }
 
 /// A solid or liquid item used in crafting.
+///
+/// Items sort only by ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Item {
     /// Name of this item.
@@ -310,6 +323,8 @@ impl ItemId {
 }
 
 /// A building used to produce or use items.
+///
+/// Buildings sort only by ID.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BuildingType {
     /// Name of the building.

@@ -1,3 +1,4 @@
+use std::collections::btree_map::Entry;
 // Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -5,19 +6,21 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::collections::HashMap;
-use std::mem;
+use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
+use std::str::FromStr;
+use std::{fmt, mem};
 
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage};
 use log::warn;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use uuid::Uuid;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{Group, Node};
-use satisfactory_accounting::database::Database;
+use satisfactory_accounting::database::{Database, DatabaseVersion};
 
 use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata};
 
@@ -27,71 +30,301 @@ const GRAPH_KEY: &str = "zstewart.satisfactorydb.state.graph";
 const METADATA_KEY: &str = "zstewart.satisfactorydb.state.metadata";
 const GLOBAL_METADATA_KEY: &str = "zstewart.satisfactorydb.state.globalmetadata";
 
-/// Stored state of the app.
-#[derive(Debug, Clone)]
-struct AppState {
-    /// Database used in the app previously.
-    database: Rc<Database>,
-    /// Root node of the accounting tree.
-    root: Node,
-    /// Cached value tracking whether the database is out of date, so we don't have to
-    /// repeatedly compare the database.
-    database_outdated: bool,
+const WORLD_MAP_KEY: &str = "zstewart.satisfactorydb.state.world";
+
+/// Unique ID of a world.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+struct WorldId(Uuid);
+
+impl WorldId {
+    fn new() -> Self {
+        Self(Uuid::new_v4())
+    }
 }
 
-impl AppState {
-    /// Updates AppState and returns the previous version.
-    fn update_root(&mut self, root: Node) -> Self {
-        let old_root = mem::replace(&mut self.root, root);
-        Self {
-            root: old_root,
-            ..self.clone()
+impl fmt::Display for WorldId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "zstewart.satisfactorydb.state.world.{}",
+            self.0.as_simple()
+        )
+    }
+}
+
+impl Serialize for WorldId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.collect_str(self)
+    }
+}
+
+impl<'de> Deserialize<'de> for WorldId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct WorldIdVisitor;
+        impl<'de> serde::de::Visitor<'de> for WorldIdVisitor {
+            type Value = WorldId;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a string of the format \"zstewart.satisfactorydb.state.world.{uuid}\"")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                WorldId::from_str(v)
+                    .map_err(|_| E::invalid_value(serde::de::Unexpected::Str(v), &self))
+            }
+        }
+
+        deserializer.deserialize_str(WorldIdVisitor)
+    }
+}
+
+/// Error from parsing a [`WorldId`].
+#[derive(Error, Debug)]
+enum ParseWorldIdError {
+    #[error("ID did not start with zstewart.satisfactorydb.state.world.")]
+    IncorrectPrefix,
+    #[error("Parsing suffix as uuid failed")]
+    InvalidUuid(#[from] uuid::Error),
+}
+
+impl FromStr for WorldId {
+    type Err = ParseWorldIdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        const PREFIX: &str = "zstewart.satisfactorydb.state.world.";
+        if s.starts_with(PREFIX) {
+            Ok(WorldId(s[PREFIX.len()..].parse()?))
+        } else {
+            Err(ParseWorldIdError::IncorrectPrefix)
+        }
+    }
+}
+
+/// Info about a particular world. Used in the world map to avoid needing to load the
+/// whole world to get info about it.
+#[derive(Serialize, Deserialize)]
+struct WorldMetadata {
+    /// Name of the world.
+    name: String,
+}
+
+/// Mapping of different worlds.
+#[derive(Serialize, Deserialize)]
+struct Worlds {
+    /// Mapping of worlds by ID.
+    worlds: BTreeMap<WorldId, WorldMetadata>,
+    /// ID of the currently selected world.
+    selected: WorldId,
+}
+
+impl Worlds {
+    /// Load the worlds mapping or return the default.
+    fn load() -> Result<Self, StorageError> {
+        LocalStorage::get(WORLD_MAP_KEY)
+    }
+
+    /// Save the world mapping.
+    fn save(&self) {
+        if let Err(e) = LocalStorage::set(WORLD_MAP_KEY, self) {
+            warn!("Unable to save metadata: {}", e);
+        }
+    }
+}
+
+/// The choice of database for a particular world.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DatabaseChoice {
+    /// Use one of the standard databases.
+    Standard(DatabaseVersion),
+    /// This world uses a custom database.
+    Custom(Rc<Database>),
+}
+
+impl DatabaseChoice {
+    /// Get the database for this database choice.
+    fn get(&self) -> Rc<Database> {
+        match *self {
+            DatabaseChoice::Standard(version) => Rc::new(version.load_database()),
+            DatabaseChoice::Custom(ref db) => Rc::clone(db),
+        }
+    }
+}
+
+impl Default for DatabaseChoice {
+    fn default() -> Self {
+        DatabaseChoice::Standard(DatabaseVersion::LATEST)
+    }
+}
+
+/// A single world with a particular database and structure.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct World {
+    /// Which database is used for this world.
+    database: DatabaseChoice,
+    /// Root node for this world.
+    root: Node,
+    /// Non-undo metadata about nodes.
+    node_metadata: NodeMetadata,
+    /// Non-undo metadata about this particular world.
+    global_metadata: GlobalMetadata,
+}
+
+impl World {
+    /// Updates the Root Node and returns an undo state that will go back to the previous
+    /// root. If the new root has a different name from the current root, returns a string
+    /// of the new name.
+    fn update_root(&mut self, root: Node) -> (UnReDoState, Option<String>) {
+        assert!(root.group().is_some(), "new root was not a group");
+        let new_name = {
+            let new_name = &root.group().unwrap().name;
+            let old_name = &self.root.group().unwrap().name;
+            if new_name != old_name {
+                Some(new_name.clone())
+            } else {
+                None
+            }
+        };
+
+        let old = mem::replace(&mut self.root, root);
+        (
+            UnReDoState {
+                database: self.database.clone(),
+                root: old,
+            },
+            new_name,
+        )
+    }
+
+    /// Updates the database and root from the given undo state and returns an undo state
+    /// that will go back to the state before applying the undo.
+    fn apply_undo_state(&mut self, state: UnReDoState) -> UnReDoState {
+        UnReDoState {
+            root: mem::replace(&mut self.root, state.root),
+            database: mem::replace(&mut self.database, state.database),
         }
     }
 
-    /// Load AppState from LocalStorage, or create state if it can't be loaded.
-    fn load_or_create() -> Self {
-        let default = Database::load_default();
-        let (database, database_outdated) = match LocalStorage::get(DB_KEY) {
-            Ok(database) => {
-                let database_outdated = database != default;
-                (Rc::new(database), database_outdated)
+    /// Load from LocalStorage, or create state if it can't be loaded.
+    fn load(id: WorldId) -> Result<Self, StorageError> {
+        let mut world: Self = LocalStorage::get(id.to_string())?;
+        // Remove metadata from deleted groups that are definitely no longer in the
+        // undo/redo history.
+        world.node_metadata.prune(&world.root);
+        Ok(world)
+    }
+
+    /// Try to load a V1 world, replacing any missing components with defaults.
+    fn try_load_v1() -> Self {
+        let database = match LocalStorage::get::<Database>(DB_KEY) {
+            Ok(mut database) => {
+                // All databases in the DB_KEY should be pre-U6 which means they shouldn't
+                // have an icon prefix, and we can set the icon prefix to u5, unless for
+                // some reason it's already set.
+                if database.icon_prefix.is_empty() {
+                    database.icon_prefix = "u5/".to_string();
+                }
+                DatabaseVersion::ALL
+                    .iter()
+                    .find_map(|&version| match version.load_database() {
+                        db if database.compare_ignore_prefix(&db) => {
+                            Some(DatabaseChoice::Standard(version))
+                        }
+                        _ => None,
+                    })
+                    .unwrap_or_else(move || DatabaseChoice::Custom(Rc::new(database)))
             }
             Err(e) => {
                 if !matches!(e, StorageError::KeyNotFound(_)) {
                     warn!("Failed to load database: {}", e);
                 }
-                (Rc::new(default), false)
+                DatabaseChoice::default()
             }
         };
         let root = LocalStorage::get(GRAPH_KEY).unwrap_or_else(|e| {
             if !matches!(e, StorageError::KeyNotFound(_)) {
                 warn!("Failed to load graph: {}", e);
             }
-            Group::empty().into()
+            Group::empty_node()
         });
-        Self {
+        let mut metadata: NodeMetadata = LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
+            if !matches!(e, StorageError::KeyNotFound(_)) {
+                warn!("Failed to load metadata: {}", e);
+            }
+            Default::default()
+        });
+        metadata.prune(&root);
+        let global_metadata: GlobalMetadata = LocalStorage::get(GLOBAL_METADATA_KEY)
+            .unwrap_or_else(|e| {
+                if !matches!(e, StorageError::KeyNotFound(_)) {
+                    warn!("Failed to load global metadata: {}", e);
+                }
+                Default::default()
+            });
+
+        World {
             database,
             root,
-            database_outdated,
+            node_metadata: metadata,
+            global_metadata,
         }
     }
 
-    /// Save the current app state.
-    fn save(&self) {
-        if let Err(e) = LocalStorage::set(DB_KEY, &self.database) {
-            warn!("Unable to save database: {}", e);
+    /// Create a new empty world with the default database version.
+    fn new() -> Self {
+        World {
+            database: Default::default(),
+            root: Group::empty_node(),
+            node_metadata: Default::default(),
+            global_metadata: Default::default(),
         }
-        if let Err(e) = LocalStorage::set(GRAPH_KEY, &self.root) {
-            warn!("Unable to save graph: {}", e);
+    }
+
+    /// Get the name of this world.
+    fn name(&self) -> String {
+        match self.root.group() {
+            Some(root) => root.name.clone(),
+            None => {
+                warn!("Cannot get world name: root was not a group!");
+                String::new()
+            }
+        }
+    }
+
+    /// Gets metadata for this world.
+    fn storage_metadata(&self) -> WorldMetadata {
+        WorldMetadata { name: self.name() }
+    }
+
+    /// Save the state of the current world.
+    fn save(&self, id: WorldId) {
+        if let Err(e) = LocalStorage::set(id.to_string(), &self) {
+            warn!("Unable to save world: {}", e);
         }
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+/// Metadata about a particular world.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct GlobalMetadata {
     /// Whether empty balance values should be hidden.
     hide_empty_balances: bool,
+}
+
+/// State tracked for undo/redo.
+struct UnReDoState {
+    /// Database at this undo/redo version.
+    database: DatabaseChoice,
+    /// Root node of the world at this version.
+    root: Node,
 }
 
 /// Messages for communicating with App.
@@ -112,39 +345,39 @@ pub enum Msg {
     },
     Undo,
     Redo,
-    UpdateDb,
+    /// Set the database to the given database choice.
+    SetDb(DatabaseChoice),
 }
 
+/// Current state of the app.
 pub struct App {
-    state: AppState,
-    /// Non-undo metadata about nodes.
-    metadata: NodeMetadata,
-    /// Non-undo metadata about the global app state.
-    global_metadata: GlobalMetadata,
-    undo_stack: Vec<AppState>,
-    redo_stack: Vec<AppState>,
+    /// Listing of available worlds.
+    worlds: Worlds,
+    /// State of the currently selected world.
+    world: World,
+    /// Selected database.
+    database: Rc<Database>,
+    /// Stack of previous states for undo.
+    undo_stack: Vec<UnReDoState>,
+    /// Stack of future states for redo.
+    redo_stack: Vec<UnReDoState>,
 }
 
 impl App {
-    fn save(&self) {
-        self.state.save();
-        if let Err(e) = LocalStorage::set(METADATA_KEY, &self.metadata) {
-            warn!("Unable to save metadata: {}", e);
-        }
-        if let Err(e) = LocalStorage::set(GLOBAL_METADATA_KEY, &self.global_metadata) {
-            warn!("Unable to save global metadata: {}", e);
-        }
-    }
-
     /// Add a state to the Undo stack, clearing the redo stack and any history beyond 100
     /// items.
-    fn add_undo_state(&mut self, previous_state: AppState) {
+    fn add_undo_state(&mut self, previous_state: UnReDoState) {
         self.undo_stack.push(previous_state);
         if self.undo_stack.len() > 100 {
             let num_to_remove = self.undo_stack.len() - 100;
             self.undo_stack.drain(..num_to_remove);
         }
         self.redo_stack.clear();
+    }
+
+    /// Saves the world into the
+    fn save_world(&self) {
+        self.world.save(self.worlds.selected);
     }
 }
 
@@ -153,27 +386,53 @@ impl Component for App {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
-        let state = AppState::load_or_create();
-        let mut metadata: NodeMetadata = LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
-            if !matches!(e, StorageError::KeyNotFound(_)) {
-                warn!("Failed to load metadata: {}", e);
+        let (worlds, world) = match Worlds::load() {
+            Ok(mut worlds) => {
+                let world = match World::load(worlds.selected) {
+                    Ok(world) => world,
+                    Err(e) => {
+                        warn!("Failed to load selected world: {}", e);
+                        worlds.worlds.remove(&worlds.selected);
+                        worlds.selected = WorldId::new();
+                        let world = World::new();
+                        match worlds.worlds.entry(worlds.selected) {
+                            Entry::Occupied(_) => {
+                                panic!("Created a duplicate UUID {}", worlds.selected);
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(world.storage_metadata());
+                            }
+                        }
+                        worlds.save();
+                        world.save(worlds.selected);
+                        world
+                    }
+                };
+                (worlds, world)
             }
-            Default::default()
-        });
-        // Remove metadata from deleted groups that are definitely no longer in the
-        // undo/redo history.
-        metadata.prune(&state.root);
-        let global_metadata: GlobalMetadata = LocalStorage::get(GLOBAL_METADATA_KEY)
-            .unwrap_or_else(|e| {
+            Err(e) => {
                 if !matches!(e, StorageError::KeyNotFound(_)) {
-                    warn!("Failed to load global metadata: {}", e);
+                    warn!("Failed to load world list: {}", e);
                 }
-                Default::default()
-            });
+                let mut worlds = Worlds {
+                    worlds: BTreeMap::new(),
+                    selected: WorldId::new(),
+                };
+                let world = World::try_load_v1();
+                worlds
+                    .worlds
+                    .insert(worlds.selected, world.storage_metadata());
+                worlds.save();
+                world.save(worlds.selected);
+                (worlds, world)
+            }
+        };
+        let database = world.database.get();
+
         Self {
-            state,
-            metadata,
-            global_metadata,
+            worlds,
+            world,
+            database,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
         }
@@ -182,37 +441,47 @@ impl Component for App {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ReplaceRoot { replacement } => {
-                let previous = self.state.update_root(replacement);
+                let (previous, new_name) = self.world.update_root(replacement);
                 self.add_undo_state(previous);
-                self.save();
+                if let Some(new_name) = new_name {
+                    match self.worlds.worlds.entry(self.worlds.selected) {
+                        Entry::Occupied(mut entry) => entry.get_mut().name = new_name,
+                        Entry::Vacant(entry) => {
+                            warn!("World {} was not in the worlds map", self.worlds.selected);
+                            entry.insert(self.world.storage_metadata());
+                        }
+                    }
+                    self.worlds.save();
+                }
+                self.save_world();
                 true
             }
             Msg::UpdateMetadata { id, meta } => {
-                self.metadata.set_meta(id, meta);
-                self.save();
+                self.world.node_metadata.set_meta(id, meta);
+                self.save_world();
                 true
             }
             Msg::BatchUpdateMetadata { updates } => {
                 if updates.is_empty() {
                     false
                 } else {
-                    self.metadata.batch_update(updates.into_iter());
-                    self.save();
+                    self.world.node_metadata.batch_update(updates.into_iter());
+                    self.save_world();
                     true
                 }
             }
             Msg::ToggleEmptyBalances {
                 hide_empty_balances,
             } => {
-                self.global_metadata.hide_empty_balances = hide_empty_balances;
-                self.save();
+                self.world.global_metadata.hide_empty_balances = hide_empty_balances;
+                self.save_world();
                 true
             }
             Msg::Undo => match self.undo_stack.pop() {
                 Some(previous) => {
-                    let next = mem::replace(&mut self.state, previous);
+                    let next = self.world.apply_undo_state(previous);
                     self.redo_stack.push(next);
-                    self.save();
+                    self.save_world();
                     true
                 }
                 None => {
@@ -222,9 +491,9 @@ impl Component for App {
             },
             Msg::Redo => match self.redo_stack.pop() {
                 Some(next) => {
-                    let previous = mem::replace(&mut self.state, next);
+                    let previous = self.world.apply_undo_state(next);
                     self.undo_stack.push(previous);
-                    self.save();
+                    self.save_world();
                     true
                 }
                 None => {
@@ -232,14 +501,17 @@ impl Component for App {
                     false
                 }
             },
-            Msg::UpdateDb => {
-                let mut new_state = self.state.clone();
-                new_state.database = Rc::new(Database::load_default());
-                new_state.database_outdated = false;
-                new_state.root = self.state.root.rebuild(&*new_state.database);
-                let previous = mem::replace(&mut self.state, new_state);
+            Msg::SetDb(database) => {
+                self.database = database.get();
+                let previous = UnReDoState {
+                    database: mem::replace(&mut self.world.database, database),
+                    root: {
+                        let new_root = self.world.root.rebuild(&*self.database);
+                        mem::replace(&mut self.world.root, new_root)
+                    },
+                };
                 self.add_undo_state(previous);
-                self.save();
+                self.save_world();
                 true
             }
         }
@@ -255,18 +527,17 @@ impl Component for App {
         let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
-        let update_db = link.callback(|_| Msg::UpdateDb);
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
 
-        let hide_empty_balances = self.global_metadata.hide_empty_balances;
+        let hide_empty_balances = self.world.global_metadata.hide_empty_balances;
         let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
             hide_empty_balances: !hide_empty_balances,
         });
         let hidden_balances = hide_empty_balances.then(|| "hide-empty-balances");
         html! {
-            <ContextProvider<Rc<Database>> context={Rc::clone(&self.state.database)}>
-                <ContextProvider<NodeMetadata> context={self.metadata.clone()}>
+            <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
+                <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
                     <div class="App">
                         <div class="navbar">
                             <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
@@ -293,14 +564,6 @@ impl Component for App {
                                         <span class="material-icons">{"visibility"}</span>
                                     }
                                 </label>
-                                if self.state.database_outdated {
-                                    <button class="update-db" onclick={update_db}
-                                        title="Update the database of structures and recipes. This could break existing buildings (but you *can* undo this).">
-                                        <span class="material-icons">
-                                            {"browser_updated"}
-                                        </span>
-                                    </button>
-                                }
                             </span>
                             <a class="bug-report" target="_blank"
                                 href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
@@ -310,7 +573,7 @@ impl Component for App {
                             </a>
                         </div>
                         <div class={classes!("appbody", hidden_balances)}>
-                            <NodeDisplay node={self.state.root.clone()}
+                            <NodeDisplay node={self.world.root.clone()}
                                 path={Vec::new()}
                                 {replace} {set_metadata} {batch_set_metadata}
                                 {move_node} />

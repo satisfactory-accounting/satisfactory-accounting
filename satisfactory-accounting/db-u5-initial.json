@@ -1,4 +1,5 @@
 {
+  "icon_prefix": "u5/",
   "version": {"major": "U5", "minor": "Initial"},
   "recipes": {
     "Recipe_FilterGasMask_C": {

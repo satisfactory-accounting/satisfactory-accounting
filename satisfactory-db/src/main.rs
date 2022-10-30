@@ -5,7 +5,7 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, BTreeMap};
 
 use regex::Regex;
 use satisfactory_accounting::database::{
@@ -117,7 +117,7 @@ fn main() {
         .collect();
 
     let bad_icon_names = Regex::new(r"-\(.*\)").unwrap();
-    let recipes: HashMap<_, _> = machine_recipes
+    let recipes: BTreeMap<_, _> = machine_recipes
         .iter()
         .map(|recipe| Recipe {
             name: recipe.name.as_str().into(),
@@ -175,7 +175,7 @@ fn main() {
         "Desc_LiquidTurboFuel_C",
     ];
 
-    let mut items: HashMap<_, _> = raw
+    let mut items: BTreeMap<_, _> = raw
         .items
         .values()
         .filter(|item| used_items.contains(item.class_name.as_str()))
@@ -227,7 +227,7 @@ fn main() {
         .map(|item| (item.id, item))
         .collect();
 
-    let mut buildings: HashMap<_, _> = raw
+    let mut buildings: BTreeMap<_, _> = raw
         .buildings
         .values()
         .filter(|building| {
@@ -410,6 +410,7 @@ fn main() {
     }
 
     let database = Database {
+        icon_prefix: "u5/".to_string(),
         recipes,
         items,
         buildings,
