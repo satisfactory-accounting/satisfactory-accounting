@@ -5,11 +5,12 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
-use std::{cmp::Ordering, rc::Rc};
+use std::rc::Rc;
 
 use internment::Intern;
 use serde::{Deserialize, Serialize};
@@ -19,9 +20,102 @@ use crate::accounting::{
     StationSettings,
 };
 
+/// Enum which identifies versions of the database.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "major", content = "minor")]
+pub enum DatabaseVersion {
+    /// U5 database versions.
+    U5(U5Subversion),
+    /// U6 database versions.
+    U6(U6Subversion),
+}
+
+impl DatabaseVersion {
+    /// All released database versions in order.
+    pub const ALL: &[DatabaseVersion] = &[
+        DatabaseVersion::U5(U5Subversion::Initial),
+        DatabaseVersion::U5(U5Subversion::Final),
+        DatabaseVersion::U6(U6Subversion::Beta),
+    ];
+
+    /// Identifies which database versions are considered deprecated.
+    pub fn is_deprecated(self) -> bool {
+        match self {
+            DatabaseVersion::U5(U5Subversion::Final) => false,
+            DatabaseVersion::U6(U6Subversion::Beta) => false,
+            _ => true,
+        }
+    }
+
+    /// Load this version of the database from the included database string.
+    pub fn load_database(self) -> Database {
+        let db: Database = match self {
+            DatabaseVersion::U5(U5Subversion::Initial) => {
+                const SERIALIZED_DB: &str = include_str!("../db-u5-initial.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u5-initial.json")
+            }
+            DatabaseVersion::U5(U5Subversion::Final) => {
+                const SERIALIZED_DB: &str = include_str!("../db-u5-final.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u5-final.json")
+            }
+            DatabaseVersion::U6(U6Subversion::Beta) => {
+                const SERIALIZED_DB: &str = include_str!("../db-u6-beta.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u6-beta.json")
+            }
+        };
+        assert!(db.version == Some(self));
+        db
+    }
+
+    /// Get the description for this version.
+    pub fn description(self) -> &'static str {
+        match self {
+            DatabaseVersion::U5(U5Subversion::Initial) => {
+                "This is the first version of the database released for U5. Fuel \
+                generators in this version consume 1000x too much fuel."
+            }
+            DatabaseVersion::U5(U5Subversion::Final) => {
+                "This is the final version of the database released for U5."
+            }
+            DatabaseVersion::U6(U6Subversion::Beta) => {
+                "This is the first version of the Satisfactory Accounting database \
+                released after the U6 update."
+            }
+        }
+    }
+}
+
+/// Minor versions within the U5 database.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum U5Subversion {
+    /// Initial database released in Satisfactory Accounting 1.0.0.
+    Initial,
+    /// Final variant of U5 released in Satisfactory Accounting released in 1.0.1.
+    Final,
+}
+
+/// Minor versions with in the U6 database.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum U6Subversion {
+    /// Initial release of U6 for Satisfactory Accounting released in 1.1.0.
+    Beta,
+}
+
+impl fmt::Display for DatabaseVersion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DatabaseVersion::U5(U5Subversion::Initial) => f.write_str("U5 — Initial"),
+            DatabaseVersion::U5(U5Subversion::Final) => f.write_str("U5 — Final"),
+            DatabaseVersion::U6(U6Subversion::Beta) => f.write_str("U6 — Beta"),
+        }
+    }
+}
+
 /// Database of satisfactory ... stuff.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Database {
+    /// Which version of the database this is, if it corresponds to a particular version.
+    pub version: Option<DatabaseVersion>,
     /// Core recipe storage. We only store machine recipes.
     pub recipes: HashMap<RecipeId, Recipe>,
     /// Core item storage.
@@ -36,10 +130,9 @@ impl Database {
         id.fetch(self)
     }
 
-    /// Load the default database from the included json string.
-    pub fn load_default() -> Self {
-        const SERIALIZED_DB: &str = include_str!("../db.json");
-        serde_json::from_str(SERIALIZED_DB).expect("Failed to parse included db.json")
+    /// Load the default version of the database.
+    pub fn load_default() -> Database {
+        DatabaseVersion::U6(U6Subversion::Beta).load_database()
     }
 }
 

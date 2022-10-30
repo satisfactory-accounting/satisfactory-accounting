@@ -48,3 +48,8 @@ impl<T: Component> CtxHelper for Context<T> {
         meta.meta(id)
     }
 }
+
+/// Get the database from context.
+fn db_ctx() -> Rc<Database> {
+    use_context::<Rc<Database>>().expect("database context to be set")
+}
