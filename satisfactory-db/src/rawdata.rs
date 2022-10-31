@@ -142,7 +142,7 @@ pub(crate) struct Building {
     pub(crate) name: String,
     pub(crate) description: String,
     pub(crate) categories: Vec<String>,
-    pub(crate) build_menu_priority: f32,
+    pub(crate) build_menu_priority: Option<f32>,
     pub(crate) class_name: String,
     pub(crate) metadata: BuildingMetadata,
     pub(crate) size: Size,

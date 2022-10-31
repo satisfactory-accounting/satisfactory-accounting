@@ -410,7 +410,7 @@ fn main() {
     }
 
     let database = Database {
-        icon_prefix: "u5/".to_string(),
+        icon_prefix: "u6/".to_string(),
         recipes,
         items,
         buildings,
