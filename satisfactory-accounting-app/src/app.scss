@@ -4,7 +4,9 @@
 body {
     display: flex;
 }
-html, body {
+
+html,
+body {
     margin: 0;
     padding: 0;
     min-width: 100%;
@@ -14,9 +16,18 @@ html, body {
     color: colors.$gray-dark;
     font-size: 18px;
 }
+
 input {
     font-family: 'Rubik', 'Sans';
     font-size: 18px;
+}
+
+@mixin texticonbutton {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+    align-items: center;
+    gap: 5px;
 }
 
 .App {
@@ -70,8 +81,13 @@ input {
             @include colors.primary-button;
         }
 
-        .update-db {
+        .open-world {
             @include colors.primary-button;
+        }
+
+        .choose-database {
+            @include colors.primary-button;
+            @include texticonbutton;
         }
 
         .bug-report {
@@ -81,6 +97,7 @@ input {
 
         .empty-balance-toggle {
             @include colors.primary-button;
+
             input {
                 // Hide the default checkbox. The rest is to hide and allow tabbing, which
                 // display:none prevents.
@@ -102,5 +119,178 @@ input {
         align-items: stretch;
         flex-grow: 1;
         padding: 10px;
+    }
+
+    .overlay-window {
+        position: fixed;
+        z-index: 1;
+        display: flex;
+        box-sizing: border-box;
+        padding: 5px;
+        border-radius: 10px;
+        gap: 5px;
+
+        &.hide {
+            display: none;
+        }
+
+        width: 800px;
+        left: 50%;
+        max-height: calc(100vh - 140px);
+        margin-left: -400px;
+        top: 70px;
+        background-color: colors.$light;
+        box-shadow: 5px 5px 10px #000000A0,
+        -2px -2px 10px #00000080;
+
+        flex-direction: column;
+        align-items: stretch;
+
+        .close-bar {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            h3 {
+                margin: 0;
+                font-size: 21px;
+            }
+        }
+
+        .world-list,
+        .database-list {
+            display: flex;
+            gap: 5px;
+
+            flex-direction: column;
+            align-items: stretch;
+            overflow-y: scroll;
+        }
+
+        .right-buttons {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .world-list-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            background-color: colors.$gray-light;
+            box-sizing: border-box;
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .database-list-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            background-color: colors.$gray-light;
+            box-sizing: border-box;
+            padding: 5px;
+            border-radius: 5px;
+            gap: 5px;
+
+            &.deprecated {
+                background-color: #a18f76;
+            }
+
+            .version-namedesc {
+                display: flex;
+                flex-direction: row;
+                justify-content: flex-start;
+                align-items: center;
+                gap: 5px;
+
+                .version-name {
+                    width: 100px;
+                    flex-shrink: 0;
+                }
+            }
+
+            .choose-db {
+                @include colors.primary-button;
+            }
+        }
+
+        .new-world {
+            @include colors.green-button;
+        }
+
+        .delete-world {
+            @include colors.red-button;
+        }
+
+        .close {
+            @include colors.primary-button;
+        }
+
+        .show-deprecated {
+            @include colors.primary-button;
+            @include texticonbutton;
+        }
+
+    }
+
+    .overlay-delete-window {
+        position: fixed;
+        z-index: 2;
+        display: flex;
+        box-sizing: border-box;
+        border-radius: 10px;
+        padding: 30px;
+        gap: 20px;
+
+        width: 800px;
+        left: 50%;
+        margin-left: -400px;
+        top: 130px;
+        background-color: colors.$light;
+        box-shadow: 5px 5px 10px #000000A0, -2px -2px 10px #00000080;
+
+        flex-direction: column;
+        align-items: stretch;
+
+        h2,
+        h3 {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            margin: 0;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 27px;
+        }
+
+        h3 {
+            font-size: 21px;
+        }
+
+        .button-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: stretch;
+            gap: 20px;
+        }
+
+        .cancel {
+            @include colors.green-button;
+            font-size: 100%;
+        }
+
+        .delete-forever {
+            @include colors.red-button;
+            font-size: 100%;
+        }
     }
 }

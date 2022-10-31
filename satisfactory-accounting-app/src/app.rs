@@ -32,9 +32,17 @@ const GLOBAL_METADATA_KEY: &str = "zstewart.satisfactorydb.state.globalmetadata"
 
 const WORLD_MAP_KEY: &str = "zstewart.satisfactorydb.state.world";
 
+#[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
+pub enum OverlayWindow {
+    #[default]
+    None,
+    WorldChooser,
+    DatabaseChooser,
+}
+
 /// Unique ID of a world.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
-struct WorldId(Uuid);
+pub struct WorldId(Uuid);
 
 impl WorldId {
     fn new() -> Self {
@@ -89,7 +97,7 @@ impl<'de> Deserialize<'de> for WorldId {
 
 /// Error from parsing a [`WorldId`].
 #[derive(Error, Debug)]
-enum ParseWorldIdError {
+pub enum ParseWorldIdError {
     #[error("ID did not start with zstewart.satisfactorydb.state.world.")]
     IncorrectPrefix,
     #[error("Parsing suffix as uuid failed")]
@@ -155,6 +163,14 @@ impl DatabaseChoice {
         match *self {
             DatabaseChoice::Standard(version) => Rc::new(version.load_database()),
             DatabaseChoice::Custom(ref db) => Rc::clone(db),
+        }
+    }
+
+    /// Return true if this is a standard database with the specified version.
+    fn is_standard_version(&self, version: DatabaseVersion) -> bool {
+        match *self {
+            DatabaseChoice::Standard(v) => v == version,
+            _ => false,
         }
     }
 }
@@ -347,10 +363,30 @@ pub enum Msg {
     Redo,
     /// Set the database to the given database choice.
     SetDb(DatabaseChoice),
+    /// Set the status of show_deprecated_databases.
+    ShowDeprecated(bool),
+    /// Select a particular world.
+    SetWorld(WorldId),
+    /// Create a new world.
+    CreateWorld,
+    /// Initiate deleting a world.
+    InitiateDelete(WorldId),
+    /// Cancel deleting a world.
+    CancelDelete,
+    /// Permanently delete the world with the given ID.
+    DeleteForever(WorldId),
+    /// Show or hide one of the overlay windows.
+    SetWindow(OverlayWindow),
 }
 
 /// Current state of the app.
 pub struct App {
+    /// Overlay window to show.
+    overlay_window: OverlayWindow,
+    /// World with a "confirm delete" window currently present.
+    pending_delete: Option<WorldId>,
+    /// Whether to show deprecated database versions in the list.
+    show_deprecated_databases: bool,
     /// Listing of available worlds.
     worlds: Worlds,
     /// State of the currently selected world.
@@ -430,6 +466,9 @@ impl Component for App {
         let database = world.database.get();
 
         Self {
+            overlay_window: OverlayWindow::None,
+            pending_delete: None,
+            show_deprecated_databases: false,
             worlds,
             world,
             database,
@@ -514,6 +553,120 @@ impl Component for App {
                 self.save_world();
                 true
             }
+            Msg::ShowDeprecated(show_deprecated) => {
+                if self.show_deprecated_databases != show_deprecated {
+                    self.show_deprecated_databases = show_deprecated;
+                    self.overlay_window == OverlayWindow::DatabaseChooser
+                } else {
+                    false
+                }
+            }
+            Msg::SetWorld(world_id) => {
+                if !self.worlds.worlds.contains_key(&world_id) {
+                    warn!("Unknown world {world_id}");
+                    false
+                } else if world_id == self.worlds.selected {
+                    false
+                } else {
+                    match World::load(world_id) {
+                        Ok(world) => {
+                            self.worlds.selected = world_id;
+                            self.world = world;
+                            self.database = self.world.database.get();
+                            self.undo_stack.clear();
+                            self.redo_stack.clear();
+                            self.worlds.save();
+                            true
+                        }
+                        Err(e) => {
+                            warn!("Unable to load world {world_id}: {e}");
+                            false
+                        }
+                    }
+                }
+            }
+            Msg::CreateWorld => {
+                let new_id = WorldId::new();
+                let world = World::new();
+                world.save(new_id);
+                self.worlds.worlds.insert(new_id, world.storage_metadata());
+                self.worlds.selected = new_id;
+                self.world = world;
+                self.database = self.world.database.get();
+                self.undo_stack.clear();
+                self.redo_stack.clear();
+                self.worlds.save();
+                true
+            }
+            Msg::InitiateDelete(id) => {
+                if self.pending_delete != Some(id) {
+                    self.pending_delete = Some(id);
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::CancelDelete => {
+                if self.pending_delete.is_some() {
+                    self.pending_delete = None;
+                    true
+                } else {
+                    false
+                }
+            }
+            Msg::DeleteForever(id) => {
+                if Some(id) != self.pending_delete {
+                    warn!("Requested delete did not match pending delete");
+                    self.pending_delete = None;
+                    return true;
+                }
+                self.pending_delete = None;
+                self.worlds.worlds.remove(&id);
+                LocalStorage::delete(id.to_string());
+                if self.worlds.selected == id {
+                    for &id in self.worlds.worlds.keys() {
+                        match World::load(id) {
+                            Ok(world) => {
+                                self.worlds.selected = id;
+                                self.world = world;
+                                self.database = self.world.database.get();
+                                self.undo_stack.clear();
+                                self.redo_stack.clear();
+                                self.worlds.save();
+                                return true;
+                            }
+                            Err(e) => {
+                                warn!("Unable to load world {id}: {e}");
+                            }
+                        }
+                    }
+                    // Either there are no existing worlds or all worlds failed to load.
+                    let new_id = WorldId::new();
+                    let world = World::new();
+                    world.save(new_id);
+                    self.worlds.worlds.insert(new_id, world.storage_metadata());
+                    self.worlds.selected = new_id;
+                    self.world = world;
+                    self.database = self.world.database.get();
+                    self.undo_stack.clear();
+                    self.redo_stack.clear();
+                    self.worlds.save();
+                }
+                true
+            }
+            Msg::SetWindow(overlay) => {
+                if self.pending_delete.is_some() {
+                    self.pending_delete = None;
+                    self.overlay_window = overlay;
+                    return true;
+                }
+                if self.overlay_window != overlay {
+                    self.overlay_window = overlay;
+                    true
+                } else {
+                    false
+                }
+            }
         }
     }
 
@@ -525,8 +678,18 @@ impl Component for App {
         });
         let set_metadata = link.callback(|(id, meta)| Msg::UpdateMetadata { id, meta });
         let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
+        let chooseworld = if self.overlay_window == OverlayWindow::WorldChooser {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
+        } else {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::WorldChooser))
+        };
         let undo = link.callback(|_| Msg::Undo);
         let redo = link.callback(|_| Msg::Redo);
+        let choosedb = if self.overlay_window == OverlayWindow::DatabaseChooser {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
+        } else {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::DatabaseChooser))
+        };
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
 
@@ -544,6 +707,9 @@ impl Component for App {
                         </div>
                         <div class="menubar">
                             <span class="section">
+                                <button class="open-world" title="Choose World" onclick={chooseworld}>
+                                    <span class="material-icons">{"folder_open"}</span>
+                                </button>
                                 <button class="unredo" title="Undo"
                                     onclick={undo}
                                     disabled={self.undo_stack.is_empty()}>
@@ -553,6 +719,10 @@ impl Component for App {
                                     onclick={redo}
                                     disabled={self.redo_stack.is_empty()}>
                                     <span class="material-icons">{"redo"}</span>
+                                </button>
+                                <button class="choose-database" title="Choose Database" onclick={choosedb}>
+                                    <span class="material-icons">{"factory"}</span>
+                                    <span>{self.name_db()}</span>
                                 </button>
                                 <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
                                     <input type="checkbox" checked={hide_empty_balances}
@@ -578,9 +748,163 @@ impl Component for App {
                                 {replace} {set_metadata} {batch_set_metadata}
                                 {move_node} />
                         </div>
-                    </div>
+                        { self.world_chooser(ctx) }
+                        { self.database_chooser(ctx) }
+                        if let Some(pending) = self.pending_delete {
+                            { self.confirm_delete(ctx, pending) }
+                        }
+                   </div>
                 </ContextProvider<NodeMetadata>>
             </ContextProvider<Rc<Database>>>
+        }
+    }
+}
+
+impl App {
+    fn name_db(&self) -> &'static str {
+        match self.world.database {
+            DatabaseChoice::Standard(version) => version.name(),
+            DatabaseChoice::Custom(_) => "Custom",
+        }
+    }
+
+    fn world_chooser(&self, ctx: &Context<Self>) -> Html {
+        let link = ctx.link();
+        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+        let new = link.callback(|_| Msg::CreateWorld);
+
+        let worlds = self.worlds.worlds.iter().map(|(&id, meta)| {
+            let open = link.callback(move |_| Msg::SetWorld(id));
+            let delete = link.callback(move |_| Msg::InitiateDelete(id));
+            html! {
+                <div class="world-list-row">
+                    <span>{&meta.name}</span>
+                    <span class="right-buttons">
+                        <button class="delete-world" onclick={delete}>
+                            <span class="material-icons">{"delete"}</span>
+                        </button>
+                        <button class="new-world" onclick={open}>
+                            <span class="material-icons">{"open_in_browser"}</span>
+                        </button>
+                    </span>
+                </div>
+            }
+        });
+        let hidden = match self.overlay_window {
+            OverlayWindow::WorldChooser => None,
+            _ => Some("hide"),
+        };
+        html! {
+            <div class={classes!("overlay-window", hidden)}>
+                <div class="close-bar">
+                    <h3>{"Choose World"}</h3>
+                    <button class="close" title="Choose World" onclick={close}>
+                        <span class="material-icons">{"close"}</span>
+                    </button>
+                </div>
+                <div class="world-list">
+                    <div class="world-list-row">
+                        <span>{"Create New"}</span>
+                        <button class="new-world" onclick={new}>
+                            <span class="material-icons">{"add"}</span>
+                        </button>
+                    </div>
+                    { for worlds }
+                </div>
+            </div>
+        }
+    }
+
+    fn database_chooser(&self, ctx: &Context<Self>) -> Html {
+        let link = ctx.link();
+        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+        let show_deprecated = self.show_deprecated_databases;
+        let toggle_deprecated = link.callback(move |_| Msg::ShowDeprecated(!show_deprecated));
+
+        let databases = DatabaseVersion::ALL
+            .iter()
+            .filter(|version| show_deprecated || !version.is_deprecated())
+            .map(|version| {
+                let deprecated = if version.is_deprecated() {
+                    Some("deprecated")
+                } else {
+                    None
+                };
+                let choose_db = link.callback(|_| Msg::SetDb(DatabaseChoice::Standard(*version)));
+                html! {
+                    <div class={classes!("database-list-row", deprecated)}>
+                        <div class="version-namedesc">
+                            <span class="version-name">{version.name()}</span>
+                            <span class="version-description">{version.description()}</span>
+                        </div>
+                        <button class="choose-db" onclick={choose_db}>
+                            <span class="material-icons">{
+                                if self.world.database.is_standard_version(*version) {
+                                    "radio_button_checked"
+                                } else {
+                                    "radio_button_unchecked"
+                                }
+                            }</span>
+                        </button>
+                    </div>
+                }
+            });
+        let hidden = match self.overlay_window {
+            OverlayWindow::DatabaseChooser => None,
+            _ => Some("hide"),
+        };
+        html! {
+            <div class={classes!("overlay-window", hidden)}>
+                <div class="close-bar">
+                    <h3>{"Choose Database"}</h3>
+                    <span class="right-buttons">
+                        <button class="show-deprecated" onclick={toggle_deprecated}>
+                            <span>{"Deprecated Versions"}</span>
+                            <span class="material-icons">{
+                                if self.show_deprecated_databases {
+                                    "visibility"
+                                } else {
+                                    "visibility_off"
+                                }
+                            }</span>
+                        </button>
+                        <button class="close" title="Choose World" onclick={close}>
+                            <span class="material-icons">{"close"}</span>
+                        </button>
+                    </span>
+                </div>
+                <div class="database-list">
+                    { for databases }
+                </div>
+            </div>
+        }
+    }
+
+    fn confirm_delete(&self, ctx: &Context<Self>, id: WorldId) -> Html {
+        let link = ctx.link();
+        let cancel = link.callback(|_| Msg::CancelDelete);
+        let delete = link.callback(move |_| Msg::DeleteForever(id));
+
+        let name = match self.worlds.worlds.get(&id) {
+            Some(meta) if !meta.name.is_empty() => &meta.name,
+            Some(_) => "<Empty Name>",
+            None => "<Not Found>",
+        };
+        html! {
+            <div class="overlay-delete-window">
+                <h2>{"Are you sure you want to delete World "}{name}</h2>
+                <h3>{"This CANNOT be undone!"}</h3>
+                <div class="button-row">
+                    <button class="cancel" onclick={cancel}>
+                        <span>{"Cancel"}</span>
+                        <span class="material-icons">{"arrow_back"}</span>
+                    </button>
+                    <button class="delete-forever" onclick={delete}>
+                        <span>{"Delete"}</span>
+                        <span class="material-icons">{"delete_forever"}</span>
+                    </button>
+                </div>
+            </div>
         }
     }
 }

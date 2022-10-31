@@ -68,6 +68,15 @@ impl DatabaseVersion {
         }
     }
 
+    /// Get the displayable name for this database version.
+    pub fn name(self) -> &'static str {
+        match self {
+            DatabaseVersion::U5(U5Subversion::Initial) => "U5 \u{2013} Initial",
+            DatabaseVersion::U5(U5Subversion::Final) => "U5 \u{2013} Final",
+            DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
+        }
+    }
+
     /// Get the description for this version.
     pub fn description(self) -> &'static str {
         match self {
@@ -80,7 +89,7 @@ impl DatabaseVersion {
             }
             DatabaseVersion::U6(U6Subversion::Beta) => {
                 "This is the first version of the Satisfactory Accounting database \
-                released after the U6 update."
+                released after the U6 update. Please report missing/incorrect recipes!"
             }
         }
     }
@@ -104,11 +113,7 @@ pub enum U6Subversion {
 
 impl fmt::Display for DatabaseVersion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            DatabaseVersion::U5(U5Subversion::Initial) => f.write_str("U5 — Initial"),
-            DatabaseVersion::U5(U5Subversion::Final) => f.write_str("U5 — Final"),
-            DatabaseVersion::U6(U6Subversion::Beta) => f.write_str("U6 — Beta"),
-        }
+        f.write_str(self.name())
     }
 }
 
