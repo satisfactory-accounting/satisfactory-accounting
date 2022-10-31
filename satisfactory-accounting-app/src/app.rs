@@ -780,10 +780,10 @@ impl App {
                 <div class="world-list-row">
                     <span>{&meta.name}</span>
                     <span class="right-buttons">
-                        <button class="delete-world" onclick={delete}>
+                        <button class="delete-world" title="Delete World" onclick={delete}>
                             <span class="material-icons">{"delete"}</span>
                         </button>
-                        <button class="new-world" onclick={open}>
+                        <button class="new-world" title="Switch to this World" onclick={open}>
                             <span class="material-icons">{"open_in_browser"}</span>
                         </button>
                     </span>
@@ -798,14 +798,14 @@ impl App {
             <div class={classes!("overlay-window", hidden)}>
                 <div class="close-bar">
                     <h3>{"Choose World"}</h3>
-                    <button class="close" title="Choose World" onclick={close}>
+                    <button class="close" title="Close" onclick={close}>
                         <span class="material-icons">{"close"}</span>
                     </button>
                 </div>
                 <div class="world-list">
                     <div class="world-list-row">
                         <span>{"Create New"}</span>
-                        <button class="new-world" onclick={new}>
+                        <button class="new-world" title="Create New World" onclick={new}>
                             <span class="material-icons">{"add"}</span>
                         </button>
                     </div>
@@ -837,7 +837,7 @@ impl App {
                             <span class="version-name">{version.name()}</span>
                             <span class="version-description">{version.description()}</span>
                         </div>
-                        <button class="choose-db" onclick={choose_db}>
+                        <button class="choose-db" title="Select this Version" onclick={choose_db}>
                             <span class="material-icons">{
                                 if self.world.database.is_standard_version(*version) {
                                     "radio_button_checked"
@@ -858,7 +858,7 @@ impl App {
                 <div class="close-bar">
                     <h3>{"Choose Database"}</h3>
                     <span class="right-buttons">
-                        <button class="show-deprecated" onclick={toggle_deprecated}>
+                        <button class="show-deprecated" title="Show Deprecated Versions" onclick={toggle_deprecated}>
                             <span>{"Deprecated Versions"}</span>
                             <span class="material-icons">{
                                 if self.show_deprecated_databases {
@@ -868,7 +868,7 @@ impl App {
                                 }
                             }</span>
                         </button>
-                        <button class="close" title="Choose World" onclick={close}>
+                        <button class="close" title="Close" onclick={close}>
                             <span class="material-icons">{"close"}</span>
                         </button>
                     </span>
@@ -895,11 +895,11 @@ impl App {
                 <h2>{"Are you sure you want to delete World "}{name}</h2>
                 <h3>{"This CANNOT be undone!"}</h3>
                 <div class="button-row">
-                    <button class="cancel" onclick={cancel}>
+                    <button class="cancel" title="Cancel" onclick={cancel}>
                         <span>{"Cancel"}</span>
                         <span class="material-icons">{"arrow_back"}</span>
                     </button>
-                    <button class="delete-forever" onclick={delete}>
+                    <button class="delete-forever" title="Delete Forever" onclick={delete}>
                         <span>{"Delete"}</span>
                         <span class="material-icons">{"delete_forever"}</span>
                     </button>

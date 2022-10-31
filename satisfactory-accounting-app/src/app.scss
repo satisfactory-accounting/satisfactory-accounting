@@ -285,12 +285,29 @@ input {
 
         .cancel {
             @include colors.green-button;
-            font-size: 100%;
+            font-size: 20px;
+            font-weight: bold;
+            width: 130px;
+            height: 35px;
+
+            .material-icons {
+                font-size: 24px;
+                font-weight: bold;
+            }
         }
 
         .delete-forever {
             @include colors.red-button;
-            font-size: 100%;
+            font-size: 20px;
+            font-weight: bold;
+            width: 130px;
+            height: 35px;
+
+            .material-icons {
+                font-size: 24px;
+                font-weight: bold;
+            }
+
         }
     }
 }
