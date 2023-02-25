@@ -28,6 +28,8 @@ pub enum DatabaseVersion {
     U5(U5Subversion),
     /// U6 database versions.
     U6(U6Subversion),
+    /// U7 database versions.
+    U7(U7Subversion),
 }
 
 impl DatabaseVersion {
@@ -36,6 +38,7 @@ impl DatabaseVersion {
         DatabaseVersion::U5(U5Subversion::Initial),
         DatabaseVersion::U5(U5Subversion::Final),
         DatabaseVersion::U6(U6Subversion::Beta),
+        DatabaseVersion::U7(U7Subversion::Final),
     ];
 
     /// Latest version of the database.
@@ -44,8 +47,7 @@ impl DatabaseVersion {
     /// Identifies which database versions are considered deprecated.
     pub fn is_deprecated(self) -> bool {
         match self {
-            DatabaseVersion::U5(U5Subversion::Final) => false,
-            DatabaseVersion::U6(U6Subversion::Beta) => false,
+            DatabaseVersion::U7(U7Subversion::Final) => false,
             _ => true,
         }
     }
@@ -65,6 +67,10 @@ impl DatabaseVersion {
                 const SERIALIZED_DB: &str = include_str!("../db-u6-beta.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u6-beta.json")
             }
+            DatabaseVersion::U7(U7Subversion::Final) => {
+                const SERIALIZED_DB: &str = include_str!("../db-u7-final.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u7-final.json")
+            }
         }
     }
 
@@ -74,6 +80,7 @@ impl DatabaseVersion {
             DatabaseVersion::U5(U5Subversion::Initial) => "U5 \u{2013} Initial",
             DatabaseVersion::U5(U5Subversion::Final) => "U5 \u{2013} Final",
             DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
+            DatabaseVersion::U7(U7Subversion::Final) => "U7 \u{2013} Final",
         }
     }
 
@@ -90,6 +97,9 @@ impl DatabaseVersion {
             DatabaseVersion::U6(U6Subversion::Beta) => {
                 "This is the first version of the Satisfactory Accounting database \
                 released after the U6 update. Please report missing/incorrect recipes!"
+            }
+            DatabaseVersion::U7(U7Subversion::Final) => {
+                "This is the final version of the database released for U7."
             }
         }
     }
@@ -109,6 +119,13 @@ pub enum U5Subversion {
 pub enum U6Subversion {
     /// Initial release of U6 for Satisfactory Accounting released in 1.1.0.
     Beta,
+}
+
+/// Minor versions with in the U7 database.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum U7Subversion {
+    /// Final release of U7 released in Satisfactory Accounting released in 1.2.0.
+    Final,
 }
 
 impl fmt::Display for DatabaseVersion {
@@ -139,7 +156,7 @@ impl Database {
 
     /// Load the default version of the database.
     pub fn load_default() -> Database {
-        DatabaseVersion::U6(U6Subversion::Beta).load_database()
+        DatabaseVersion::U7(U7Subversion::Final).load_database()
     }
 
     /// Compare this database to another database, ignoring their icon prefixes.
