@@ -27,6 +27,8 @@ use satisfactory_accounting::database::{
 
 use crate::CtxHelper;
 
+pub use self::balance::BalanceSortMode;
+
 mod balance;
 mod building;
 mod copies;

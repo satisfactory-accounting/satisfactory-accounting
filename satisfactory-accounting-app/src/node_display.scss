@@ -202,6 +202,13 @@
         justify-content: flex-start;
         align-items: stretch;
 
+        .item-entries {
+            box-sizing: border-box;
+            display: flex;
+            margin: 0;
+            padding: 0;
+        }
+
         .entry-row {
             box-sizing: border-box;
 
@@ -235,6 +242,11 @@
             padding: 5px;
             gap: 5px;
 
+            .item-entries {
+                flex-direction: column;
+                gap: 5px;
+            }
+
             .entry-row {
                 .balance-value {
                     min-width: 3em;
@@ -243,8 +255,13 @@
         }
 
         &.horizontal {
-            flex-direction: row;
+            flex-direction: row-reverse;
             gap: 10px;
+
+            .item-entries {
+                flex-direction: row;
+                gap: 10px;
+            }
 
             .entry-row {
                 gap: 2px;

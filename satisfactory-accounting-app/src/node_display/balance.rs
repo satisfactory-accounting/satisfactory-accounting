@@ -7,11 +7,23 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::rc::Rc;
 
+use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
 use super::NodeDisplay;
 use crate::node_display::icon::Icon;
 use crate::CtxHelper;
+
+/// How entries in the balance should be sorted.
+#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
+pub enum BalanceSortMode {
+    /// Sort by item, irrespective of whether it's input or output.
+    #[default]
+    Item,
+    /// Sort by whether the item is an input or output (positive or negative balance) then
+    /// by item.
+    IOItem,
+}
 
 impl NodeDisplay {
     /// Build the display for a node's balance.
@@ -28,6 +40,7 @@ impl NodeDisplay {
                     <Icon icon={POWER_LINE.with(Clone::clone)}/>
                     <div class="balance-value">{rounded(balance.power)}</div>
                 </div>
+                <div class="item-entries">
                 { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
                     Some(item) => html! {
                         <div class={classes!("entry-row", balance_style(rate))}
@@ -44,6 +57,7 @@ impl NodeDisplay {
                         </div>
                     }
                 }) }
+                </div>
             </div>
         }
     }

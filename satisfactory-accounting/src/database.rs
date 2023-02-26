@@ -45,7 +45,12 @@ impl DatabaseVersion {
     pub const LATEST: DatabaseVersion = Self::ALL[Self::ALL.len() - 1];
 
     /// Identifies which database versions are considered deprecated.
-    /// Keep the latest sub-version of each major update and set earlier sub-versions as depricated
+    ///
+    /// This is mainly used in `satisfactory-accounting-app` to hide versions which have
+    /// been made obsolete by newer releases of this tool, for example
+    /// [`U5Subversion::Initial`] had incorrect rates of fuel consumption. The latest
+    /// release for any major update of the game should be kept not-deprecated (for now),
+    /// in case there are players still using that version.
     pub fn is_deprecated(self) -> bool {
         match self {
             DatabaseVersion::U5(U5Subversion::Final) => false,

@@ -22,7 +22,7 @@ use yew::prelude::*;
 use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 
-use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata};
+use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata, BalanceSortMode};
 
 /// Key that the app state is stored under.
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
@@ -31,6 +31,7 @@ const METADATA_KEY: &str = "zstewart.satisfactorydb.state.metadata";
 const GLOBAL_METADATA_KEY: &str = "zstewart.satisfactorydb.state.globalmetadata";
 
 const WORLD_MAP_KEY: &str = "zstewart.satisfactorydb.state.world";
+const USER_SETTINGS_KEY: &str = "zstewart.satisfactorydb.usersettings";
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum OverlayWindow {
@@ -38,6 +39,29 @@ pub enum OverlayWindow {
     None,
     WorldChooser,
     DatabaseChooser,
+    UserSettings,
+}
+
+/// App-wide settings specific to the user rather than the world.
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+pub struct UserSettings {
+    /// Whether empty balance values should be hidden.
+    hide_empty_balances: bool,
+    balance_sort_mode: BalanceSortMode,
+}
+
+impl UserSettings {
+    /// Load from LocalStorage if possible.
+    fn load() -> Result<Self, StorageError> {
+        LocalStorage::get(USER_SETTINGS_KEY)
+    }
+
+    /// Save the current user settings.
+    fn save(&self) {
+        if let Err(e) = LocalStorage::set(USER_SETTINGS_KEY, &self) {
+            warn!("Unable to save world: {}", e);
+        }
+    }
 }
 
 /// Unique ID of a world.
@@ -229,7 +253,7 @@ impl World {
         }
     }
 
-    /// Load from LocalStorage, or create state if it can't be loaded.
+    /// Load from LocalStorage, if possible.
     fn load(id: WorldId) -> Result<Self, StorageError> {
         let mut world: Self = LocalStorage::get(id.to_string())?;
         // Remove metadata from deleted groups that are definitely no longer in the
@@ -331,7 +355,13 @@ impl World {
 /// Metadata about a particular world.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct GlobalMetadata {
-    /// Whether empty balance values should be hidden.
+    /// Whether to hide or show empty balances in group balances.
+    ///
+    /// This field has been moved to [`UserSettings`]. The field here is only used for
+    /// backwards compatibility, so when migrating to v1.2.0 or later from an earlier
+    /// version we can pull the user's hide_empty_balances setting from the GlobalMetadata
+    /// of the selected world.
+    #[deprecated]
     hide_empty_balances: bool,
 }
 
@@ -381,6 +411,8 @@ pub enum Msg {
 
 /// Current state of the app.
 pub struct App {
+    /// Current user's global settings.
+    user_settings: Rc<UserSettings>,
     /// Overlay window to show.
     overlay_window: OverlayWindow,
     /// World with a "confirm delete" window currently present.
@@ -465,7 +497,24 @@ impl Component for App {
         };
         let database = world.database.get();
 
+        let user_settings = Rc::new(match UserSettings::load() {
+            Ok(settings) => settings,
+            Err(e) => {
+                if !matches!(e, StorageError::KeyNotFound(_)) {
+                    warn!("Failed to load user settings: {}", e);
+                }
+                UserSettings {
+                    // Intentionally using the deprecated field to pull the old value into
+                    // the new, non-deprecated field.
+                    #[allow(deprecated)]
+                    hide_empty_balances: world.global_metadata.hide_empty_balances,
+                    ..Default::default()
+                }
+            }
+        });
+
         Self {
+            user_settings,
             overlay_window: OverlayWindow::None,
             pending_delete: None,
             show_deprecated_databases: false,
