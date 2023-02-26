@@ -38,16 +38,19 @@ impl DatabaseVersion {
         DatabaseVersion::U5(U5Subversion::Initial),
         DatabaseVersion::U5(U5Subversion::Final),
         DatabaseVersion::U6(U6Subversion::Beta),
-        DatabaseVersion::U7(U7Subversion::Final),
+        DatabaseVersion::U7(U7Subversion::Initial),
     ];
 
     /// Latest version of the database.
     pub const LATEST: DatabaseVersion = Self::ALL[Self::ALL.len() - 1];
 
     /// Identifies which database versions are considered deprecated.
+    /// Keep the latest sub-version of each major update and set earlier sub-versions as depricated
     pub fn is_deprecated(self) -> bool {
         match self {
-            DatabaseVersion::U7(U7Subversion::Final) => false,
+            DatabaseVersion::U5(U5Subversion::Final) => false,
+            DatabaseVersion::U6(U6Subversion::Beta) => false,
+            DatabaseVersion::U7(U7Subversion::Initial) => false,
             _ => true,
         }
     }
@@ -67,9 +70,9 @@ impl DatabaseVersion {
                 const SERIALIZED_DB: &str = include_str!("../db-u6-beta.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u6-beta.json")
             }
-            DatabaseVersion::U7(U7Subversion::Final) => {
-                const SERIALIZED_DB: &str = include_str!("../db-u7-final.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u7-final.json")
+            DatabaseVersion::U7(U7Subversion::Initial) => {
+                const SERIALIZED_DB: &str = include_str!("../db-u7-initial.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u7-initial.json")
             }
         }
     }
@@ -80,7 +83,7 @@ impl DatabaseVersion {
             DatabaseVersion::U5(U5Subversion::Initial) => "U5 \u{2013} Initial",
             DatabaseVersion::U5(U5Subversion::Final) => "U5 \u{2013} Final",
             DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
-            DatabaseVersion::U7(U7Subversion::Final) => "U7 \u{2013} Final",
+            DatabaseVersion::U7(U7Subversion::Initial) => "U7 \u{2013} Initial",
         }
     }
 
@@ -98,8 +101,8 @@ impl DatabaseVersion {
                 "This is the first version of the Satisfactory Accounting database \
                 released after the U6 update. Please report missing/incorrect recipes!"
             }
-            DatabaseVersion::U7(U7Subversion::Final) => {
-                "This is the final version of the database released for U7."
+            DatabaseVersion::U7(U7Subversion::Initial) => {
+                "This is the first version of the database released for U7."
             }
         }
     }
@@ -124,8 +127,8 @@ pub enum U6Subversion {
 /// Minor versions with in the U7 database.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum U7Subversion {
-    /// Final release of U7 released in Satisfactory Accounting released in 1.2.0.
-    Final,
+    /// Initial release of U7 released in Satisfactory Accounting released in 1.2.0.
+    Initial,
 }
 
 impl fmt::Display for DatabaseVersion {
@@ -156,7 +159,7 @@ impl Database {
 
     /// Load the default version of the database.
     pub fn load_default() -> Database {
-        DatabaseVersion::U7(U7Subversion::Final).load_database()
+        DatabaseVersion::U7(U7Subversion::Initial).load_database()
     }
 
     /// Compare this database to another database, ignoring their icon prefixes.
