@@ -7,6 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::rc::Rc;
 
+use satisfactory_accounting::database::Item;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
@@ -15,7 +16,7 @@ use crate::node_display::icon::Icon;
 use crate::CtxHelper;
 
 /// How entries in the balance should be sorted.
-#[derive(Debug, Default, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum BalanceSortMode {
     /// Sort by item, irrespective of whether it's input or output.
     #[default]
@@ -34,6 +35,28 @@ impl NodeDisplay {
 
         let balance = ctx.props().node.balance();
         let db = ctx.db();
+        let item_balances: Html = match ctx.settings().balance_sort_mode {
+            BalanceSortMode::Item => balance
+                .balances
+                .iter()
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate))
+                .collect(),
+            BalanceSortMode::IOItem => balance
+                .balances
+                .iter()
+                .filter(|(_, &rate)| rate > 0.0)
+                .chain(balance.balances.iter().filter(|(_, &rate)| rate == 0.0))
+                .chain(balance.balances.iter().filter(|(_, &rate)| rate < 0.0))
+                // Weird NaN handling? I guess I could probably just use is_nan here?
+                .chain(
+                    balance
+                        .balances
+                        .iter()
+                        .filter(|(_, &rate)| !(rate < 0.0) && !(rate == 0.0) && !(rate > 0.0)),
+                )
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate))
+                .collect(),
+        };
         html! {
             <div class={classes!("balance", balance_block_style(vertical))} title="Power">
                 <div class={classes!("entry-row", "power-entry", balance_style(balance.power))}>
@@ -41,25 +64,29 @@ impl NodeDisplay {
                     <div class="balance-value">{rounded(balance.power)}</div>
                 </div>
                 <div class="item-entries">
-                { for balance.balances.iter().map(|(&itemid, &rate)| match db.get(itemid) {
-                    Some(item) => html! {
-                        <div class={classes!("entry-row", balance_style(rate))}
-                            title={Some(item.name.clone())}>
-                            <Icon icon={item.image.clone()}/>
-                            <div class="balance-value">{rounded(rate)}</div>
-                        </div>
-                    },
-                    None => html! {
-                        <div class={classes!("entry-row", balance_style(rate))}
-                            title="Unknown Item">
-                            <Icon />
-                            <div class="balance-value">{rounded(rate)}</div>
-                        </div>
-                    }
-                }) }
+                { item_balances }
                 </div>
             </div>
         }
+    }
+}
+
+fn display_item(item: Option<&Item>, rate: f32) -> Html {
+    match item {
+        Some(item) => html! {
+            <div class={classes!("entry-row", balance_style(rate))}
+                title={Some(item.name.clone())}>
+                <Icon icon={item.image.clone()}/>
+                <div class="balance-value">{rounded(rate)}</div>
+            </div>
+        },
+        None => html! {
+            <div class={classes!("entry-row", balance_style(rate))}
+                title="Unknown Item">
+                <Icon />
+                <div class="balance-value">{rounded(rate)}</div>
+            </div>
+        },
     }
 }
 

@@ -22,7 +22,7 @@ use yew::prelude::*;
 use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 
-use crate::node_display::{NodeDisplay, NodeMeta, NodeMetadata, BalanceSortMode};
+use crate::node_display::{BalanceSortMode, NodeDisplay, NodeMeta, NodeMetadata};
 
 /// Key that the app state is stored under.
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
@@ -43,11 +43,11 @@ pub enum OverlayWindow {
 }
 
 /// App-wide settings specific to the user rather than the world.
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UserSettings {
     /// Whether empty balance values should be hidden.
-    hide_empty_balances: bool,
-    balance_sort_mode: BalanceSortMode,
+    pub hide_empty_balances: bool,
+    pub balance_sort_mode: BalanceSortMode,
 }
 
 impl UserSettings {
@@ -389,6 +389,10 @@ pub enum Msg {
     ToggleEmptyBalances {
         hide_empty_balances: bool,
     },
+    /// Change to the specified balance sort mode.
+    SetBalanceSortMode {
+        sort_mode: BalanceSortMode,
+    },
     Undo,
     Redo,
     /// Set the database to the given database choice.
@@ -503,13 +507,15 @@ impl Component for App {
                 if !matches!(e, StorageError::KeyNotFound(_)) {
                     warn!("Failed to load user settings: {}", e);
                 }
-                UserSettings {
+                let settings = UserSettings {
                     // Intentionally using the deprecated field to pull the old value into
                     // the new, non-deprecated field.
                     #[allow(deprecated)]
                     hide_empty_balances: world.global_metadata.hide_empty_balances,
                     ..Default::default()
-                }
+                };
+                settings.save();
+                settings
             }
         });
 
@@ -561,10 +567,18 @@ impl Component for App {
             Msg::ToggleEmptyBalances {
                 hide_empty_balances,
             } => {
-                self.world.global_metadata.hide_empty_balances = hide_empty_balances;
-                self.save_world();
+                Rc::make_mut(&mut self.user_settings).hide_empty_balances = hide_empty_balances;
+                self.user_settings.save();
                 true
             }
+            Msg::SetBalanceSortMode { sort_mode }
+                if self.user_settings.balance_sort_mode != sort_mode =>
+            {
+                Rc::make_mut(&mut self.user_settings).balance_sort_mode = sort_mode;
+                self.user_settings.save();
+                true
+            }
+            Msg::SetBalanceSortMode { sort_mode: _ } => false,
             Msg::Undo => match self.undo_stack.pop() {
                 Some(previous) => {
                     let next = self.world.apply_undo_state(previous);
@@ -742,68 +756,82 @@ impl Component for App {
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
 
-        let hide_empty_balances = self.world.global_metadata.hide_empty_balances;
+        let settings = if self.overlay_window == OverlayWindow::UserSettings {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
+        } else {
+            link.callback(|_| Msg::SetWindow(OverlayWindow::UserSettings))
+        };
+
+        let hide_empty_balances = self.user_settings.hide_empty_balances;
         let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
             hide_empty_balances: !hide_empty_balances,
         });
         let hidden_balances = hide_empty_balances.then(|| "hide-empty-balances");
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
-                <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
-                    <div class="App">
-                        <div class="navbar">
-                            <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
-                        </div>
-                        <div class="menubar">
-                            <span class="section">
-                                <button class="open-world" title="Choose World" onclick={chooseworld}>
-                                    <span class="material-icons">{"folder_open"}</span>
-                                </button>
-                                <button class="unredo" title="Undo"
-                                    onclick={undo}
-                                    disabled={self.undo_stack.is_empty()}>
-                                    <span class="material-icons">{"undo"}</span>
-                                </button>
-                                <button class="unredo" title="Redo"
-                                    onclick={redo}
-                                    disabled={self.redo_stack.is_empty()}>
-                                    <span class="material-icons">{"redo"}</span>
-                                </button>
-                                <button class="choose-database" title="Choose Database" onclick={choosedb}>
-                                    <span class="material-icons">{"factory"}</span>
-                                    <span>{self.name_db()}</span>
-                                </button>
-                                <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
-                                    <input type="checkbox" checked={hide_empty_balances}
-                                        onchange={toggle_empty_balances} />
-                                    <span class="material-icons">{"exposure_zero"}</span>
-                                    if hide_empty_balances {
-                                        <span class="material-icons">{"visibility_off"}</span>
-                                    } else {
-                                        <span class="material-icons">{"visibility"}</span>
-                                    }
-                                </label>
+            <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
+            <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
+            <div class="App">
+                <div class="navbar">
+                    <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
+                </div>
+                <div class="menubar">
+                    <span class="section">
+                        <button class="open-world" title="Choose World" onclick={chooseworld}>
+                            <span class="material-icons">{"folder_open"}</span>
+                        </button>
+                        <button class="unredo" title="Undo"
+                            onclick={undo}
+                            disabled={self.undo_stack.is_empty()}>
+                            <span class="material-icons">{"undo"}</span>
+                        </button>
+                        <button class="unredo" title="Redo"
+                            onclick={redo}
+                            disabled={self.redo_stack.is_empty()}>
+                            <span class="material-icons">{"redo"}</span>
+                        </button>
+                        <button class="choose-database" title="Choose Database" onclick={choosedb}>
+                            <span class="material-icons">{"factory"}</span>
+                            <span>{self.name_db()}</span>
+                        </button>
+                        <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
+                            <input type="checkbox" checked={hide_empty_balances}
+                                onchange={toggle_empty_balances} />
+                            <span class="material-icons">{"exposure_zero"}</span>
+                            if hide_empty_balances {
+                                <span class="material-icons">{"visibility_off"}</span>
+                            } else {
+                                <span class="material-icons">{"visibility"}</span>
+                            }
+                        </label>
+                    </span>
+                    <span class="section">
+                        <button class="settings" title="Settings" onclick={settings}>
+                            <span class="material-icons">{"settings"}</span>
+                        </button>
+                        <a class="bug-report" target="_blank"
+                            href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
+                            <span class="material-icons">
+                                {"bug_report"}
                             </span>
-                            <a class="bug-report" target="_blank"
-                                href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
-                                <span class="material-icons">
-                                    {"bug_report"}
-                                </span>
-                            </a>
-                        </div>
-                        <div class={classes!("appbody", hidden_balances)}>
-                            <NodeDisplay node={self.world.root.clone()}
-                                path={Vec::new()}
-                                {replace} {set_metadata} {batch_set_metadata}
-                                {move_node} />
-                        </div>
-                        { self.world_chooser(ctx) }
-                        { self.database_chooser(ctx) }
-                        if let Some(pending) = self.pending_delete {
-                            { self.confirm_delete(ctx, pending) }
-                        }
-                   </div>
-                </ContextProvider<NodeMetadata>>
+                        </a>
+                    </span>
+                </div>
+                <div class={classes!("appbody", hidden_balances)}>
+                    <NodeDisplay node={self.world.root.clone()}
+                        path={Vec::new()}
+                        {replace} {set_metadata} {batch_set_metadata}
+                        {move_node} />
+                </div>
+                { self.world_chooser(ctx) }
+                { self.database_chooser(ctx) }
+                { self.user_settings_window(ctx) }
+                if let Some(pending) = self.pending_delete {
+                    { self.confirm_delete(ctx, pending) }
+                }
+            </div>
+            </ContextProvider<NodeMetadata>>
+            </ContextProvider<Rc<UserSettings>>>
             </ContextProvider<Rc<Database>>>
         }
     }
@@ -952,6 +980,76 @@ impl App {
                         <span>{"Delete"}</span>
                         <span class="material-icons">{"delete_forever"}</span>
                     </button>
+                </div>
+            </div>
+        }
+    }
+
+    /// Display the user settings window. This is always displayed and is hidden in CSS
+    /// when not needed.
+    fn user_settings_window(&self, ctx: &Context<Self>) -> Html {
+        let link = ctx.link();
+        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+
+        let hide_empty_balances = self.user_settings.hide_empty_balances;
+        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
+            hide_empty_balances: !hide_empty_balances,
+        });
+
+        let sort_by_item = link.callback(move |_| Msg::SetBalanceSortMode {
+            sort_mode: BalanceSortMode::Item,
+        });
+
+        let sort_by_ioitem = link.callback(move |_| Msg::SetBalanceSortMode {
+            sort_mode: BalanceSortMode::IOItem,
+        });
+
+        let hidden = match self.overlay_window {
+            OverlayWindow::UserSettings => None,
+            _ => Some("hide"),
+        };
+        html! {
+            <div class={classes!("overlay-window", "user-settings", hidden)}>
+                <div class="close-bar">
+                    <h3>{"Settings"}</h3>
+                    <button class="close" title="Close" onclick={close}>
+                        <span class="material-icons">{"close"}</span>
+                    </button>
+                </div>
+                <div class="settings-list">
+                    <span class="setting-row toggle" onclick={toggle_empty_balances}>
+                        <span>{"Hide Empty Balances"}</span>
+                        <span class="material-icons">{
+                            if hide_empty_balances {
+                                "check_box"
+                            } else {
+                                "check_box_outline_blank"
+                            }
+                        }</span>
+                    </span>
+                    <div class="setting-group">
+                        <h4>{"Balance Sort Mode"}</h4>
+                        <span class="setting-row toggle" onclick={sort_by_item}>
+                            <span>{"Sort by item"}</span>
+                            <span class="material-icons">{
+                                if self.user_settings.balance_sort_mode == BalanceSortMode::Item {
+                                    "radio_button_checked"
+                                } else {
+                                    "radio_button_unchecked"
+                                }
+                            }</span>
+                        </span>
+                        <span class="setting-row toggle" onclick={sort_by_ioitem}>
+                            <span>{"Sort by inputs vs outputs, then by item"}</span>
+                            <span class="material-icons">{
+                                if self.user_settings.balance_sort_mode == BalanceSortMode::IOItem {
+                                    "radio_button_checked"
+                                } else {
+                                    "radio_button_unchecked"
+                                }
+                            }</span>
+                        </span>
+                    </div>
                 </div>
             </div>
         }

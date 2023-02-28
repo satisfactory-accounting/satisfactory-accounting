@@ -7,11 +7,13 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::rc::Rc;
 
-use node_display::{NodeMeta, NodeMetadata};
 use uuid::Uuid;
 use yew::prelude::*;
 
 use satisfactory_accounting::database::Database;
+
+use self::app::UserSettings;
+use self::node_display::{NodeMeta, NodeMetadata};
 
 mod app;
 mod node_display;
@@ -29,6 +31,10 @@ trait CtxHelper {
     /// Get the metadata from context, throw if context is missing (gets default metadat
     /// if not set).
     fn meta(&self, id: Uuid) -> NodeMeta;
+
+    /// Get the user settings from context, throw if context is missing (gets default if
+    /// not set).
+    fn settings(&self) -> Rc<UserSettings>;
 }
 
 impl<T: Component> CtxHelper for Context<T> {
@@ -46,6 +52,14 @@ impl<T: Component> CtxHelper for Context<T> {
             .context::<NodeMetadata>(Callback::noop())
             .expect("metadata context to be set");
         meta.meta(id)
+    }
+
+    fn settings(&self) -> Rc<UserSettings> {
+        let (settings, _) = self
+            .link()
+            .context::<Rc<UserSettings>>(Callback::noop())
+            .expect("user settings context to be set");
+        settings
     }
 }
 

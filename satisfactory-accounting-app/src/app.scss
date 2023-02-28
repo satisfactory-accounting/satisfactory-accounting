@@ -90,6 +90,10 @@ input {
             @include texticonbutton;
         }
 
+        .settings {
+            @include colors.primary-button;
+        }
+
         .bug-report {
             @include colors.primary-button;
             text-decoration: none;
@@ -159,7 +163,8 @@ input {
         }
 
         .world-list,
-        .database-list {
+        .database-list,
+        .settings-list {
             display: flex;
             gap: 5px;
 
@@ -218,6 +223,29 @@ input {
             .choose-db {
                 @include colors.primary-button;
             }
+        }
+
+        &.user-settings h4 {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+            margin: 0;
+        }
+
+        .setting-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+
+            &.toggle {
+                cursor: pointer;
+            }
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
         }
 
         .new-world {
