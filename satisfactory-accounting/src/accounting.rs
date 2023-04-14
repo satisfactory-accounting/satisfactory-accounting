@@ -863,9 +863,19 @@ impl GeneratorSettings {
                     .balances
                     .insert(ItemId::water(), -balance.power * g.used_water);
             }
+
             // Burn time in Seconds MJ / MW = MJ/(MJ/s) = s
             let fuel_burn_time = energy.energy / balance.power;
-            *balance.balances.entry(fuel_id).or_default() -= 60.0 / fuel_burn_time;
+            // Rate of fuel usage in items/min.
+            let fuel_burn_rate = 60.0 / fuel_burn_time;
+
+            for byproduct in &energy.byproducts {
+                // Byproducts amounts are per fuel burned.
+                // Item / Fuel * Fuel / Min = Item / Min.
+                let byproduct_rate = byproduct.amount * fuel_burn_rate;
+                *balance.balances.entry(byproduct.item).or_default() += byproduct_rate;
+            }
+            *balance.balances.entry(fuel_id).or_default() -= fuel_burn_rate;
         }
         Ok(balance)
     }

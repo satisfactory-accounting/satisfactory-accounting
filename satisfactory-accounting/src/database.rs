@@ -341,7 +341,8 @@ pub struct Item {
 pub struct Fuel {
     /// Amount of energy that this item is worth in MJ.
     pub energy: f32,
-    /// Byproducts produced from consuming this item as fuel.
+    /// Byproducts produced from consuming this item as fuel. This amount is in items /
+    /// fuel consumed.
     pub byproducts: Vec<ItemAmount>,
 }
 

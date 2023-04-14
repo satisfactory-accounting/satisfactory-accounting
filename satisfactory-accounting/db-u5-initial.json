@@ -6107,6 +6107,17 @@
       "mined_by": [],
       "mining_speed": 0.0
     },
+    "Desc_PlutoniumWaste_C": {
+      "name": "Plutonium Waste",
+      "id": "Desc_PlutoniumWaste_C",
+      "image": "plutonium-waste",
+      "description": "The by-product of consuming Plutonium Fuel Rods in the Nuclear Power Plant.\nNeeds to be stored in a safe location. Handle with caution.\n\nCaution: EXTREMELY Radioactive.",
+      "fuel": null,
+      "produced_by": [],
+      "consumed_by": [],
+      "mined_by": [],
+      "mining_speed": 0.0
+    },
     "Desc_Computer_C": {
       "name": "Computer",
       "id": "Desc_Computer_C",

@@ -102,10 +102,17 @@ fn main() {
         .chain(raw.resources.keys().cloned())
         // Fuels for generators.
         .chain(fuels.iter().cloned())
-        // Special case to make sure water is included.
-        .chain(std::iter::once(ItemId::water().into()))
         .chain(TRUCK_FUELS.iter().map(|fuel| fuel.to_string()))
         .chain(DRONE_FUELS.iter().map(|fuel| fuel.to_string()))
+        // Extra items which we want to include explicitly.
+        .chain([
+            // Make sure that water is included
+            ItemId::water().into(),
+            // Ensure nuclear byproducts are included even if they aren't used in any
+            // recipes.
+            "Desc_NuclearWaste_C".to_owned(),
+            "Desc_PlutoniumWaste_C".to_owned(),
+        ])
         .collect();
 
     let used_buildings: HashSet<_> = manufacturers
