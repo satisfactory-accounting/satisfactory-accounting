@@ -131,7 +131,13 @@ impl Component for ClickEdit {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let Props { value, title, prefix, suffix, .. } = ctx.props();
+        let Props {
+            value,
+            title,
+            prefix,
+            suffix,
+            ..
+        } = ctx.props();
         let class = self.class.clone();
         if let Some(value) = self.edit_text.clone() {
             let oninput = self.oninput.clone();

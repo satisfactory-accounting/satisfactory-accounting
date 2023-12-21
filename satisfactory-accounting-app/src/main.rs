@@ -18,9 +18,9 @@ use self::app::UserSettings;
 use self::node_display::{NodeMeta, NodeMetadata};
 
 mod app;
-mod node_display;
 mod clickedit;
 mod events;
+mod node_display;
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).expect("Unable to init logger");
