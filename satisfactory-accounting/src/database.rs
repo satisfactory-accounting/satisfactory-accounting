@@ -34,7 +34,7 @@ pub enum DatabaseVersion {
 
 impl DatabaseVersion {
     /// All released database versions in order.
-    pub const ALL: &[DatabaseVersion] = &[
+    pub const ALL: &'static [DatabaseVersion] = &[
         DatabaseVersion::U5(U5Subversion::Initial),
         DatabaseVersion::U5(U5Subversion::Final),
         DatabaseVersion::U6(U6Subversion::Beta),
@@ -201,9 +201,38 @@ macro_rules! typed_symbol {
      })+) => {
         $(
             $(#[$m])*
-            #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-            #[serde(from = "String", into = "String")]
-            pub struct $Self(Intern<String>);
+            #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+            pub struct $Self(Intern<str>);
+
+            impl Serialize for $Self {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where S: serde::Serializer,
+                {
+                    serializer.serialize_str(self.as_str())
+                }
+            }
+
+            impl<'de> Deserialize<'de> for $Self {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where D: serde::Deserializer<'de>,
+                {
+                    struct Visitor;
+                    impl<'de> serde::de::Visitor<'de> for Visitor {
+                        type Value = $Self;
+
+                        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            f.write_str("a string symbol value")
+                        }
+
+                        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+                        where E: serde::de::Error,
+                        {
+                            Ok(Self::Value::from(value))
+                        }
+                    }
+                    deserializer.deserialize_str(Visitor)
+                }
+            }
 
             impl $Self {
                 fn as_str(&self) -> &str {
@@ -225,7 +254,7 @@ macro_rules! typed_symbol {
 
             impl From<String> for $Self {
                 fn from(id: String) -> Self {
-                    Self(Intern::new(id))
+                    Self(Intern::from(&*id))
                 }
             }
 

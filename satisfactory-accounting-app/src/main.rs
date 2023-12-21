@@ -12,15 +12,19 @@ use yew::prelude::*;
 
 use satisfactory_accounting::database::Database;
 
+use crate::app::App;
+
 use self::app::UserSettings;
 use self::node_display::{NodeMeta, NodeMetadata};
 
 mod app;
 mod node_display;
+mod clickedit;
+mod events;
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).expect("Unable to init logger");
-    yew::start_app::<app::App>();
+    yew::Renderer::<App>::new().render();
 }
 
 /// Helper to grab the database from Context.
@@ -64,6 +68,7 @@ impl<T: Component> CtxHelper for Context<T> {
 }
 
 /// Get the database from context.
-fn db_ctx() -> Rc<Database> {
+#[hook]
+fn use_db() -> Rc<Database> {
     use_context::<Rc<Database>>().expect("database context to be set")
 }

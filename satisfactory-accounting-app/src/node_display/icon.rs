@@ -5,24 +5,24 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::rc::Rc;
-
 use yew::prelude::*;
 
-use crate::db_ctx;
+use crate::use_db;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
     /// Reference to the icon slug.
     #[prop_or_default]
-    pub icon: Option<Rc<str>>,
+    pub icon: Option<AttrValue>,
 }
 
 #[function_component(Icon)]
 pub fn icon(props: &Props) -> Html {
+    let db = use_db();
+
     match &props.icon {
         Some(icon) => html! {
-            <img src={slug_to_icon(icon, &db_ctx().icon_prefix)} class="icon" alt="?" />
+            <img src={slug_to_icon(icon, &db.icon_prefix)} class="icon" alt="?" />
         },
         None => html! {
             <span class="icon material-icons error">{"error"}</span>

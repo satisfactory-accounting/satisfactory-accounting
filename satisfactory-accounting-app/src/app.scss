@@ -339,3 +339,21 @@ input {
         }
     }
 }
+
+.ClickEdit {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
+
+    .value {
+        flex: 1 1;
+        min-width: 0;
+    }
+
+    span.value {
+        cursor: text;
+    }
+}

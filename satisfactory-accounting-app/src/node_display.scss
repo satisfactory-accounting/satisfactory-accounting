@@ -52,6 +52,7 @@
             justify-content: flex-start;
             align-items: center;
             padding: 5px;
+            min-height: 40px;
             gap: 5px;
 
        }
@@ -69,25 +70,14 @@
        }
 
         .GroupName {
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
             flex-grow: 1;
-            gap: 5px;
 
-            .name {
+            .value {
                 font-size: 20px;
                 color: colors.$gray-dark;
-
-                &.notset {
-                    color: colors.$gray;
-                }
             }
-
-            .edit {
-                @include colors.green-button();
+            &.unnamed span.value {
+                color: colors.$gray;
             }
         }
 
@@ -312,23 +302,7 @@
     }
 
     .ClockSpeed {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 5px;
-
         width: 70px;
-
-        .current-speed {
-            flex-grow: 1;
-            flex-shrink: 1;
-            min-width: 0;
-        }
-        span.current-speed {
-            cursor: text;
-        }
     }
 
     .Purity {
@@ -352,25 +326,8 @@
     }
 
     .MultiPurity {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 5px;
-
         width: 70px;
-
-        .current-num-pads {
-            flex-grow: 1;
-            flex-shrink: 1;
-            min-width: 0;
-        }
-        span.current-num-pads {
-            cursor: text;
-        }
     }
-
 
     .icon.impure-node {
         color: colors.$danger;
@@ -403,23 +360,10 @@
     }
 
     .VirtualCopies {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        align-items: center;
-        gap: 5px;
-
         width: 60px;
 
-        .current-virt-copies {
-            flex-grow: 1;
-            flex-shrink: 1;
-            min-width: 0;
+        .value {
             text-align: right;
-        }
-        span.current-virt-copies {
-            cursor: text;
         }
     }
 

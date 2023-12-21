@@ -99,7 +99,7 @@ impl Component for RecipeDisplay {
                 .map(|&recipe_id| match db.get(recipe_id) {
                     Some(recipe) => Choice {
                         id: recipe.id,
-                        name: recipe.name.clone(),
+                        name: recipe.name.clone().into(),
                         image: html! {
                             <Icon icon={recipe.image.clone()} />
                         },

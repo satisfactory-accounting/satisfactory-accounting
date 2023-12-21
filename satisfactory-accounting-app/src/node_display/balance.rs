@@ -5,8 +5,6 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::rc::Rc;
-
 use satisfactory_accounting::database::Item;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
@@ -29,10 +27,6 @@ pub enum BalanceSortMode {
 impl NodeDisplay {
     /// Build the display for a node's balance.
     pub(super) fn view_balance(&self, ctx: &Context<Self>, vertical: bool) -> Html {
-        thread_local! {
-            static POWER_LINE: Rc<str> = "power-line".into();
-        }
-
         let balance = ctx.props().node.balance();
         let db = ctx.db();
         let item_balances: Html = match ctx.settings().balance_sort_mode {
@@ -60,7 +54,7 @@ impl NodeDisplay {
         html! {
             <div class={classes!("balance", balance_block_style(vertical))} title="Power">
                 <div class={classes!("entry-row", "power-entry", balance_style(balance.power))}>
-                    <Icon icon={POWER_LINE.with(Clone::clone)}/>
+                    <Icon icon="power-line" />
                     <div class="balance-value">{rounded(balance.power)}</div>
                 </div>
                 <div class="item-entries">

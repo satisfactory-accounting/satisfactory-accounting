@@ -5,8 +5,11 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::{fmt, iter::FusedIterator, rc::Rc};
+use std::fmt;
+use std::iter::FusedIterator;
+use std::rc::Rc;
 
+use implicit_clone::unsync::IString;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -296,7 +299,7 @@ fn default_copies() -> u32 {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Group {
     /// Name of this group. May be empty.
-    pub name: String,
+    pub name: IString,
     /// Child nodes of this node. This node's balance is based on the balances of its
     /// children.
     pub children: Vec<Node>,

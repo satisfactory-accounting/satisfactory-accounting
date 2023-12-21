@@ -1,9 +1,7 @@
 [workspace]
+resolver = "2"
 members = [
   "satisfactory-db",
   "satisfactory-accounting",
   "satisfactory-accounting-app",
 ]
-
-[patch.crates-io]
-yew = { git = "https://github.com/zstewar1/yew.git", branch = "patch" }

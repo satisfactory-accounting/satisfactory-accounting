@@ -12,8 +12,6 @@ use std::rc::Rc;
 use log::warn;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use wasm_bindgen::JsCast;
-use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{
@@ -117,7 +115,7 @@ pub enum Msg {
     /// Add the given node as a child at the end of the list.
     AddChild { child: Node },
     /// Rename this node.
-    Rename { name: String },
+    Rename { name: AttrValue },
     /// When another node starts being dragged over this one.
     DragEnter { insert_pos: usize },
     /// When another node is dragged over this one.
@@ -266,7 +264,7 @@ impl Component for NodeDisplay {
             }
             Msg::Rename { name } => {
                 if let NodeKind::Group(group) = ctx.props().node.kind() {
-                    let name = name.trim().to_owned();
+                    let name = name.trim().to_owned().into();
                     if name != group.name {
                         let mut new_group = group.clone();
                         new_group.name = name;
@@ -760,11 +758,4 @@ impl NodeDisplay {
             None => html! {},
         }
     }
-}
-
-fn get_value_from_input_event(e: InputEvent) -> String {
-    let event: Event = e.dyn_into().unwrap();
-    let event_target = event.target().unwrap();
-    let target: HtmlInputElement = event_target.dyn_into().unwrap();
-    target.value()
 }

@@ -27,8 +27,7 @@ jobs:
       uses: actions-rs/install@v0.1
       with:
         crate: trunk
-        version: "0.16.0"
+        version: "0.17.5"
     - name: Build
       run: trunk build
       working-directory: ./satisfactory-accounting-app
-

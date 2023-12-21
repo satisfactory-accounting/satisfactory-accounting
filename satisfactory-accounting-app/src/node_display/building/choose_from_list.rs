@@ -6,7 +6,6 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::marker::PhantomData;
-use std::rc::Rc;
 
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
@@ -15,7 +14,7 @@ use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 
-use crate::node_display::get_value_from_input_event;
+use crate::events::get_value_from_input_event;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
@@ -23,7 +22,7 @@ pub struct Choice<Id> {
     /// ID of the choice.
     pub id: Id,
     /// Name of the choice.
-    pub name: Rc<str>,
+    pub name: AttrValue,
     /// Name of the image to show. This should be the the slug for the icon.
     pub image: Html,
 }
@@ -49,7 +48,7 @@ pub enum Msg {
     /// Cancel input.
     Cancel,
     /// Update the entered text value.
-    UpdateInput { input: String },
+    UpdateInput { input: AttrValue },
     /// Select the specified item from the filtered list.
     Select { filtered_idx: usize },
 }
@@ -57,7 +56,7 @@ pub enum Msg {
 /// Component for choosing an item from
 pub struct ChooseFromList<I> {
     /// Current text input.
-    input: String,
+    input: AttrValue,
     /// Choice which is currently highlighted.
     highlighted: usize,
     /// Filtered set of choices with their assigned scores.
@@ -82,7 +81,7 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             .collect();
         filtered.sort_by(|(_, c1), (_, c2)| c1.name.cmp(&c2.name));
         Self {
-            input: String::new(),
+            input: "".into(),
             highlighted: 0,
             filtered,
             matcher: Default::default(),
@@ -173,30 +172,27 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             "Esc" | "Escape" => Some(Msg::Cancel),
             _ => None,
         });
-        let onblur = link.batch_callback(|e: FocusEvent| {
+        let onfocusout = link.batch_callback(|e: FocusEvent| {
             if let Some(target) = e.related_target() {
                 if let Ok(element) = target.dyn_into::<HtmlElement>() {
                     if element.class_list().contains("available-item") {
                         return None;
-                    } else {
                     }
-                } else {
                 }
-            } else {
             }
             Some(Msg::Cancel)
         });
         let oninput = link.callback(|input| Msg::UpdateInput {
             input: get_value_from_input_event(input),
         });
-        let onsubmit = link.callback(move |e: FocusEvent| {
+        let onsubmit = link.callback(move |e: SubmitEvent| {
             e.prevent_default();
             Msg::Select {
                 filtered_idx: highlighted,
             }
         });
         html! {
-            <form class="ChooseFromList" {onsubmit} {onblur}>
+            <form class="ChooseFromList" {onsubmit} {onfocusout}>
                 <input type="text" value={self.input.clone()}
                     {onkeydown} {onkeyup} {oninput}
                     ref={self.input_ref.clone()} />

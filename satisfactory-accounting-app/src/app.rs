@@ -146,7 +146,7 @@ impl FromStr for WorldId {
 #[derive(Serialize, Deserialize)]
 struct WorldMetadata {
     /// Name of the world.
-    name: String,
+    name: AttrValue,
 }
 
 /// Mapping of different worlds.
@@ -222,7 +222,7 @@ impl World {
     /// Updates the Root Node and returns an undo state that will go back to the previous
     /// root. If the new root has a different name from the current root, returns a string
     /// of the new name.
-    fn update_root(&mut self, root: Node) -> (UnReDoState, Option<String>) {
+    fn update_root(&mut self, root: Node) -> (UnReDoState, Option<AttrValue>) {
         assert!(root.group().is_some(), "new root was not a group");
         let new_name = {
             let new_name = &root.group().unwrap().name;
@@ -329,12 +329,12 @@ impl World {
     }
 
     /// Get the name of this world.
-    fn name(&self) -> String {
+    fn name(&self) -> AttrValue {
         match self.root.group() {
             Some(root) => root.name.clone(),
             None => {
                 warn!("Cannot get world name: root was not a group!");
-                String::new()
+                "".into()
             }
         }
     }

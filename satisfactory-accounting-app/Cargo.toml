@@ -6,13 +6,13 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gloo = "0.5"
-console_log = "0.2"
+gloo = "0.11"
+console_log = "1"
 fuzzy-matcher = "0.3"
 # Not direclty used but `now` doesn't link properly if we don't set the wasm-bindgen
 # feature, and that's needed when actually using Serde or Serde-Json, and breaks the whole
 # app.
-instant = { version = "0.1", features = ["wasm-bindgen"] }
+# instant = { version = "0.1", features = ["wasm-bindgen"] }
 log = "0.4"
 satisfactory-accounting = { path = "../satisfactory-accounting", features = ["wasm-bindgen"] }
 serde = { version = "1", features = ["derive"] }
@@ -20,7 +20,7 @@ serde_json = "1"
 thiserror = "1"
 wasm-bindgen = "0.2"
 uuid = { version = "1", features = ["serde", "v4", "js"] }
-yew = "0.19"
+yew = { version = "0.21", features = ["csr"] }
 
 [dependencies.web-sys]
 version = "0.3"

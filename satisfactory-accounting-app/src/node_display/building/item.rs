@@ -103,7 +103,7 @@ impl Component for ItemDisplay {
                 .map(|&item_id| match db.get(item_id) {
                     Some(item) => Choice {
                         id: item.id,
-                        name: item.name.clone(),
+                        name: item.name.clone().into(),
                         image: html! {
                             <Icon icon={item.image.clone()}/>
                         },
