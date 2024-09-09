@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cell::RefCell;
 use std::collections::btree_map::Entry;
 // Copyright 2021, 2022 Zachary Stewart
 //
@@ -12,12 +13,15 @@ use std::rc::Rc;
 use std::str::FromStr;
 use std::{fmt, mem};
 
+use gloo::file::{callbacks::FileReader, Blob, File, FileReadError, ObjectUrl};
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage};
 use log::warn;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+use wasm_bindgen::UnwrapThrowExt;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{Group, Node};
@@ -412,6 +416,11 @@ pub enum Msg {
     DeleteForever(WorldId),
     /// Show or hide one of the overlay windows.
     SetWindow(OverlayWindow),
+    StartUpload(Option<File>),
+    GotUpload {
+        filename: String,
+        res: Result<Vec<u8>, FileReadError>,
+    },
 }
 
 /// Current state of the app.
@@ -434,6 +443,9 @@ pub struct App {
     undo_stack: Vec<UnReDoState>,
     /// Stack of future states for redo.
     redo_stack: Vec<UnReDoState>,
+    /// Preserve `blob:` URLs between renderings.
+    download_retainers: RefCell<HashMap<String, ObjectUrl>>,
+    upload_reader: Option<FileReader>,
 }
 
 impl App {
@@ -530,10 +542,12 @@ impl Component for App {
             database,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
+            download_retainers: RefCell::new(HashMap::new()),
+            upload_reader: None,
         }
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::ReplaceRoot { replacement } => {
                 let (previous, new_name) = self.world.update_root(replacement);
@@ -731,6 +745,54 @@ impl Component for App {
                     false
                 }
             }
+            Msg::StartUpload(maybe_file) => {
+                if let Some(file) = maybe_file {
+                    let filename = file.name().clone();
+                    let link = ctx.link().clone();
+                    let reader = gloo::file::callbacks::read_as_bytes(&file, move |res| {
+                        link.send_message(Msg::GotUpload { filename, res });
+                    });
+                    self.upload_reader = Some(reader);
+                    true
+                } else {
+                    warn!("upload file was None");
+                    self.upload_reader = None;
+                    false
+                }
+            }
+            Msg::GotUpload { filename, res } => {
+                self.upload_reader = None;
+                match res {
+                    Ok(json_vec) => {
+                        let new_id = WorldId::new();
+                        let mut world: World =
+                            serde_json::from_slice(json_vec.as_slice()).unwrap_throw();
+                        let worldname = world.name();
+                        let name: String = if worldname.is_empty() {
+                            format!("{filename} (Uploaded)")
+                        } else {
+                            format!("{worldname} (Uploaded)")
+                        };
+                        let mut new_root = world.root.group().unwrap_throw().clone();
+                        new_root.name = name.clone().into();
+                        _ = world.update_root(new_root.into());
+
+                        // This follows the pattern in CreateWorld
+                        world.save(new_id);
+                        self.worlds.worlds.insert(new_id, world.storage_metadata());
+                        self.worlds.selected = new_id;
+                        self.world = world;
+                        self.database = self.world.database.get();
+                        self.undo_stack.clear();
+                        self.redo_stack.clear();
+                        self.worlds.save();
+                    }
+                    Err(err) => {
+                        warn!("World JSON upload failed: {err}");
+                    }
+                }
+                true
+            }
         }
     }
 
@@ -768,6 +830,7 @@ impl Component for App {
             hide_empty_balances: !hide_empty_balances,
         });
         let hidden_balances = hide_empty_balances.then(|| "hide-empty-balances");
+
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
             <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
@@ -856,20 +919,48 @@ impl App {
         let link = ctx.link();
         let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
         let new = link.callback(|_| Msg::CreateWorld);
+        let upload = link.callback(|e: Event| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            if let Some(file) = input.files().unwrap_throw().get(0) {
+                let file = File::from(file);
+                input.set_value("");
+                Msg::StartUpload(Some(file))
+            } else {
+                Msg::StartUpload(None)
+            }
+        });
 
         let worlds = self.worlds.worlds.iter().map(|(&id, meta)| {
             let open = link.callback(move |_| Msg::SetWorld(id));
             let delete = link.callback(move |_| Msg::InitiateDelete(id));
+            let raw_item = LocalStorage::raw().get_item(id.to_string().as_ref());
+            if raw_item.is_err() {
+                return html!{};
+            }
+            let json = raw_item.unwrap_throw().unwrap_throw();
+            let blob = Blob::new_with_options(json.as_bytes(), Some("application/json"));
+            let data = ObjectUrl::from(blob);
+            let url = data.to_string();
+            // Must retain the ObjectUrl otherwise the actual blob url doesn't
+            // work (the data it points to is freed):
+            self.download_retainers.borrow_mut().insert(id.to_string(), data);
+            let is_selected = self.worlds.selected == id;
+            let selected = if is_selected { Some("selected") } else { None };
             html! {
-                <div class="world-list-row">
+                <div class={classes!("world-list-row",selected)}>
                     <span>{&meta.name}</span>
                     <span class="right-buttons">
-                        <button class="delete-world" title="Delete World" onclick={delete}>
-                            <span class="material-icons">{"delete"}</span>
-                        </button>
+                    if !is_selected {
                         <button class="new-world" title="Switch to this World" onclick={open}>
                             <span class="material-icons">{"open_in_browser"}</span>
                         </button>
+                    }
+                    <a class="download-world" title="Download JSON" href={url} download={meta.name.to_string() + ".json"}>
+                        <span class="material-icons">{"download"}</span>
+                    </a>
+                    <button class="delete-world" title="Delete World" onclick={delete}>
+                        <span class="material-icons">{"delete"}</span>
+                    </button>
                     </span>
                 </div>
             }
@@ -894,6 +985,10 @@ impl App {
                         </button>
                     </div>
                     { for worlds }
+                </div>
+                <div class="world-upload-bar">
+                    <h4>{"Upload World JSON"}</h4>
+                    <input id="world-upload" type="file" accept="application/json" onchange={upload}/>
                 </div>
             </div>
         }

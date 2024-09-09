@@ -190,6 +190,10 @@ input {
             box-sizing: border-box;
             padding: 5px;
             border-radius: 5px;
+
+            &.selected {
+                background-color: lighten(colors.$gray-light, 15%);
+            }
         }
 
         .database-list-row {
@@ -254,6 +258,12 @@ input {
 
         .delete-world {
             @include colors.red-button;
+        }
+
+        a.download-world {
+            @include colors.green-button;
+            text-decoration: none;
+            color: colors.$gray-dark;
         }
 
         .close {
