@@ -56,9 +56,8 @@ impl DatabaseVersion {
     /// in case there are players still using that version.
     pub fn is_deprecated(self) -> bool {
         match self {
-            DatabaseVersion::U5(U5Subversion::Final) => false,
-            DatabaseVersion::U6(U6Subversion::Beta) => false,
             DatabaseVersion::U7(U7Subversion::Initial) => false,
+            DatabaseVersion::V1_0(V1_0Subversion::Initial) => false,
             _ => true,
         }
     }
