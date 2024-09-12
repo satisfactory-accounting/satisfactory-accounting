@@ -30,6 +30,8 @@ pub enum DatabaseVersion {
     U6(U6Subversion),
     /// U7 database versions.
     U7(U7Subversion),
+    /// V1.0 database versions.
+    V1_0(V1_0Subversion),
 }
 
 impl DatabaseVersion {
@@ -39,6 +41,7 @@ impl DatabaseVersion {
         DatabaseVersion::U5(U5Subversion::Final),
         DatabaseVersion::U6(U6Subversion::Beta),
         DatabaseVersion::U7(U7Subversion::Initial),
+        DatabaseVersion::V1_0(V1_0Subversion::Initial),
     ];
 
     /// Latest version of the database.
@@ -79,6 +82,10 @@ impl DatabaseVersion {
                 const SERIALIZED_DB: &str = include_str!("../db-u7-initial.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u7-initial.json")
             }
+            DatabaseVersion::V1_0(V1_0Subversion::Initial) => {
+                const SERIALIZED_DB: &str = include_str!("../db-v1.0-initial.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-v1.0-initial.json")
+            }
         }
     }
 
@@ -89,6 +96,7 @@ impl DatabaseVersion {
             DatabaseVersion::U5(U5Subversion::Final) => "U5 \u{2013} Final",
             DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
             DatabaseVersion::U7(U7Subversion::Initial) => "U7 \u{2013} Initial",
+            DatabaseVersion::V1_0(V1_0Subversion::Initial) => "1.0 \u{2013} Initial",
         }
     }
 
@@ -109,6 +117,10 @@ impl DatabaseVersion {
             DatabaseVersion::U7(U7Subversion::Initial) => {
                 "This is the first version of the database released for U7."
             }
+            DatabaseVersion::V1_0(V1_0Subversion::Initial) => {
+                "This is the first version of the Satisfactory Accounting database released for \
+                Satisfactory 1.0."
+            }
         }
     }
 }
@@ -122,17 +134,24 @@ pub enum U5Subversion {
     Final,
 }
 
-/// Minor versions with in the U6 database.
+/// Minor versions within the U6 database.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum U6Subversion {
     /// Initial release of U6 for Satisfactory Accounting released in 1.1.0.
     Beta,
 }
 
-/// Minor versions with in the U7 database.
+/// Minor versions within the U7 database.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum U7Subversion {
     /// Initial release of U7 released in Satisfactory Accounting released in 1.2.0.
+    Initial,
+}
+
+/// Minor versions within the 1.0 database.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum V1_0Subversion {
+    /// Initial release of Satisfactory 1.0, released in Satisfactory Accounting 1.2.3.
     Initial,
 }
 

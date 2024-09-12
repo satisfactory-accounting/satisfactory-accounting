@@ -7,7 +7,6 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use regex::Regex;
 use satisfactory_accounting::database::{
     BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item, ItemAmount, ItemId,
     Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe, Station,
@@ -36,8 +35,12 @@ fn main() {
         .generators
         .values()
         .map(|gen| {
-            assert!(gen.class_name.starts_with("Build_"));
-            let building = gen.class_name.replace("Build_", "Desc_");
+            let building = if gen.class_name.starts_with("Build_") {
+                gen.class_name.replace("Build_", "Desc_")
+            } else {
+                assert!(gen.class_name.starts_with("Desc_"));
+                gen.class_name.clone()
+            };
             assert!(raw.buildings.contains_key(building.as_str()));
             (building, gen)
         })
@@ -77,17 +80,23 @@ fn main() {
         "Desc_Battery_C",
         "Desc_NuclearFuelRod_C",
         "Desc_PlutoniumFuelRod_C",
+        "Desc_RocketFuel_C",
+        "Desc_IonizedFuel_C",
     ];
 
-    /// Battery
-    const DRONE_FUELS: &[&str] = &["Desc_Battery_C"];
+    /// As of 1.0 Drones can use any fuel.
+    const DRONE_FUELS: &[&str] = TRUCK_FUELS;
 
     let miners: HashMap<_, _> = raw
         .miners
         .values()
         .map(|min| {
-            assert!(min.class_name.starts_with("Build_"));
-            let building = min.class_name.replace("Build_", "Desc_");
+            let building = if min.class_name.starts_with("Build_") {
+                min.class_name.replace("Build_", "Desc_")
+            } else {
+                assert!(min.class_name.starts_with("Desc_"));
+                min.class_name.clone()
+            };
             assert!(raw.buildings.contains_key(building.as_str()));
             (building, min)
         })
@@ -123,17 +132,22 @@ fn main() {
         .chain(std::iter::once("Desc_FrackingSmasher_C".to_string()))
         .collect();
 
-    let bad_icon_names = Regex::new(r"-\(.*\)").unwrap();
-    let recipes: BTreeMap<_, _> = machine_recipes
+    let mut recipes: BTreeMap<_, _> = machine_recipes
         .iter()
         .map(|recipe| Recipe {
             name: recipe.name.as_str().into(),
             id: recipe.class_name.as_str().into(),
-            image: if let Some(nonresidual) = recipe.slug.strip_prefix("residual-") {
-                nonresidual.into()
-            } else {
-                bad_icon_names.replace(recipe.slug.as_str(), "").into()
-            },
+            image: recipe
+                .products
+                .iter()
+                .next()
+                .map(|ia| ia.item.as_str().into())
+                .or(recipe
+                    .ingredients
+                    .iter()
+                    .next()
+                    .map(|ia| ia.item.as_str().into()))
+                .unwrap_or_default(),
             time: recipe.time,
             ingredients: recipe
                 .ingredients
@@ -175,12 +189,14 @@ fn main() {
         .map(|recipe| (recipe.id, recipe))
         .collect();
 
-    const LIQUID_FUELS: &[&str] = &[
-        "Desc_LiquidBiofuel_C",
-        "Desc_LiquidFuel_C",
-        "Desc_LiquidOil_C",
-        "Desc_LiquidTurboFuel_C",
-    ];
+    // const LIQUID_FUELS: &[&str] = &[
+    //     "Desc_LiquidBiofuel_C",
+    //     "Desc_LiquidFuel_C",
+    //     "Desc_LiquidOil_C",
+    //     "Desc_LiquidTurboFuel_C",
+    //     "Desc_RocketFuel_C",
+    //     "Desc_IonizedFuel_C",
+    // ];
 
     let mut items: BTreeMap<_, _> = raw
         .items
@@ -200,11 +216,11 @@ fn main() {
                     // and the state energy content are based on 1/1000th unit of fuel, so
                     // we have to multiply the energy content (and see below for where we
                     // divide the production output of the oil extractor).
-                    energy: if LIQUID_FUELS.contains(&item.class_name.as_str()) {
-                        item.energy_value * 1000.0
-                    } else {
-                        item.energy_value
-                    },
+                    energy: //if LIQUID_FUELS.contains(&item.class_name.as_str()) {
+                        //item.energy_value * 1000.0
+                    //} else {
+                        item.energy_value,
+                    //},
                     // Patch in nuclear byproducts.
                     byproducts: match item.class_name.as_str() {
                         "Desc_NuclearFuelRod_C" => vec![ItemAmount {
@@ -233,6 +249,13 @@ fn main() {
         })
         .map(|item| (item.id, item))
         .collect();
+
+    for recipe in recipes.values_mut() {
+        let key: &str = recipe.image.as_ref();
+        if let Some(item) = items.get(&key.into()) {
+            recipe.image = item.image.clone();
+        }
+    }
 
     let mut buildings: BTreeMap<_, _> = raw
         .buildings
@@ -417,7 +440,7 @@ fn main() {
     }
 
     let database = Database {
-        icon_prefix: "u6/".to_string(),
+        icon_prefix: "v1.0/".to_string(),
         recipes,
         items,
         buildings,
