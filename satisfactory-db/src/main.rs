@@ -100,6 +100,9 @@ fn main() {
             assert!(raw.buildings.contains_key(building.as_str()));
             (building, min)
         })
+        // Fracking Extractor (Resource Well Extractor) is special cased as part of the resource
+        // well pressurizer, which is its own unique building type.
+        .filter(|(building, _)| building != "Desc_FrackingExtractor_C")
         .collect();
 
     let used_items: HashSet<_> = machine_recipes
@@ -189,15 +192,6 @@ fn main() {
         .map(|recipe| (recipe.id, recipe))
         .collect();
 
-    // const LIQUID_FUELS: &[&str] = &[
-    //     "Desc_LiquidBiofuel_C",
-    //     "Desc_LiquidFuel_C",
-    //     "Desc_LiquidOil_C",
-    //     "Desc_LiquidTurboFuel_C",
-    //     "Desc_RocketFuel_C",
-    //     "Desc_IonizedFuel_C",
-    // ];
-
     let mut items: BTreeMap<_, _> = raw
         .items
         .values()
@@ -271,7 +265,12 @@ fn main() {
             description: building.description.clone(),
             kind: if manufacturers.contains(building.class_name.as_str()) {
                 BuildingKind::Manufacturer(Manufacturer {
-                    manufacturing_speed: building.metadata.manufacturing_speed.unwrap_or(1.0),
+                    manufacturing_speed: if building.class_name == "Desc_WaterPump_C" {
+                        // In 1.0, the water pump has a manufacturingSpeed of 0 for some reason.
+                        1.0
+                    } else {
+                        building.metadata.manufacturing_speed.unwrap_or(1.0)
+                    },
                     // To be patched in later.
                     available_recipes: Vec::new(),
                     power_consumption: Power {

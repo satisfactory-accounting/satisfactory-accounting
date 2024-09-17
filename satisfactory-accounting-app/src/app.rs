@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 // Copyright 2021, 2022 Zachary Stewart
 //
@@ -838,10 +839,16 @@ impl Component for App {
 }
 
 impl App {
-    fn name_db(&self) -> &'static str {
+    fn name_db(&self) -> Cow<'static, str> {
         match self.world.database {
-            DatabaseChoice::Standard(version) => version.name(),
-            DatabaseChoice::Custom(_) => "Custom",
+            DatabaseChoice::Standard(version) => {
+                if version.is_deprecated() {
+                    Cow::Owned(format!("{version} \u{2013} Update Available!"))
+                } else {
+                    Cow::Borrowed(version.name())
+                }
+            }
+            DatabaseChoice::Custom(_) => Cow::Borrowed("Custom"),
         }
     }
 

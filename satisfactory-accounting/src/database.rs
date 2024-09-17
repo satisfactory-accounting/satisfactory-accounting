@@ -42,6 +42,7 @@ impl DatabaseVersion {
         DatabaseVersion::U6(U6Subversion::Beta),
         DatabaseVersion::U7(U7Subversion::Initial),
         DatabaseVersion::V1_0(V1_0Subversion::Initial),
+        DatabaseVersion::V1_0(V1_0Subversion::Wetter),
     ];
 
     /// Latest version of the database.
@@ -57,7 +58,7 @@ impl DatabaseVersion {
     pub fn is_deprecated(self) -> bool {
         match self {
             DatabaseVersion::U7(U7Subversion::Initial) => false,
-            DatabaseVersion::V1_0(V1_0Subversion::Initial) => false,
+            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => false,
             _ => true,
         }
     }
@@ -85,6 +86,10 @@ impl DatabaseVersion {
                 const SERIALIZED_DB: &str = include_str!("../db-v1.0-initial.json");
                 serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-v1.0-initial.json")
             }
+            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => {
+                const SERIALIZED_DB: &str = include_str!("../db-v1.0-wetter.json");
+                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-v1.0-wetter.json")
+            }
         }
     }
 
@@ -96,6 +101,7 @@ impl DatabaseVersion {
             DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
             DatabaseVersion::U7(U7Subversion::Initial) => "U7 \u{2013} Initial",
             DatabaseVersion::V1_0(V1_0Subversion::Initial) => "1.0 \u{2013} Initial",
+            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => "1.0 \u{2013} Wetter",
         }
     }
 
@@ -118,7 +124,15 @@ impl DatabaseVersion {
             }
             DatabaseVersion::V1_0(V1_0Subversion::Initial) => {
                 "This is the first version of the Satisfactory Accounting database released for \
-                Satisfactory 1.0."
+                Satisfactory 1.0. In this version, Water Extractors produce 0 water, and the \
+                Resource Well Extractor is a separate building from the Resource Well Pressurizer \
+                (it's not supposed to be \u{2013} Resource Wells are handled specially as part of \
+                the Pressurizer)."
+            }
+            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => {
+                "This minor update to the database for 1.0 fixes Water Extractors so they produce \
+                water again and fixes the Resource Well Extractor to be correctly handled as part \
+                of the Resource Well Pressurizer rather than as its own separate building."
             }
         }
     }
@@ -152,6 +166,8 @@ pub enum U7Subversion {
 pub enum V1_0Subversion {
     /// Initial release of Satisfactory 1.0, released in Satisfactory Accounting 1.2.3.
     Initial,
+    /// Update that fixes water extractors, released in Satisfactory Accounting 1.2.5.
+    Wetter,
 }
 
 impl fmt::Display for DatabaseVersion {
