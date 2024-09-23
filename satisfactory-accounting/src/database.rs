@@ -34,15 +34,117 @@ pub enum DatabaseVersion {
     V1_0(V1_0Subversion),
 }
 
+macro_rules! db_version_info {
+    ($({
+        version: DatabaseVersion::$dbv:ident($dbsv:path),
+        file: $file:literal,
+        name: $name:literal,
+        description: $description:literal $(,)?
+    }),* $(,)?) => {
+        db_version_info!(@real_impl $({
+            version_pat: DatabaseVersion::$dbv($dbsv),
+            version_expr: DatabaseVersion::$dbv($dbsv),
+            file: $file,
+            name: $name,
+            description: $description,
+        },)*);
+    };
+
+
+    (@real_impl $({
+        version_pat: $version_pat:pat,
+        version_expr: $version_expr:expr,
+        file: $file:literal,
+        name: $name:literal,
+        description: $description:literal $(,)?
+    }),* $(,)?) => {
+        /// All released database versions in order.
+        pub const ALL: &'static [DatabaseVersion] = &[
+            $($version_expr,)*
+        ];
+
+        /// Load the database at a particuler version.
+        pub fn load_database(self) -> Database {
+            match self {
+                $(
+                    $version_pat => {
+                        const SERIALIZED_DB: &str = include_str!($file);
+                        serde_json::from_str(SERIALIZED_DB).expect(concat!("Failed to parse ", $file))
+                    }
+                )*
+            }
+        }
+
+        /// Get the displayable name for this database version.
+        pub fn name(self) -> &'static str {
+            match self {
+                $($version_pat => $name,)*
+            }
+        }
+
+        /// Get the description for this version.
+        pub fn description(self) -> &'static str {
+            match self {
+                $($version_pat => $description,)*
+            }
+        }
+    };
+}
+
 impl DatabaseVersion {
-    /// All released database versions in order.
-    pub const ALL: &'static [DatabaseVersion] = &[
-        DatabaseVersion::U5(U5Subversion::Initial),
-        DatabaseVersion::U5(U5Subversion::Final),
-        DatabaseVersion::U6(U6Subversion::Beta),
-        DatabaseVersion::U7(U7Subversion::Initial),
-        DatabaseVersion::V1_0(V1_0Subversion::Initial),
-        DatabaseVersion::V1_0(V1_0Subversion::Wetter),
+    db_version_info! [
+        {
+            version: DatabaseVersion::U5(U5Subversion::Initial),
+            file: "../db-u5-initial.json",
+            name: "U5 \u{2013} Initial",
+            description: "This is the first version of the database released for U5. Fuel
+                generators in this version consume 1000x too much fuel.",
+        },
+        {
+            version: DatabaseVersion::U5(U5Subversion::Final),
+            file: "../db-u5-final.json",
+            name: "U5 \u{2013} Final",
+            description: "This is the final version of the database released for U5.",
+        },
+        {
+            version: DatabaseVersion::U6(U6Subversion::Beta),
+            file: "../db-u6-beta.json",
+            name: "U6 \u{2013} Beta",
+            description: "This is the first version of the Satisfactory Accounting database \
+                released after the U6 update.",
+        },
+        {
+            version: DatabaseVersion::U7(U7Subversion::Initial),
+            file: "../db-u7-initial.json",
+            name: "U7 \u{2013} Initial",
+            description: "This is the first version of the database released for U7.",
+        },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Initial),
+            file: "../db-v1.0-initial.json",
+            name: "1.0 \u{2013} Initial",
+            description: "This is the first version of the Satisfactory Accounting database \
+                released for Satisfactory 1.0. In this version, Water Extractors produce 0 water, \
+                and the Resource Well Extractor is a separate building from the Resource Well \
+                Pressurizer (it's not supposed to be \u{2013} Resource Wells are handled specially \
+                as part of the Pressurizer).",
+        },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Wetter),
+            file: "../db-v1.0-wetter.json",
+            name: "1.0 \u{2013} Wetter",
+            description: "This minor update to the database for 1.0 fixes Water Extractors so they \
+                produce water again and fixes the Resource Well Extractor to be correctly handled \
+                as part of the Resource Well Pressurizer rather than as its own separate building."
+        },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Semiquantum),
+            file: "../db-v1.0-semiquantum.json",
+            name: "1.0 \u{2013} Semiquantum",
+            description: "This update to the databse for Satisfactory 1.0 adds some recipies that \
+                were missing related to late-game technologies, though it doesn't add the Alien \
+                Power Augmenter."
+        },
     ];
 
     /// Latest version of the database.
@@ -56,85 +158,7 @@ impl DatabaseVersion {
     /// release for any major update of the game should be kept not-deprecated (for now),
     /// in case there are players still using that version.
     pub fn is_deprecated(self) -> bool {
-        match self {
-            DatabaseVersion::U7(U7Subversion::Initial) => false,
-            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => false,
-            _ => true,
-        }
-    }
-
-    /// Load this version of the database from the included database string.
-    pub fn load_database(self) -> Database {
-        match self {
-            DatabaseVersion::U5(U5Subversion::Initial) => {
-                const SERIALIZED_DB: &str = include_str!("../db-u5-initial.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u5-initial.json")
-            }
-            DatabaseVersion::U5(U5Subversion::Final) => {
-                const SERIALIZED_DB: &str = include_str!("../db-u5-final.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u5-final.json")
-            }
-            DatabaseVersion::U6(U6Subversion::Beta) => {
-                const SERIALIZED_DB: &str = include_str!("../db-u6-beta.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u6-beta.json")
-            }
-            DatabaseVersion::U7(U7Subversion::Initial) => {
-                const SERIALIZED_DB: &str = include_str!("../db-u7-initial.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-u7-initial.json")
-            }
-            DatabaseVersion::V1_0(V1_0Subversion::Initial) => {
-                const SERIALIZED_DB: &str = include_str!("../db-v1.0-initial.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-v1.0-initial.json")
-            }
-            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => {
-                const SERIALIZED_DB: &str = include_str!("../db-v1.0-wetter.json");
-                serde_json::from_str(SERIALIZED_DB).expect("Failed to parse db-v1.0-wetter.json")
-            }
-        }
-    }
-
-    /// Get the displayable name for this database version.
-    pub fn name(self) -> &'static str {
-        match self {
-            DatabaseVersion::U5(U5Subversion::Initial) => "U5 \u{2013} Initial",
-            DatabaseVersion::U5(U5Subversion::Final) => "U5 \u{2013} Final",
-            DatabaseVersion::U6(U6Subversion::Beta) => "U6 \u{2013} Beta",
-            DatabaseVersion::U7(U7Subversion::Initial) => "U7 \u{2013} Initial",
-            DatabaseVersion::V1_0(V1_0Subversion::Initial) => "1.0 \u{2013} Initial",
-            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => "1.0 \u{2013} Wetter",
-        }
-    }
-
-    /// Get the description for this version.
-    pub fn description(self) -> &'static str {
-        match self {
-            DatabaseVersion::U5(U5Subversion::Initial) => {
-                "This is the first version of the database released for U5. Fuel \
-                generators in this version consume 1000x too much fuel."
-            }
-            DatabaseVersion::U5(U5Subversion::Final) => {
-                "This is the final version of the database released for U5."
-            }
-            DatabaseVersion::U6(U6Subversion::Beta) => {
-                "This is the first version of the Satisfactory Accounting database \
-                released after the U6 update. Please report missing/incorrect recipes!"
-            }
-            DatabaseVersion::U7(U7Subversion::Initial) => {
-                "This is the first version of the database released for U7."
-            }
-            DatabaseVersion::V1_0(V1_0Subversion::Initial) => {
-                "This is the first version of the Satisfactory Accounting database released for \
-                Satisfactory 1.0. In this version, Water Extractors produce 0 water, and the \
-                Resource Well Extractor is a separate building from the Resource Well Pressurizer \
-                (it's not supposed to be \u{2013} Resource Wells are handled specially as part of \
-                the Pressurizer)."
-            }
-            DatabaseVersion::V1_0(V1_0Subversion::Wetter) => {
-                "This minor update to the database for 1.0 fixes Water Extractors so they produce \
-                water again and fixes the Resource Well Extractor to be correctly handled as part \
-                of the Resource Well Pressurizer rather than as its own separate building."
-            }
-        }
+        self != Self::LATEST
     }
 }
 
@@ -168,6 +192,8 @@ pub enum V1_0Subversion {
     Initial,
     /// Update that fixes water extractors, released in Satisfactory Accounting 1.2.5.
     Wetter,
+    /// Update adding some missing quantim items, released in Satisfactory Accounting 1.2.6.
+    Semiquantum,
 }
 
 impl fmt::Display for DatabaseVersion {
@@ -437,6 +463,21 @@ impl BuildingType {
     /// Gets the settings
     pub fn get_default_settings(&self) -> BuildingSettings {
         self.kind.get_default_settings()
+    }
+
+    /// Return true if this type of building can be overclocked.
+    pub fn overclockable(&self) -> bool {
+        match &self.kind {
+            BuildingKind::Manufacturer(manufacturer) => {
+                manufacturer.power_consumption.power_exponent != 0.0
+            }
+            BuildingKind::Miner(miner) => miner.power_consumption.power_exponent != 0.0,
+            BuildingKind::Generator(generator) => generator.power_production.power_exponent != 0.0,
+            BuildingKind::Pump(pump) => pump.power_consumption.power_exponent != 0.0,
+            BuildingKind::Geothermal(_) => false,
+            BuildingKind::PowerConsumer(_) => false,
+            BuildingKind::Station(_) => false,
+        }
     }
 }
 
