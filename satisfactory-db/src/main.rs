@@ -28,7 +28,7 @@ fn main() {
         .iter()
         .flat_map(|recipe| &recipe.produced_in)
         .cloned()
-        .chain(std::iter::once("Desc_WaterPump_C".to_string()))
+        .chain(["Desc_WaterPump_C".to_string(), "Desc_Portal_C".to_string()])
         .collect();
 
     let generators: HashMap<_, _> = raw
@@ -124,6 +124,7 @@ fn main() {
             // recipes.
             "Desc_NuclearWaste_C".to_owned(),
             "Desc_PlutoniumWaste_C".to_owned(),
+            "Desc_AlienPowerFuel_C".to_owned(),
         ])
         .collect();
 
@@ -132,7 +133,10 @@ fn main() {
         .cloned()
         .chain(generators.keys().cloned())
         .chain(miners.keys().cloned())
-        .chain(std::iter::once("Desc_FrackingSmasher_C".to_string()))
+        .chain([
+            "Desc_FrackingSmasher_C".to_string(),
+            "Desc_AlienPowerBuilding_C".to_string(),
+        ])
         .collect();
 
     let mut recipes: BTreeMap<_, _> = machine_recipes
@@ -175,20 +179,76 @@ fn main() {
                 .map(|machine| machine.as_str().into())
                 .collect(),
         })
-        // Patch a recipe for water using the water extractor.
-        .chain(std::iter::once(Recipe {
-            name: "Extract Water".into(),
-            id: "_Patch_Recipe_ExtractWater_C".into(),
-            image: "water".into(),
-            time: 0.5,
-            ingredients: Vec::new(),
-            products: vec![ItemAmount {
-                item: ItemId::water(),
-                amount: 1.0,
-            }],
-            is_alternate: false,
-            produced_in: vec!["Desc_WaterPump_C".into()],
-        }))
+        // Patch in missing recipes.
+        .chain([
+            // The water extractor is modeled as a regular manufacturer, using a regular recipe
+            // that just has water as its only product with no inputs.
+            Recipe {
+                name: "Extract Water".into(),
+                id: "_Patch_Recipe_ExtractWater_C".into(),
+                image: "water".into(),
+                time: 0.5,
+                ingredients: Vec::new(),
+                products: vec![ItemAmount {
+                    item: ItemId::water(),
+                    amount: 1.0,
+                }],
+                is_alternate: false,
+                produced_in: vec!["Desc_WaterPump_C".into()],
+            },
+            // The resipe for Alien Power Matrices is missing from the source for some reason.
+            Recipe {
+                name: "Alien Power Matrix".into(),
+                id: "Recipe_AlienPowerFuel_C".into(),
+                image: "alien-power-matrix".into(),
+                time: 24.0,
+                ingredients: vec![
+                    ItemAmount {
+                        item: "Desc_SAMFluctuator_C".into(),
+                        amount: 5.0,
+                    },
+                    ItemAmount {
+                        item: "Desc_CrystalShard_C".into(),
+                        amount: 3.0,
+                    },
+                    ItemAmount {
+                        item: "Desc_QuantumOscillator_C".into(),
+                        amount: 3.0,
+                    },
+                    ItemAmount {
+                        item: "Desc_QuantumEnergy_C".into(),
+                        amount: 24.0,
+                    },
+                ],
+                products: vec![
+                    ItemAmount {
+                        item: "Desc_AlienPowerFuel_C".into(),
+                        amount: 1.0,
+                    },
+                    ItemAmount {
+                        item: "Desc_DarkEnergy_C".into(),
+                        amount: 24.0,
+                    },
+                ],
+                is_alternate: false,
+                produced_in: vec!["Desc_QuantumEncoder_C".into()],
+            },
+            // Map the Main Portal as a manufacturer that only consumes singularity cells with no
+            // products.
+            Recipe {
+                name: "Power Main Portal".into(),
+                id: "_Patch_Recipe_MainPortalCells_C".into(),
+                image: "singularity-cell".into(),
+                time: 30.0,
+                ingredients: vec![ItemAmount {
+                    item: "Desc_SingularityCell_C".into(),
+                    amount: 1.0,
+                }],
+                products: Vec::new(),
+                is_alternate: false,
+                produced_in: vec!["Desc_Portal_C".into()],
+            },
+        ])
         .map(|recipe| (recipe.id, recipe))
         .collect();
 
@@ -203,18 +263,7 @@ fn main() {
             description: item.description.clone(),
             fuel: if fuels.contains(item.class_name.as_str()) {
                 Some(Fuel {
-                    // For some reason liquid fuels are inconsistently treated as if they
-                    // are in fractional (1/1000th) units instead of whole units by the
-                    // source DB. E.g. the recipe for packaging uses whole units (2 liquid
-                    // fuel -> 2 packaged fuel), but the oil extractor's extraction rate
-                    // and the state energy content are based on 1/1000th unit of fuel, so
-                    // we have to multiply the energy content (and see below for where we
-                    // divide the production output of the oil extractor).
-                    energy: //if LIQUID_FUELS.contains(&item.class_name.as_str()) {
-                        //item.energy_value * 1000.0
-                    //} else {
-                        item.energy_value,
-                    //},
+                    energy: item.energy_value,
                     // Patch in nuclear byproducts.
                     byproducts: match item.class_name.as_str() {
                         "Desc_NuclearFuelRod_C" => vec![ItemAmount {
@@ -241,6 +290,23 @@ fn main() {
             consumed_by: Vec::new(),
             mined_by: Vec::new(),
         })
+        .chain([
+            // Alien power matrix seems to be missing.
+            Item {
+                name: "Alien Power Matrix".into(),
+                id: "Desc_AlienPowerFuel_C".into(),
+                image: "alien-power-matrix".into(),
+                description:
+                    "This intricate condensed-matter matrix is used to enhance the output of the \
+                    Alien Power Augmenter."
+                        .into(),
+                fuel: None,
+                mining_speed: 0.0,
+                produced_by: Vec::new(),
+                consumed_by: Vec::new(),
+                mined_by: Vec::new(),
+            },
+        ])
         .map(|item| (item.id, item))
         .collect();
 
@@ -265,8 +331,11 @@ fn main() {
             description: building.description.clone(),
             kind: if manufacturers.contains(building.class_name.as_str()) {
                 BuildingKind::Manufacturer(Manufacturer {
-                    manufacturing_speed: if building.class_name == "Desc_WaterPump_C" {
+                    manufacturing_speed: if building.class_name == "Desc_WaterPump_C"
+                        || building.class_name == "Desc_Portal_C"
+                    {
                         // In 1.0, the water pump has a manufacturingSpeed of 0 for some reason.
+                        // We also need to patch the main portal so it consumes singularity cells.
                         1.0
                     } else {
                         building.metadata.manufacturing_speed.unwrap_or(1.0)
@@ -274,14 +343,25 @@ fn main() {
                     // To be patched in later.
                     available_recipes: Vec::new(),
                     power_consumption: Power {
-                        power: building
-                            .metadata
-                            .power_consumption
-                            .expect("Manufacturer missing power_consumption"),
-                        power_exponent: building
-                            .metadata
-                            .power_consumption_exponent
-                            .expect("Manufacturer missing power_consumption_exponent"),
+                        power: if building.class_name.as_str() == "Desc_QuantumEncoder_C" {
+                            // The quantum encoder has a power usage of 0, but it actually averages
+                            // 1000 MW.
+                            1000.0
+                        } else {
+                            building
+                                .metadata
+                                .power_consumption
+                                .expect("Manufacturer missing power_consumption")
+                        },
+                        power_exponent: if building.class_name.as_str() == "Desc_Portal_C" {
+                            // The main portal is not overclockable, so set its power exponent to 0.
+                            0.0
+                        } else {
+                            building
+                                .metadata
+                                .power_consumption_exponent
+                                .expect("Manufacturer missing power_consumption_exponent")
+                        },
                     },
                 })
             } else if generators.contains_key(building.class_name.as_str()) {

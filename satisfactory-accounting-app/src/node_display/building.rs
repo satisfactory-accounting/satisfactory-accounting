@@ -1,3 +1,4 @@
+use log::warn;
 // Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@ use yew::prelude::*;
 
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay};
+use crate::CtxHelper;
 
 use building_type::BuildingTypeDisplay;
 use clock::ClockSpeed;
@@ -103,12 +105,12 @@ impl NodeDisplay {
     ) -> Html {
         let link = ctx.link();
         let change_recipe = link.callback(|id| Msg::ChangeRecipe { id });
-        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+
         html! {
             <>
                 <RecipeDisplay building_id={building} recipe_id={settings.recipe}
                     {change_recipe} />
-                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
             </>
         }
     }
@@ -206,6 +208,30 @@ impl NodeDisplay {
                     {change_item} />
                 <StationConsumption consumption={settings.consumption} {update_consumption} />
             </>
+        }
+    }
+
+    /// If the building can be overclocked, returns the clock controls, otherwise returns None.
+    fn view_clock_controls_if_overclockable(
+        &self,
+        ctx: &Context<Self>,
+        building: BuildingId,
+        current_clock_speed: f32,
+    ) -> Option<Html> {
+        let db = ctx.db();
+        match db.get(building) {
+            Some(building) if !building.overclockable() => None,
+            // Treat missing buildings as overclockable by default; only hide the clock control if
+            // explicitly not overclockable.
+            maybe_building => {
+                if maybe_building.is_none() {
+                    warn!("Showing clock controls by default for unknown building {building}");
+                }
+                let update_speed = ctx
+                    .link()
+                    .callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+                Some(html! { <ClockSpeed clock_speed={current_clock_speed} {update_speed} /> })
+            }
         }
     }
 }
