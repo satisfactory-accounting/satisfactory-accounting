@@ -30,8 +30,14 @@ serve`. This will compile and start a dev server on port 8080.
 We use trunk again for this. Delete any existing `dist` directory, then run `trunk build
 --release`.
 
-To release it, clone the `satisfactory-accounting.github.io` repository, delete all the
-contents, and replace it with the contents of the newly built `dist` directory.
+To release it, clone the `satisfactory-accounting.github.io` repository, and
+
+```shell
+$ rsync -ah --inplace --no-whole-file --info=progress2 dist/ /path/to/satisfactory-accounting.github.io
+```
+
+Note that the trailing slash on `dist/` is important otherwise it will create a nested
+`dist` directory in the publish repository.
 
 ## Updating the Database
 
