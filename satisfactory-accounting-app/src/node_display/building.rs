@@ -124,13 +124,12 @@ impl NodeDisplay {
     ) -> Html {
         let link = ctx.link();
         let change_item = link.callback(|id| Msg::ChangeItem { id });
-        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
         let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {change_item} />
-                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
                 <Purity purity={settings.purity} {set_purity} />
             </>
         }
@@ -143,14 +142,12 @@ impl NodeDisplay {
         building: BuildingId,
         settings: &GeneratorSettings,
     ) -> Html {
-        let link = ctx.link();
-        let change_item = link.callback(|id| Msg::ChangeItem { id });
-        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
+        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.fuel}
                     {change_item} />
-                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
             </>
         }
     }
@@ -164,14 +161,13 @@ impl NodeDisplay {
     ) -> Html {
         let link = ctx.link();
         let change_item = link.callback(|id| Msg::ChangeItem { id });
-        let update_speed = link.callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
         let update_pads =
             link.callback(|(purity, num_pads)| Msg::ChangePumpPurity { purity, num_pads });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {change_item} />
-                <ClockSpeed clock_speed={settings.clock_speed} {update_speed} />
+                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
                 <MultiPurity purity={ResourcePurity::Impure}
                     num_pads={settings.impure_pads} update_pads={update_pads.clone()} />
                 <MultiPurity purity={ResourcePurity::Normal}
