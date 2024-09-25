@@ -23,7 +23,7 @@ use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
 };
 
-use crate::CtxHelper;
+use crate::context::CtxHelper;
 
 pub use self::balance::BalanceSortMode;
 

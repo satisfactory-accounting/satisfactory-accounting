@@ -8,9 +8,10 @@
 use satisfactory_accounting::accounting::{Building, Group};
 use yew::prelude::*;
 
+use crate::context::CtxHelper;
+use crate::node_display::balance::{BalanceShape, NodeBalance};
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay, NodeMeta, DRAG_INSERT_POINT};
-use crate::CtxHelper;
 
 use group_name::GroupName;
 
@@ -92,7 +93,7 @@ impl NodeDisplay {
                             <div class={DRAG_INSERT_POINT} />
                         }
                     </div>
-                    {self.view_balance(ctx, true)}
+                    <NodeBalance node={&ctx.props().node} shape={BalanceShape::Vertical} />
                 </div>
                 <div class="footer">
                     <button class="create create-group" title="Add Group"
@@ -116,7 +117,7 @@ impl NodeDisplay {
                 <div class="summary">
                     {self.drag_handle(ctx)}
                     <GroupName name={group.name.clone()} {rename} />
-                    {self.view_balance(ctx, false)}
+                    <NodeBalance node={&ctx.props().node} />
                     {self.child_warnings(ctx)}
                     {self.collapse_button(ctx, group)}
                     if !ctx.props().path.is_empty() {

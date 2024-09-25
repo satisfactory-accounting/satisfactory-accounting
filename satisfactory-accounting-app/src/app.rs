@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::collections::btree_map::Entry;
 // Copyright 2021, 2022 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -7,6 +5,8 @@ use std::collections::btree_map::Entry;
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::borrow::Cow;
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
 use std::str::FromStr;

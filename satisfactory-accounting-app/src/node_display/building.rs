@@ -13,9 +13,10 @@ use satisfactory_accounting::accounting::{
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
+use crate::context::CtxHelper;
+use crate::node_display::balance::NodeBalance;
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay};
-use crate::CtxHelper;
 
 use building_type::BuildingTypeDisplay;
 use clock::ClockSpeed;
@@ -52,7 +53,7 @@ impl NodeDisplay {
                     if let Some(warning) = ctx.props().node.warning() {
                         {self.view_warning(warning)}
                     } else {
-                        {self.view_balance(ctx, false)}
+                        <NodeBalance node={&ctx.props().node} />
                     }
                     <VirtualCopies copies={building.copies} {update_copies} />
                     {self.copy_button(ctx)}

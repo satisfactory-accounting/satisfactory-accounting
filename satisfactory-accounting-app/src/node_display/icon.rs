@@ -7,7 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use yew::prelude::*;
 
-use crate::use_db;
+use crate::context::use_db;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {

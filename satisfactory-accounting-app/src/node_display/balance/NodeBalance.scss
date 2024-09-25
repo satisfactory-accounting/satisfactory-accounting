@@ -1,0 +1,73 @@
+@use "sass:color";
+@use "../..//colors.scss";
+
+.NodeBalance {
+    box-sizing: border-box;
+    display: flex;
+    justify-content: flex-start;
+    align-items: stretch;
+
+    .item-entries {
+        box-sizing: border-box;
+        display: flex;
+        margin: 0;
+        padding: 0;
+    }
+
+    $text-value-gap: 2px;
+
+    .entry-row {
+        box-sizing: border-box;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        gap: $text-value-gap;
+
+
+    }
+
+    &.vertical {
+        flex-direction: column;
+
+        border-radius: 5px;
+        background-color: colors.$light;
+        padding: 5px;
+        gap: 5px;
+
+        .item-entries {
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .entry-row {
+            .balance-value {
+                min-width: calc(2.5em - $text-value-gap);
+            }
+        }
+    }
+
+    &.horizontal {
+        flex-direction: row-reverse;
+        gap: 10px;
+
+        .item-entries {
+            flex-direction: row-reverse;
+            gap: 10px;
+        }
+    }
+
+    .balance-value {
+        text-align: right;
+    }
+
+    .negative .balance-value {
+        color: colors.$danger;
+    }
+
+    .positive .balance-value {
+        color: color.scale(colors.$success, $lightness: -30%);
+    }
+}
