@@ -147,11 +147,11 @@ impl Component for ClickEdit {
             html! {
                 <form {class} {title} {onsubmit}>
                     { prefix.clone() }
-                    <span class="value">
+                    <div class="value">
                         <input class="value-input" type="text" value={value.clone()}
                             {oninput} {onblur} {onkeyup} ref={self.input.clone()} />
-                        <span class="value-display width-control-only">{value.to_string()}</span>
-                    </span>
+                        <div class="value-display">{value.to_string()}</div>
+                    </div>
                     { suffix.clone() }
                 </form>
             }
@@ -160,9 +160,9 @@ impl Component for ClickEdit {
             html! {
                 <div {class} {title} {onclick}>
                     { prefix.clone() }
-                    <span class="value">
-                        <span class="value-display">{value.to_string()}</span>
-                    </span>
+                    <div class="value">
+                        <div class="value-display">{value.to_string()}</div>
+                    </div>
                     { suffix.clone() }
                 </div>
             }

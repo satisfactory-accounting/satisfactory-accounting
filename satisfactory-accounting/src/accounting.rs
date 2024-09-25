@@ -10,6 +10,7 @@ use std::iter::FusedIterator;
 use std::rc::Rc;
 
 use implicit_clone::unsync::IString;
+use implicit_clone::ImplicitClone;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -84,6 +85,8 @@ impl BuildError {
 /// Nodes are immutable. Modifying them requires creating new nodes.
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Node(Rc<NodeInner>);
+
+impl ImplicitClone for Node {}
 
 impl<'de> Deserialize<'de> for Node {
     fn deserialize<D>(deserializer: D) -> Result<Node, D::Error>
