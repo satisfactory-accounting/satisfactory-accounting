@@ -1,5 +1,6 @@
 @use "colors.scss";
 @use "node_display.scss";
+@use "clickedit/ClickEdit.scss";
 
 body {
     display: flex;
@@ -337,23 +338,5 @@ input {
             }
 
         }
-    }
-}
-
-.ClickEdit {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 5px;
-
-    .value {
-        flex: 1 1;
-        min-width: 0;
-    }
-
-    span.value {
-        cursor: text;
     }
 }
