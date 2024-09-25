@@ -11,13 +11,16 @@
 
     .value {
         flex: 1 1;
+        position: relative;
     }
 
     $input-pad: 2px;
 
     .value-input {
+        display: block;
         min-width: 0;
         width: 100%;
+        position:absolute;
 
         background-color: colors.$white;
         border: none;
@@ -30,11 +33,5 @@
     .value-display {
         min-width: 0;
         padding: $input-pad;
-
-        &.width-control-only {
-            display: block;
-            height: 0;
-            overflow-y: hidden;
-        }
     }
 }
