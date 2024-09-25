@@ -1,0 +1,40 @@
+@use "../colors.scss";
+
+.ClickEdit {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
+    cursor: text;
+
+    .value {
+        flex: 1 1;
+    }
+
+    $input-pad: 2px;
+
+    .value-input {
+        min-width: 0;
+        width: 100%;
+
+        background-color: colors.$white;
+        border: none;
+        outline: none;
+        box-sizing: border-box;
+        padding: $input-pad;
+        text-align: inherit;
+    }
+
+    .value-display {
+        min-width: 0;
+        padding: $input-pad;
+
+        &.width-control-only {
+            display: block;
+            height: 0;
+            overflow-y: hidden;
+        }
+    }
+}
