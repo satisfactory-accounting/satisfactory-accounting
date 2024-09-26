@@ -1,4 +1,4 @@
-@use "../colors.scss";
+@use "../../colors.scss";
 
 .ClickEdit {
     box-sizing: border-box;
@@ -20,7 +20,7 @@
         display: block;
         min-width: 0;
         width: 100%;
-        position:absolute;
+        position: absolute;
 
         background-color: colors.$white;
         border: none;
@@ -33,5 +33,7 @@
     .value-display {
         min-width: 0;
         padding: $input-pad;
+        text-wrap: nowrap;
+        height: 1lh; // NB: using content-box not border-box.
     }
 }

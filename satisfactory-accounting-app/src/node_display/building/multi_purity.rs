@@ -8,7 +8,7 @@
 use satisfactory_accounting::accounting::ResourcePurity;
 use yew::prelude::*;
 
-use crate::clickedit::ClickEdit;
+use crate::inputs::clickedit::ClickEdit;
 use crate::node_display::building::purity::purity_icon;
 
 #[derive(Debug, PartialEq, Properties)]

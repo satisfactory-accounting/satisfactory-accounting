@@ -34,6 +34,7 @@ mod drag;
 mod graph_manipulation;
 mod group;
 mod icon;
+mod inputs;
 
 /// Mapping of node medatata by node id.
 #[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]

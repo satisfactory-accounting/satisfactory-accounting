@@ -16,10 +16,10 @@ use yew::prelude::*;
 use crate::context::CtxHelper;
 use crate::node_display::balance::NodeBalance;
 use crate::node_display::copies::VirtualCopies;
+use crate::node_display::inputs::clock::ClockSpeed;
 use crate::node_display::{Msg, NodeDisplay};
 
 use building_type::BuildingTypeDisplay;
-use clock::ClockSpeed;
 use item::ItemDisplay;
 use multi_purity::MultiPurity;
 use purity::Purity;
@@ -27,8 +27,6 @@ use recipe::RecipeDisplay;
 use station_consumption::StationConsumption;
 
 mod building_type;
-mod choose_from_list;
-mod clock;
 mod item;
 mod multi_purity;
 mod purity;

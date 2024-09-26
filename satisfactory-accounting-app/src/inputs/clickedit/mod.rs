@@ -2,7 +2,8 @@ use log::warn;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::events::get_value_from_input_event;
+use crate::inputs::events::get_value_from_input_event;
+use crate::inputs::whitespace::space_to_nbsp;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
@@ -60,6 +61,8 @@ impl Component for ClickEdit {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
+        let mut class = classes!("ClickEdit");
+        class.extend(&ctx.props().class);
         ClickEdit {
             edit_text: None,
             did_focus: true,
@@ -78,15 +81,15 @@ impl Component for ClickEdit {
                 Msg::FinishEdit
             }),
             onclick: link.callback(|_| Msg::StartEdit),
-
-            class: classes!("ClickEdit", ctx.props().class.clone()),
+            class,
         }
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let new_props = ctx.props();
         if new_props.class != old_props.class {
-            self.class = classes!("ClickEdit", new_props.class.clone());
+            self.class = classes!("ClickEdit");
+            self.class.extend(&new_props.class);
             return true;
         }
         // We only need to rerender if any of the rendered values changed. on_commit is used from
@@ -148,9 +151,9 @@ impl Component for ClickEdit {
                 <form {class} {title} {onsubmit}>
                     { prefix.clone() }
                     <div class="value">
-                        <input class="value-input" type="text" value={value.clone()}
-                            {oninput} {onblur} {onkeyup} ref={self.input.clone()} />
-                        <div class="value-display">{value.to_string()}</div>
+                        <input class="value-input" type="text" value={&value}
+                            {oninput} {onblur} {onkeyup} ref={&self.input} />
+                        <div class="value-display">{space_to_nbsp(&value)}</div>
                     </div>
                     { suffix.clone() }
                 </form>
@@ -161,7 +164,7 @@ impl Component for ClickEdit {
                 <div {class} {title} {onclick}>
                     { prefix.clone() }
                     <div class="value">
-                        <div class="value-display">{value.to_string()}</div>
+                        <div class="value-display">{value}</div>
                     </div>
                     { suffix.clone() }
                 </div>

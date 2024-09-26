@@ -8,7 +8,7 @@
 use satisfactory_accounting::accounting::ResourcePurity;
 use yew::prelude::*;
 
-use crate::node_display::building::choose_from_list::{Choice, ChooseFromList};
+use crate::inputs::choose_from_list::{Choice, ChooseFromList};
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
