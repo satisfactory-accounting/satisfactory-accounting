@@ -14,7 +14,8 @@ use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 
-use crate::events::get_value_from_input_event;
+use crate::inputs::events::get_value_from_input_event;
+use crate::inputs::whitespace::space_to_nbsp;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
@@ -49,8 +50,9 @@ pub enum Msg {
     Cancel,
     /// Update the entered text value.
     UpdateInput { input: AttrValue },
-    /// Select the specified item from the filtered list.
-    Select { filtered_idx: usize },
+    /// Select the specified item from the filtered list, otherwise select the currently highlighted
+    /// item.
+    Select { filtered_idx: Option<usize> },
 }
 
 /// Component for choosing an item from
@@ -65,6 +67,13 @@ pub struct ChooseFromList<I> {
     /// Input element, for focusing.
     input_ref: NodeRef,
     _phantom: PhantomData<I>,
+
+    // Cached Callbacks
+    onkeydown: Callback<KeyboardEvent, ()>,
+    onkeyup: Callback<KeyboardEvent, ()>,
+    onfocusout: Callback<FocusEvent, ()>,
+    oninput: Callback<InputEvent, ()>,
+    onsubmit: Callback<SubmitEvent, ()>,
 }
 
 impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
@@ -80,6 +89,9 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             .map(|choice| (0, choice))
             .collect();
         filtered.sort_by(|(_, c1), (_, c2)| c1.name.cmp(&c2.name));
+
+        let link = ctx.link();
+
         Self {
             input: "".into(),
             highlighted: 0,
@@ -87,6 +99,39 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             matcher: Default::default(),
             input_ref: Default::default(),
             _phantom: PhantomData,
+
+            onkeydown: link.batch_callback(|e: KeyboardEvent| match &*e.key() {
+                "Up" | "ArrowUp" => {
+                    e.prevent_default();
+                    Some(Msg::Up)
+                }
+                "Down" | "ArrowDown" => {
+                    e.prevent_default();
+                    Some(Msg::Down)
+                }
+                _ => None,
+            }),
+            onkeyup: link.batch_callback(|e: KeyboardEvent| match &*e.key() {
+                "Esc" | "Escape" => Some(Msg::Cancel),
+                _ => None,
+            }),
+            onfocusout: link.batch_callback(|e: FocusEvent| {
+                if let Some(target) = e.related_target() {
+                    if let Ok(element) = target.dyn_into::<HtmlElement>() {
+                        if element.class_list().contains("available-item") {
+                            return None;
+                        }
+                    }
+                }
+                Some(Msg::Cancel)
+            }),
+            oninput: link.callback(|input| Msg::UpdateInput {
+                input: get_value_from_input_event(input),
+            }),
+            onsubmit: link.callback(|e: SubmitEvent| {
+                e.prevent_default();
+                Msg::Select { filtered_idx: None }
+            }),
         }
     }
 
@@ -144,6 +189,7 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
                 }
             }
             Msg::Select { filtered_idx } => {
+                let filtered_idx = filtered_idx.unwrap_or(self.highlighted);
                 if filtered_idx < self.filtered.len() {
                     ctx.props().selected.emit(self.filtered[filtered_idx].1.id);
                 } else {
@@ -156,52 +202,20 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let highlighted = self.highlighted;
-        let onkeydown = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
-            "Up" | "ArrowUp" => {
-                e.prevent_default();
-                Some(Msg::Up)
-            }
-            "Down" | "ArrowDown" => {
-                e.prevent_default();
-                Some(Msg::Down)
-            }
-            _ => None,
-        });
-        let onkeyup = link.batch_callback(|e: KeyboardEvent| match &*e.key() {
-            "Esc" | "Escape" => Some(Msg::Cancel),
-            _ => None,
-        });
-        let onfocusout = link.batch_callback(|e: FocusEvent| {
-            if let Some(target) = e.related_target() {
-                if let Ok(element) = target.dyn_into::<HtmlElement>() {
-                    if element.class_list().contains("available-item") {
-                        return None;
-                    }
-                }
-            }
-            Some(Msg::Cancel)
-        });
-        let oninput = link.callback(|input| Msg::UpdateInput {
-            input: get_value_from_input_event(input),
-        });
-        let onsubmit = link.callback(move |e: SubmitEvent| {
-            e.prevent_default();
-            Msg::Select {
-                filtered_idx: highlighted,
-            }
-        });
         html! {
-            <form class="ChooseFromList" {onsubmit} {onfocusout}>
-                <input type="text" value={self.input.clone()}
-                    {onkeydown} {onkeyup} {oninput}
-                    ref={self.input_ref.clone()} />
+            <form class="ChooseFromList" onsubmit={&self.onsubmit} onfocusout={&self.onfocusout}>
+                <input type="text" value={&self.input} class="text-input"
+                    onkeydown={&self.onkeydown} onkeyup={&self.onkeyup} oninput={&self.oninput}
+                    ref={&self.input_ref} />
+                <div class="input-size">
+                    {space_to_nbsp(&self.input)}
+                </div>
                 <div class="available">
                     { for self.filtered.iter().enumerate().map(|(i, (_, item))| {
                         let selected = (i == self.highlighted).then(|| "selected");
                         let onclick = link.callback(move |_|
                             Msg::Select {
-                            filtered_idx: i,
+                            filtered_idx: Some(i),
                         });
                         let onmouseenter = link.callback(move |_| Msg::Hover {
                             filtered_idx: i,

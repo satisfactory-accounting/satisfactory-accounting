@@ -9,7 +9,7 @@ use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
 use crate::context::CtxHelper;
-use crate::node_display::building::choose_from_list::{Choice, ChooseFromList};
+use crate::inputs::choose_from_list::{Choice, ChooseFromList};
 use crate::node_display::icon::Icon;
 
 #[derive(PartialEq, Properties)]

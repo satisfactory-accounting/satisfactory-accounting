@@ -7,7 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use yew::prelude::*;
 
-use crate::clickedit::ClickEdit;
+use crate::inputs::clickedit::ClickEdit;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
