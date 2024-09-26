@@ -1,0 +1,18 @@
+// Mixin for defining name-like select boxes (the building selector, recipe selector, and item
+// selector).
+@mixin name-mixin($size) {
+    box-sizing: border-box;
+    cursor: text;
+    min-width: min-content;
+    text-wrap: nowrap;
+    flex: 1 0 $size;
+    width: $size;
+
+    .inner-flex {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
+    }
+}

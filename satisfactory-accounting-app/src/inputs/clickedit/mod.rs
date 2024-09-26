@@ -148,25 +148,29 @@ impl Component for ClickEdit {
             let onblur = self.onblur.clone();
             let onsubmit = self.onsubmit.clone();
             html! {
-                <form {class} {title} {onsubmit}>
-                    { prefix.clone() }
-                    <div class="value">
-                        <input class="value-input" type="text" value={&value}
-                            {oninput} {onblur} {onkeyup} ref={&self.input} />
-                        <div class="value-display">{space_to_nbsp(&value)}</div>
-                    </div>
-                    { suffix.clone() }
-                </form>
+                <div {class} {title}>
+                    <form class="inner-flex" {onsubmit}>
+                        { prefix.clone() }
+                        <div class="value">
+                            <input class="value-input" type="text" value={&value}
+                                {oninput} {onblur} {onkeyup} ref={&self.input} />
+                            <div class="value-display">{space_to_nbsp(&value)}</div>
+                        </div>
+                        { suffix.clone() }
+                    </form>
+                </div>
             }
         } else {
             let onclick = self.onclick.clone();
             html! {
                 <div {class} {title} {onclick}>
-                    { prefix.clone() }
-                    <div class="value">
-                        <div class="value-display">{value}</div>
+                    <div class="inner-flex">
+                        { prefix.clone() }
+                        <div class="value">
+                            <div class="value-display">{value}</div>
+                        </div>
+                        { suffix.clone() }
                     </div>
-                    { suffix.clone() }
                 </div>
             }
         }

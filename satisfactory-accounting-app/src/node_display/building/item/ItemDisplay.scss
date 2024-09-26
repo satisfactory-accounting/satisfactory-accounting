@@ -1,0 +1,5 @@
+@use "../name-mixin.scss";
+
+.ItemDisplay {
+    @include name-mixin.name_mixin(250px);
+}
