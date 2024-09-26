@@ -31,12 +31,15 @@ pub fn MultiPurity(props: &Props) -> Html {
             }
         },
     );
-
-    let title = format!("Number of {} Nodes", props.purity.name());
-    let prefix = purity_icon(props.purity);
-    let value: AttrValue = props.num_pads.to_string().into();
+    let (prefix, title): &(Html, AttrValue) = &*use_memo(props.purity, |purity| {
+        (
+            purity_icon(*purity),
+            format!("Number of {} Nodes", props.purity.name()).into(),
+        )
+    });
+    let value: &AttrValue = &*use_memo(props.num_pads, |num_pads| num_pads.to_string().into());
 
     html! {
-        <ClickEdit {value} class="MultiPurity" {title} {prefix} {on_commit} />
+        <ClickEdit {value} class="MultiPurity" {title} prefix={prefix.clone()} {on_commit} />
     }
 }

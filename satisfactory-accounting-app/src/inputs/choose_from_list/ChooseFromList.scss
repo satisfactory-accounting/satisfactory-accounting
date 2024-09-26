@@ -2,14 +2,13 @@
 
 .ChooseFromList {
     box-sizing: border-box;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
+    display: block;
     position: relative;
-    flex: 1 1;
 
     $input-pad: 2px;
+
+    padding: $input-pad;
+    min-width: min-content;
 
     .text-input {
         display: block;
@@ -24,12 +23,13 @@
         box-sizing: border-box;
         padding: $input-pad;
         text-align: inherit;
+        margin: -$input-pad;
     }
 
     .input-size {
-        padding: $input-pad;
         text-wrap: nowrap;
         height: 1lh; // NB: using content-box not border-box.
+        width: min-content;
     }
 
     .available {

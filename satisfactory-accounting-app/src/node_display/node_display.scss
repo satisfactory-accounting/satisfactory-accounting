@@ -3,7 +3,7 @@
 
 @use "balance/NodeBalance.scss";
 @use "building/building.scss";
-@use "inputs/inputs.scss";
+@use "copies/VirtualCopies.scss";
 
 .NodeDisplay {
     .drag-handle {
@@ -35,7 +35,6 @@
         border: none;
         outline: none;
     }
-
 
     &.group {
         box-sizing: border-box;
@@ -152,17 +151,6 @@
             gap: 10px;
         }
 
-        .name {
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 5px;
-            cursor: text;
-            flex: 1 0 250px;
-        }
-
         .recipe {
             box-sizing: border-box;
             display: flex;
@@ -188,30 +176,6 @@
             gap: 5px;
         }
 
-    }
-
-    .Purity {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 5px;
-        width: 90px;
-
-        .ChooseFromList {
-            flex-shrink: 1;
-            min-width: 0;
-            input[type="text"] {
-                min-width: 0;
-                flex-grow: 1;
-                flex-shrink: 1;
-            }
-        }
-    }
-
-    .MultiPurity {
-        width: 70px;
     }
 
     .icon.impure-node {
@@ -241,14 +205,6 @@
         }
         span.current-consumption {
             cursor: text;
-        }
-    }
-
-    .VirtualCopies {
-        width: 60px;
-
-        .value {
-            text-align: right;
         }
     }
 
