@@ -3,6 +3,7 @@
 
 @use "balance/NodeBalance.scss";
 @use "building/building.scss";
+@use "inputs/inputs.scss";
 
 .NodeDisplay {
     .drag-handle {
@@ -159,7 +160,7 @@
             align-items: center;
             gap: 5px;
             cursor: text;
-            min-width: 250px;
+            flex: 1 0 250px;
         }
 
         .recipe {
@@ -187,48 +188,6 @@
             gap: 5px;
         }
 
-    }
-
-    .ChooseFromList {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        position: relative;
-
-        .available {
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: stretch;
-
-            position: absolute;
-            top: calc(100% + 5px);
-            left: 0;
-            max-height: 500px;
-            min-width: 300px;
-            overflow-y: auto;
-            background-color: colors.$dark;
-            color: colors.$gray-light;
-            border: 2px solid colors.$primary;
-            border-radius: 2px;
-
-            .available-item {
-                box-sizing: border-box;
-                display: flex;
-                flex-direction: row;
-                justify-content: flex-start;
-                align-items: center;
-                gap: 5px;
-                padding: 0 5px;
-
-                &.selected {
-                    background-color: colors.$light;
-                    color: colors.$gray-dark;
-                }
-            }
-        }
     }
 
     .Purity {

@@ -8,9 +8,8 @@
 use crate::app::App;
 
 mod app;
-mod clickedit;
 mod context;
-mod events;
+mod inputs;
 mod node_display;
 
 fn main() {
