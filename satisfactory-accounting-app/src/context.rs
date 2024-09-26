@@ -5,7 +5,6 @@ use yew::prelude::*;
 
 use satisfactory_accounting::database::Database;
 
-
 use crate::app::UserSettings;
 use crate::node_display::{NodeMeta, NodeMetadata};
 

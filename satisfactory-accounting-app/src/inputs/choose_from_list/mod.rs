@@ -69,11 +69,11 @@ pub struct ChooseFromList<I> {
     _phantom: PhantomData<I>,
 
     // Cached Callbacks
-    onkeydown: Callback<KeyboardEvent, ()>,
-    onkeyup: Callback<KeyboardEvent, ()>,
-    onfocusout: Callback<FocusEvent, ()>,
-    oninput: Callback<InputEvent, ()>,
-    onsubmit: Callback<SubmitEvent, ()>,
+    onkeydown: Callback<KeyboardEvent>,
+    onkeyup: Callback<KeyboardEvent>,
+    onfocusout: Callback<FocusEvent>,
+    oninput: Callback<InputEvent>,
+    onsubmit: Callback<SubmitEvent>,
 }
 
 impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
