@@ -4,6 +4,8 @@
 @use "balance/NodeBalance.scss";
 @use "building/building.scss";
 @use "copies/VirtualCopies.scss";
+@use "group/GroupName.scss";
+@use "icon/Icon.scss";
 
 .NodeDisplay {
     .drag-handle {
@@ -22,12 +24,6 @@
 
     .expand-collapse {
         @include colors.primary-button;
-    }
-
-    .icon {
-        width: 24px;
-        height: 24px;
-        object-fit: contain;
     }
 
     input[type="text"] {
@@ -71,18 +67,6 @@
             gap: 5px;
 
        }
-
-        .GroupName {
-            flex-grow: 1;
-
-            .value {
-                font-size: 20px;
-                color: colors.$gray-dark;
-            }
-            &.unnamed span.value {
-                color: colors.$gray;
-            }
-        }
 
         .body {
             box-sizing: border-box;
@@ -176,16 +160,6 @@
             gap: 5px;
         }
 
-    }
-
-    .icon.impure-node {
-        color: colors.$danger;
-    }
-    .icon.normal-node {
-        color: colors.$warning;
-    }
-    .icon.pure-node {
-        color: colors.$success;
     }
 
     .StationConsumption {

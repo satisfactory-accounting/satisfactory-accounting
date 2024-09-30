@@ -1,0 +1,5 @@
+@use "icon-mixin.scss";
+
+.Icon {
+    @include icon-mixin.icon-size;
+}
