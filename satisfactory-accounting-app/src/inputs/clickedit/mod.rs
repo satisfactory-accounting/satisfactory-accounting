@@ -44,15 +44,22 @@ pub struct ClickEdit {
     /// Input to focus on editing.
     input: NodeRef,
 
+    // Memoized classes.
+    class: Classes,
+
     // Memoized callbacks:
     oninput: Callback<InputEvent>,
     onkeyup: Callback<KeyboardEvent>,
     onblur: Callback<FocusEvent>,
     onsubmit: Callback<SubmitEvent>,
     onclick: Callback<MouseEvent>,
+}
 
-    // Memoized classes.
-    class: Classes,
+impl ClickEdit {
+    /// Recompute the cached classes list.
+    fn compute_classes(props: &Props) -> Classes {
+        classes!("ClickEdit", props.class.clone())
+    }
 }
 
 impl Component for ClickEdit {
@@ -61,12 +68,12 @@ impl Component for ClickEdit {
 
     fn create(ctx: &Context<Self>) -> Self {
         let link = ctx.link();
-        let mut class = classes!("ClickEdit");
-        class.extend(&ctx.props().class);
         ClickEdit {
             edit_text: None,
             did_focus: true,
             input: NodeRef::default(),
+
+            class: Self::compute_classes(ctx.props()),
 
             oninput: link.callback(|input| Msg::UpdateInput {
                 input: get_value_from_input_event(input),
@@ -81,15 +88,13 @@ impl Component for ClickEdit {
                 Msg::FinishEdit
             }),
             onclick: link.callback(|_| Msg::StartEdit),
-            class,
         }
     }
 
     fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
         let new_props = ctx.props();
         if new_props.class != old_props.class {
-            self.class = classes!("ClickEdit");
-            self.class.extend(&new_props.class);
+            self.class = classes!("ClickEdit", new_props.class.clone());
             return true;
         }
         // We only need to rerender if any of the rendered values changed. on_commit is used from
@@ -148,29 +153,25 @@ impl Component for ClickEdit {
             let onblur = self.onblur.clone();
             let onsubmit = self.onsubmit.clone();
             html! {
-                <div {class} {title}>
-                    <form class="inner-flex" {onsubmit}>
-                        { prefix.clone() }
-                        <div class="value">
-                            <input class="value-input" type="text" value={&value}
-                                {oninput} {onblur} {onkeyup} ref={&self.input} />
-                            <div class="value-display">{space_to_nbsp(&value)}</div>
-                        </div>
-                        { suffix.clone() }
-                    </form>
-                </div>
+                <form {class} {title} {onsubmit}>
+                    { prefix.clone() }
+                    <div class="value">
+                        <input class="value-input" type="text" value={&value}
+                            {oninput} {onblur} {onkeyup} ref={&self.input} />
+                        <div class="value-display">{space_to_nbsp(&value)}</div>
+                    </div>
+                    { suffix.clone() }
+                </form>
             }
         } else {
             let onclick = self.onclick.clone();
             html! {
                 <div {class} {title} {onclick}>
-                    <div class="inner-flex">
-                        { prefix.clone() }
-                        <div class="value">
-                            <div class="value-display">{value}</div>
-                        </div>
-                        { suffix.clone() }
+                    { prefix.clone() }
+                    <div class="value">
+                        <div class="value-display">{value}</div>
                     </div>
+                    { suffix.clone() }
                 </div>
             }
         }

@@ -8,11 +8,9 @@
     flex: 1 0 $size;
     width: $size;
 
-    .inner-flex {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 5px;
-    }
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
 }

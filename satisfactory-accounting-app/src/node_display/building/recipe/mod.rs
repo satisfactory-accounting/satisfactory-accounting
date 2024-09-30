@@ -55,37 +55,30 @@ pub fn RecipeDisplay(
         let choices = create_recipe_choices(&db, recipes);
 
         html! {
-            <span class="RecipeDisplay" title="Recipe">
-                <ChooseFromList<RecipeId> {choices} {selected} {cancelled} />
-            </span>
+            <ChooseFromList<RecipeId> class="RecipeDisplay" title="Recipe"
+                {choices} {selected} {cancelled} />
         }
     } else {
         // Don't allow editing if only 1 choice is available.
         let edit = (recipes.len() > 1).then(move || edit);
         match recipe_id {
             None => html! {
-                <span class="RecipeDisplay" title="Recipe" onclick={edit}>
-                    <div class="inner-flex">
-                        <span>{"select recipe"}</span>
-                    </div>
-                </span>
+                <div class="RecipeDisplay" title="Recipe" onclick={edit}>
+                    <span>{"select recipe"}</span>
+                </div>
             },
             Some(id) => match db.get(id) {
                 None => html! {
-                    <span class="RecipeDisplay" title="Recipe" onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon />
-                            <span>{"Unknown Recipe "}{id}</span>
-                        </div>
-                    </span>
+                    <div class="RecipeDisplay" title="Recipe" onclick={edit}>
+                        <Icon />
+                        <span>{"Unknown Recipe "}{id}</span>
+                    </div>
                 },
                 Some(recipe) => html! {
-                    <span class="RecipeDisplay" title="Recipe" onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon icon={recipe.image.clone()} />
-                            <span>{&recipe.name}</span>
-                        </div>
-                    </span>
+                    <div class="RecipeDisplay" title="Recipe" onclick={edit}>
+                        <Icon icon={recipe.image.clone()} />
+                        <span>{&recipe.name}</span>
+                    </div>
                 },
             },
         }

@@ -55,37 +55,29 @@ pub fn ItemDisplay(
         let choices = create_item_choices(&db, items);
 
         html! {
-            <span class="ItemDisplay" {title}>
-                <ChooseFromList<ItemId> {choices} {selected} {cancelled} />
-            </span>
+            <ChooseFromList<ItemId> class="ItemDisplay" {title} {choices} {selected} {cancelled} />
         }
     } else {
         // Don't allow editing if only 1 choice is available.
         let edit = (items.len() > 1).then(|| edit);
         match item_id {
             None => html! {
-                <span class="ItemDisplay" {title} onclick={edit}>
-                    <div class="inner-flex">
-                        {"select item"}
-                    </div>
-                </span>
+                <div class="ItemDisplay" {title} onclick={edit}>
+                    {"select item"}
+                </div>
             },
             Some(id) => match db.get(id) {
                 None => html! {
-                    <span class="ItemDisplay" {title} onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon />
-                            <span>{"Unknown Item "}{id}</span>
-                        </div>
-                    </span>
+                    <div class="ItemDisplay" {title} onclick={edit}>
+                        <Icon />
+                        <span>{"Unknown Item "}{id}</span>
+                    </div>
                 },
                 Some(item) => html! {
-                    <span class="ItemDisplay" {title} onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon icon={item.image.clone()} />
-                            <span>{&item.name}</span>
-                        </div>
-                    </span>
+                    <div class="ItemDisplay" {title} onclick={edit}>
+                        <Icon icon={item.image.clone()} />
+                        <span>{&item.name}</span>
+                    </div>
                 },
             },
         }
