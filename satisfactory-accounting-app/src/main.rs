@@ -8,8 +8,10 @@
 use crate::app::App;
 
 mod app;
+mod appheader;
 mod context;
 mod inputs;
+mod material;
 mod node_display;
 
 fn main() {

@@ -1,0 +1,24 @@
+@use "../../colors.scss";
+
+.TitleBar {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+
+    height: 60px;
+    background-color: colors.$bg-primary;
+    padding: 10px;
+
+    .app-title {
+        font-family: 'Satisfontory', 'Rubik', 'Sans';
+        background: linear-gradient(to top, #ADC8DD, #FEFFFE, #E2E9EF);
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        -webkit-background-clip: text;
+
+        font-size: 40px;
+        line-height: 40px;
+    }
+}
