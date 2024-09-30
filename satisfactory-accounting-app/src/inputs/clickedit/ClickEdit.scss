@@ -5,13 +5,11 @@
     cursor: text;
     min-width: min-content;
 
-    .inner-flex {
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 5px;
-    }
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 5px;
 
     .value {
         flex: 1 1;
