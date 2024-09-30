@@ -369,7 +369,7 @@ fn main() {
                 if building.class_name == "Desc_GeneratorGeoThermal_C" {
                     BuildingKind::Geothermal(Geothermal {
                         // Patched from wiki because the data says zero. Based on average
-                        // power on a normal node. This should work with nod purity to get
+                        // power on a normal node. This should work with node purity to get
                         // the right averages.
                         power: 200.0,
                     })
@@ -386,7 +386,9 @@ fn main() {
                         },
                         power_production: Power {
                             power: gen.power_production,
-                            power_exponent: gen.power_production_exponent,
+                            // The powerProductionExponents in the source all still say 1.6, but
+                            // since U7, generators have scaled linearly.
+                            power_exponent: 1.0,
                         },
                     })
                 }

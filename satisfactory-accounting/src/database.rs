@@ -135,7 +135,7 @@ impl DatabaseVersion {
             name: "1.0 \u{2013} Wetter",
             description: "This minor update to the database for 1.0 fixes Water Extractors so they \
                 produce water again and fixes the Resource Well Extractor to be correctly handled \
-                as part of the Resource Well Pressurizer rather than as its own separate building."
+                as part of the Resource Well Pressurizer rather than as its own separate building.",
         },
         {
             version: DatabaseVersion::V1_0(V1_0Subversion::Semiquantum),
@@ -143,7 +143,15 @@ impl DatabaseVersion {
             name: "1.0 \u{2013} Semiquantum",
             description: "This update to the databse for Satisfactory 1.0 adds some recipies that \
                 were missing related to late-game technologies, though it doesn't add the Alien \
-                Power Augmenter."
+                Power Augmenter.",
+        },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Powerline),
+            file: "../db-v1.0-powerline.json",
+            name: "1.0 \u{2013} Powerline",
+            description: "This update to the databse for Satisfactory 1.0 fixes power generators \
+                so they scale linearly with changes to their clock speed, which has been how the
+                game has worked since U7.",
         },
     ];
 
@@ -194,6 +202,8 @@ pub enum V1_0Subversion {
     Wetter,
     /// Update adding some missing quantim items, released in Satisfactory Accounting 1.2.6.
     Semiquantum,
+    /// Update to make power plant overclock scaling linear.
+    Powerline,
 }
 
 impl fmt::Display for DatabaseVersion {
