@@ -1,3 +1,6 @@
+@use "../../../colors.scss";
+@use "../../icon/icon-mixin.scss";
+
 .Purity {
     box-sizing: border-box;
     display: flex;
@@ -6,4 +9,18 @@
     align-items: center;
     gap: 5px;
     flex: 1 0 90px;
+}
+
+.purity-icon {
+    @include icon-mixin.icon-size;
+
+    &.impure-node {
+        color: colors.$danger;
+    }
+    &.normal-node {
+        color: colors.$warning;
+    }
+    &.pure-node {
+        color: colors.$success;
+    }
 }

@@ -64,17 +64,17 @@ fn create_purity_choices() -> Vec<Choice<ResourcePurity>> {
 pub fn purity_icon(purity: ResourcePurity) -> Html {
     match purity {
         ResourcePurity::Impure => html! {
-            <span class="icon material-icons impure-node">
+            <span class="purity-icon material-icons impure-node">
                 {"remove_circle"}
             </span>
         },
         ResourcePurity::Normal => html! {
-            <span class="icon material-icons normal-node">
+            <span class="purity-icon material-icons normal-node">
                 {"circle"}
             </span>
         },
         ResourcePurity::Pure => html! {
-            <span class="icon material-icons pure-node">
+            <span class="purity-icon material-icons pure-node">
                 {"add_circle"}
             </span>
         },

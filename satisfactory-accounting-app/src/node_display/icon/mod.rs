@@ -22,10 +22,10 @@ pub fn icon(props: &Props) -> Html {
 
     match &props.icon {
         Some(icon) => html! {
-            <img src={slug_to_icon(icon, &db.icon_prefix)} class="icon" alt="?" />
+            <img src={slug_to_icon(icon, &db.icon_prefix)} class="Icon" alt="?" />
         },
         None => html! {
-            <span class="icon material-icons error">{"error"}</span>
+            <span class="Icon material-icons error">{"error"}</span>
         },
     }
 }
