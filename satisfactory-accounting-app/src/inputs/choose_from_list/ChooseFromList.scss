@@ -48,6 +48,7 @@
         color: colors.$gray-light;
         border: 2px solid colors.$primary;
         border-radius: 2px;
+        z-index: 100;
 
         .available-item {
             box-sizing: border-box;

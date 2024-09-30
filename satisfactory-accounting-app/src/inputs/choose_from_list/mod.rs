@@ -32,10 +32,16 @@ pub struct Choice<Id> {
 pub struct Props<I: PartialEq> {
     /// Available choices for this chooser.
     pub choices: Vec<Choice<I>>,
+    /// Title to apply to the root of the chooser.
+    #[prop_or_default]
+    pub title: Option<AttrValue>,
     /// Callback for when an item is chosen.
     pub selected: Callback<I>,
     /// Callback for when selection is cancelled.
     pub cancelled: Callback<()>,
+    /// Extra classes to apply.
+    #[prop_or_default]
+    pub class: Classes,
 }
 
 /// Messages for [`ChooseFromList`].
@@ -68,12 +74,22 @@ pub struct ChooseFromList<I> {
     input_ref: NodeRef,
     _phantom: PhantomData<I>,
 
+    // Cached properties.
+    class: Classes,
+
     // Cached Callbacks
     onkeydown: Callback<KeyboardEvent>,
     onkeyup: Callback<KeyboardEvent>,
     onfocusout: Callback<FocusEvent>,
     oninput: Callback<InputEvent>,
     onsubmit: Callback<SubmitEvent>,
+}
+
+impl<I: PartialEq> ChooseFromList<I> {
+    // Compute the class list for this item.
+    fn compute_classes(props: &Props<I>) -> Classes {
+        classes!("ChooseFromList", props.class.clone())
+    }
 }
 
 impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
@@ -99,6 +115,8 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             matcher: Default::default(),
             input_ref: Default::default(),
             _phantom: PhantomData,
+
+            class: Self::compute_classes(ctx.props()),
 
             onkeydown: link.batch_callback(|e: KeyboardEvent| match &*e.key() {
                 "Up" | "ArrowUp" => {
@@ -203,7 +221,8 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
         html! {
-            <form class="ChooseFromList" onsubmit={&self.onsubmit} onfocusout={&self.onfocusout}>
+            <form class={self.class.clone()} onsubmit={&self.onsubmit}
+                onfocusout={&self.onfocusout} title={&ctx.props().title}>
                 <input type="text" value={&self.input} class="text-input"
                     onkeydown={&self.onkeydown} onkeyup={&self.onkeyup} oninput={&self.oninput}
                     ref={&self.input_ref} />
@@ -231,6 +250,20 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
                 </div>
             </form>
         }
+    }
+
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        let new_props = ctx.props();
+        if new_props.class != old_props.class {
+            self.class = Self::compute_classes(new_props);
+            return true;
+        }
+
+        // We only need to rerender if any of the rendered values changed. selected and cancelled
+        // are used from within our update method, so we don't need to re-render to pick up changes
+        // to them.
+        new_props.choices != old_props.choices
+            || new_props.title != old_props.title
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {

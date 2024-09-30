@@ -41,35 +41,28 @@ pub fn BuildingTypeDisplay(Props { id, change_type }: &Props) -> Html {
     if *editing {
         let choices = create_building_choices(&db);
         html! {
-            <span class="BuildingTypeDisplay" title="Building Type">
-                <ChooseFromList<BuildingId> {choices} {selected} {cancelled} />
-            </span>
+            <ChooseFromList<BuildingId> class="BuildingTypeDisplay" title="Building Type"
+                {choices} {selected} {cancelled} />
         }
     } else {
         match id {
             None => html! {
-                <span class="BuildingTypeDisplay" onclick={edit}>
-                    <div class="inner-flex">
-                        {"select building"}
-                    </div>
-                </span>
+                <div class="BuildingTypeDisplay" onclick={edit}>
+                    {"select building"}
+                </div>
             },
             Some(id) => match db.get(*id) {
                 None => html! {
-                    <span class="BuildingTypeDisplay" title="Building Type" onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon />
-                            <span>{"Unknown Building "}{id}</span>
-                        </div>
-                    </span>
+                    <div class="BuildingTypeDisplay" title="Building Type" onclick={edit}>
+                        <Icon />
+                        <span>{"Unknown Building "}{id}</span>
+                    </div>
                 },
                 Some(building) => html! {
-                    <span class="BuildingTypeDisplay" title="Building Type" onclick={edit}>
-                        <div class="inner-flex">
-                            <Icon icon={building.image.clone()}/>
-                            <span>{&building.name}</span>
-                        </div>
-                    </span>
+                    <div class="BuildingTypeDisplay" title="Building Type" onclick={edit}>
+                        <Icon icon={building.image.clone()}/>
+                        <span>{&building.name}</span>
+                    </div>
                 },
             },
         }

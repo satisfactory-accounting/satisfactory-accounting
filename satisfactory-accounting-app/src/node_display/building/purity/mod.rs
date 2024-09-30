@@ -37,9 +37,8 @@ pub fn Purity(Props { purity, set_purity }: &Props) -> Html {
 
     if *editing {
         html! {
-            <div class="Purity" title="Resource Node Purity">
-                <ChooseFromList<ResourcePurity> {choices} {selected} {cancelled} />
-            </div>
+            <ChooseFromList<ResourcePurity> class="Purity" title="Resource Node Purity"
+                {choices} {selected} {cancelled} />
         }
     } else {
         html! {
