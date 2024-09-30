@@ -1,0 +1,23 @@
+@use "../../colors.scss";
+
+.MenuBar {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    gap: 5px;
+
+    background-color: colors.$light;
+
+    .flex-section {
+        box-sizing: border-box;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
+    }
+}

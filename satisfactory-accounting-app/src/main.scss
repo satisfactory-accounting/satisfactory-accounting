@@ -1,4 +1,5 @@
 @use "colors.scss";
+@use "appheader/AppHeader.scss";
 @use "node_display/node_display.scss";
 @use "inputs/inputs.scss";
 
@@ -38,24 +39,6 @@ input {
     justify-content: flex-start;
     align-items: stretch;
     flex-grow: 1;
-
-    .navbar {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-
-        height: 60px;
-        background-color: colors.$bg-primary;
-        padding: 10px;
-
-        .appheader {
-            @include colors.satisfactory;
-            font-size: 40px;
-            line-height: 40px;
-        }
-    }
 
     .menubar {
         box-sizing: border-box;

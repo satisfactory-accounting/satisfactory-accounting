@@ -23,6 +23,7 @@ use yew::prelude::*;
 use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 
+use crate::appheader::AppHeader;
 use crate::node_display::{BalanceSortMode, NodeDisplay, NodeMeta, NodeMetadata};
 
 /// Key that the app state is stored under.
@@ -786,9 +787,7 @@ impl Component for App {
             <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
             <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
             <div class="App">
-                <div class="navbar">
-                    <div class="appheader">{"SATISFACTORY ACCOUNTING"}</div>
-                </div>
+                <AppHeader />
                 <div class="menubar">
                     <span class="section">
                         <button class="open-world" title="Choose World" onclick={chooseworld}>
