@@ -1,0 +1,13 @@
+@use "../../colors.scss";
+
+.GroupName {
+    flex-grow: 1;
+
+    .value {
+        font-size: 20px;
+        color: colors.$gray-dark;
+    }
+    &.unnamed span.value {
+        color: colors.$gray;
+    }
+}
