@@ -148,6 +148,9 @@ impl FromStr for WorldId {
 struct WorldMetadata {
     /// Name of the world.
     name: AttrValue,
+    /// If we attempted to load this world this session but it failed, it is flagged here.
+    #[serde(skip, default)]
+    load_error: bool,
 }
 
 /// Mapping of different worlds.
@@ -342,7 +345,10 @@ impl World {
 
     /// Gets metadata for this world.
     fn storage_metadata(&self) -> WorldMetadata {
-        WorldMetadata { name: self.name() }
+        WorldMetadata {
+            name: self.name(),
+            load_error: false,
+        }
     }
 
     /// Save the state of the current world.
@@ -464,6 +470,9 @@ impl Component for App {
                 let world = match World::load(worlds.selected) {
                     Ok(world) => world,
                     Err(e) => {
+                        if let Some(world) = worlds.worlds.get_mut(&worlds.selected) {
+                            world.load_error = true;
+                        }
                         warn!("Failed to load selected world: {}", e);
                         worlds.selected = WorldId::new();
                         let world = World::new();
@@ -643,7 +652,12 @@ impl Component for App {
                         }
                         Err(e) => {
                             warn!("Unable to load world {world_id}: {e}");
-                            false
+                            if let Some(world) = self.worlds.worlds.get_mut(&world_id) {
+                                world.load_error = true;
+                                true
+                            } else {
+                                false
+                            }
                         }
                     }
                 }
@@ -857,6 +871,7 @@ impl App {
         let new = link.callback(|_| Msg::CreateWorld);
 
         let worlds = self.worlds.worlds.iter().map(|(&id, meta)| {
+            let load_error = meta.load_error;
             let open = link.callback(move |_| Msg::SetWorld(id));
             let delete = link.callback(move |_| Msg::InitiateDelete(id));
             html! {
@@ -866,9 +881,15 @@ impl App {
                         <button class="delete-world" title="Delete World" onclick={delete}>
                             <span class="material-icons">{"delete"}</span>
                         </button>
-                        <button class="new-world" title="Switch to this World" onclick={open}>
-                            <span class="material-icons">{"open_in_browser"}</span>
-                        </button>
+                        if load_error {
+                            <span class="BuildError material-icons error" title="Unable to load this world in this version of Satisfactory Accounting">
+                                {"warning"}
+                            </span>
+                        } else {
+                            <button class="new-world" title="Switch to this World" onclick={open}>
+                                <span class="material-icons">{"open_in_browser"}</span>
+                            </button>
+                        }
                     </span>
                 </div>
             }
