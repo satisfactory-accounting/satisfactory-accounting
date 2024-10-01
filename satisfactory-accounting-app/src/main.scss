@@ -24,14 +24,6 @@ input {
     font-size: 18px;
 }
 
-@mixin texticonbutton {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-    gap: 5px;
-}
-
 .App {
     min-height: 100%;
     display: flex;
@@ -62,29 +54,29 @@ input {
         background-color: colors.$light;
 
         .unredo {
-            @include colors.primary-button;
+            // @include colors.primary-button;
         }
 
         .open-world {
-            @include colors.primary-button;
+            //@include colors.primary-button;
         }
 
         .choose-database {
-            @include colors.primary-button;
-            @include texticonbutton;
+            //@include colors.primary-button;
+            //@include texticonbutton;
         }
 
         .settings {
-            @include colors.primary-button;
+            //@include colors.primary-button;
         }
 
         .bug-report {
-            @include colors.primary-button;
+            //@include colors.primary-button;
             text-decoration: none;
         }
 
         .empty-balance-toggle {
-            @include colors.primary-button;
+            //@include colors.primary-button;
 
             input {
                 // Hide the default checkbox. The rest is to hide and allow tabbing, which
@@ -205,7 +197,7 @@ input {
             }
 
             .choose-db {
-                @include colors.primary-button;
+                //@include colors.primary-button;
             }
         }
 
@@ -233,20 +225,20 @@ input {
         }
 
         .new-world {
-            @include colors.green-button;
+            //@include colors.green-button;
         }
 
         .delete-world {
-            @include colors.red-button;
+            //@include colors.red-button;
         }
 
         .close {
-            @include colors.primary-button;
+            //@include colors.primary-button;
         }
 
         .show-deprecated {
-            @include colors.primary-button;
-            @include texticonbutton;
+            //@include colors.primary-button;
+            //@include texticonbutton;
         }
 
     }
@@ -296,7 +288,7 @@ input {
         }
 
         .cancel {
-            @include colors.green-button;
+            // @include colors.green-button;
             font-size: 20px;
             font-weight: bold;
             width: 130px;
@@ -309,7 +301,7 @@ input {
         }
 
         .delete-forever {
-            @include colors.red-button;
+            // @include colors.red-button;
             font-size: 20px;
             font-weight: bold;
             width: 130px;

@@ -71,3 +71,12 @@
         color: color.scale(colors.$success, $lightness: -30%);
     }
 }
+
+.hide-empty-balances .NodeBalance .entry-row.neutral {
+    display: none;
+
+    // Don't hide the power entry even if it's zero.
+    &.power-entry {
+        display: flex;
+    }
+}

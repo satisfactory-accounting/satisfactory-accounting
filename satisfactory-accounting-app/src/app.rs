@@ -394,9 +394,8 @@ pub enum Msg {
     BatchUpdateMetadata {
         updates: HashMap<Uuid, NodeMeta>,
     },
-    ToggleEmptyBalances {
-        hide_empty_balances: bool,
-    },
+    /// Switch the hide_empty_balances setting.
+    ToggleEmptyBalances,
     /// Change to the specified balance sort mode.
     SetBalanceSortMode {
         sort_mode: BalanceSortMode,
@@ -441,6 +440,15 @@ pub struct App {
     undo_stack: Vec<UnReDoState>,
     /// Stack of future states for redo.
     redo_stack: Vec<UnReDoState>,
+
+    // Cached Callbacks.
+    undo: Callback<()>,
+    redo: Callback<()>,
+    show_world_chooser: Callback<()>,
+    show_db_chooser: Callback<()>,
+    hide_window: Callback<()>,
+    toggle_empty: Callback<()>,
+    show_user_settings: Callback<()>,
 }
 
 impl App {
@@ -465,7 +473,9 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
+    fn create(ctx: &Context<Self>) -> Self {
+        let link = ctx.link();
+
         let (worlds, world) = match Worlds::load() {
             Ok(mut worlds) => {
                 let world = match World::load(worlds.selected) {
@@ -539,6 +549,14 @@ impl Component for App {
             database,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
+
+            undo: link.callback(|()| Msg::Undo),
+            redo: link.callback(|()| Msg::Redo),
+            show_world_chooser: link.callback(|()| Msg::SetWindow(OverlayWindow::WorldChooser)),
+            show_db_chooser: link.callback(|()| Msg::SetWindow(OverlayWindow::DatabaseChooser)),
+            hide_window: link.callback(|()| Msg::SetWindow(OverlayWindow::None)),
+            toggle_empty: link.callback(|()| Msg::ToggleEmptyBalances),
+            show_user_settings: link.callback(|()| Msg::SetWindow(OverlayWindow::UserSettings)),
         }
     }
 
@@ -574,10 +592,9 @@ impl Component for App {
                     true
                 }
             }
-            Msg::ToggleEmptyBalances {
-                hide_empty_balances,
-            } => {
-                Rc::make_mut(&mut self.user_settings).hide_empty_balances = hide_empty_balances;
+            Msg::ToggleEmptyBalances => {
+                let hide_empty = &mut Rc::make_mut(&mut self.user_settings).hide_empty_balances;
+                *hide_empty = !*hide_empty;
                 self.user_settings.save();
                 true
             }
@@ -756,80 +773,19 @@ impl Component for App {
         });
         let set_metadata = link.callback(|(id, meta)| Msg::UpdateMetadata { id, meta });
         let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
-        let chooseworld = if self.overlay_window == OverlayWindow::WorldChooser {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
-        } else {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::WorldChooser))
-        };
-        let undo = link.callback(|_| Msg::Undo);
-        let redo = link.callback(|_| Msg::Redo);
-        let choosedb = if self.overlay_window == OverlayWindow::DatabaseChooser {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
-        } else {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::DatabaseChooser))
-        };
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
 
-        let settings = if self.overlay_window == OverlayWindow::UserSettings {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::None))
-        } else {
-            link.callback(|_| Msg::SetWindow(OverlayWindow::UserSettings))
-        };
-
-        let hide_empty_balances = self.user_settings.hide_empty_balances;
-        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
-            hide_empty_balances: !hide_empty_balances,
-        });
-        let hidden_balances = hide_empty_balances.then(|| "hide-empty-balances");
+        let hidden_balances = self
+            .user_settings
+            .hide_empty_balances
+            .then_some("hide-empty-balances");
         html! {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
             <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
             <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
             <div class="App">
-                <AppHeader />
-                <div class="menubar">
-                    <span class="section">
-                        <button class="open-world" title="Choose World" onclick={chooseworld}>
-                            <span class="material-icons">{"folder_open"}</span>
-                        </button>
-                        <button class="unredo" title="Undo"
-                            onclick={undo}
-                            disabled={self.undo_stack.is_empty()}>
-                            <span class="material-icons">{"undo"}</span>
-                        </button>
-                        <button class="unredo" title="Redo"
-                            onclick={redo}
-                            disabled={self.redo_stack.is_empty()}>
-                            <span class="material-icons">{"redo"}</span>
-                        </button>
-                        <button class="choose-database" title="Choose Database" onclick={choosedb}>
-                            <span class="material-icons">{"factory"}</span>
-                            <span>{self.name_db()}</span>
-                        </button>
-                        <label class="empty-balance-toggle" title="Show/Hide Zero Balances">
-                            <input type="checkbox" checked={hide_empty_balances}
-                                onchange={toggle_empty_balances} />
-                            <span class="material-icons">{"exposure_zero"}</span>
-                            if hide_empty_balances {
-                                <span class="material-icons">{"visibility_off"}</span>
-                            } else {
-                                <span class="material-icons">{"visibility"}</span>
-                            }
-                        </label>
-                    </span>
-                    <span class="section">
-                        <button class="settings" title="Settings" onclick={settings}>
-                            <span class="material-icons">{"settings"}</span>
-                        </button>
-                        <a class="bug-report" target="_blank"
-                            href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
-                            <span class="material-icons">
-                                {"bug_report"}
-                            </span>
-                        </a>
-                    </span>
-                </div>
+                {self.app_header()}
                 <div class={classes!("appbody", hidden_balances)}>
                     <NodeDisplay node={self.world.root.clone()}
                         path={Vec::new()}
@@ -851,6 +807,34 @@ impl Component for App {
 }
 
 impl App {
+    fn app_header(&self) -> Html {
+        let dbname = self.name_db();
+        let hide_empty = self.user_settings.hide_empty_balances;
+
+        let choose_world = if self.overlay_window == OverlayWindow::WorldChooser {
+            &self.hide_window
+        } else {
+            &self.show_world_chooser
+        };
+        let undo = (!self.undo_stack.is_empty()).then_some(self.undo.clone());
+        let redo = (!self.redo_stack.is_empty()).then_some(self.redo.clone());
+        let choose_db = if self.overlay_window == OverlayWindow::DatabaseChooser {
+            &self.hide_window
+        } else {
+            &self.show_db_chooser
+        };
+        let toggle_empty = &self.toggle_empty;
+        let open_settings = if self.overlay_window == OverlayWindow::UserSettings {
+            &self.hide_window
+        } else {
+            &self.show_user_settings
+        };
+        html! {
+            <AppHeader {dbname} {hide_empty}
+                {choose_world} {undo} {redo} {choose_db} {toggle_empty} {open_settings} />
+        }
+    }
+
     fn name_db(&self) -> Cow<'static, str> {
         match self.world.database {
             DatabaseChoice::Standard(version) => {
@@ -1018,9 +1002,7 @@ impl App {
         let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
 
         let hide_empty_balances = self.user_settings.hide_empty_balances;
-        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances {
-            hide_empty_balances: !hide_empty_balances,
-        });
+        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances);
 
         let sort_by_item = link.callback(move |_| Msg::SetBalanceSortMode {
             sort_mode: BalanceSortMode::Item,

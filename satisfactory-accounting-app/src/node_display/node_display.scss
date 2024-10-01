@@ -15,15 +15,15 @@
     }
 
     .delete {
-        @include colors.red-button();
+        // @include colors.red-button();
     }
 
     .copy {
-        @include colors.green-button;
+        // @include colors.green-button;
     }
 
     .expand-collapse {
-        @include colors.primary-button;
+        // @include colors.primary-button;
     }
 
     input[type="text"] {
@@ -112,7 +112,7 @@
             gap: 5px;
 
             .create {
-                @include colors.green-button();
+                // @include colors.green-button();
             }
         }
 
@@ -184,16 +184,5 @@
 
     .BuildError {
         cursor: pointer;
-    }
-}
-
-.hide-empty-balances {
-    .balance {
-        .entry-row.neutral {
-            display: none;
-            &.power-entry {
-                display: flex;
-            }
-        }
     }
 }

@@ -28,20 +28,31 @@ pub struct Choice<Id> {
     pub image: Html,
 }
 
-#[derive(PartialEq, Properties)]
+#[derive(Properties)]
 pub struct Props<I: PartialEq> {
     /// Available choices for this chooser.
     pub choices: Vec<Choice<I>>,
     /// Title to apply to the root of the chooser.
     #[prop_or_default]
     pub title: Option<AttrValue>,
+    /// Extra classes to apply.
+    #[prop_or_default]
+    pub class: Classes,
+
     /// Callback for when an item is chosen.
     pub selected: Callback<I>,
     /// Callback for when selection is cancelled.
     pub cancelled: Callback<()>,
-    /// Extra classes to apply.
-    #[prop_or_default]
-    pub class: Classes,
+}
+
+impl<I: PartialEq> PartialEq for Props<I> {
+    fn eq(&self, other: &Self) -> bool {
+        self.choices == other.choices
+            && self.title == other.title
+            && self.class == other.class
+            // Skip comparing selected and cancelled, as changes to them should not trigger a
+            // re-draw, and will only affect the next call to update.
+    }
 }
 
 /// Messages for [`ChooseFromList`].
@@ -256,14 +267,10 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
         let new_props = ctx.props();
         if new_props.class != old_props.class {
             self.class = Self::compute_classes(new_props);
-            return true;
         }
-
-        // We only need to rerender if any of the rendered values changed. selected and cancelled
-        // are used from within our update method, so we don't need to re-render to pick up changes
-        // to them.
-        new_props.choices != old_props.choices
-            || new_props.title != old_props.title
+        // Caller has already checked new_props != old_props, so it's only worthwhile to do
+        // additional checks if we can avoid additional comparisons.
+        true
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {
