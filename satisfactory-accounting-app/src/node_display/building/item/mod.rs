@@ -20,7 +20,7 @@ pub struct Props {
     /// ID of the selected building, if any.
     pub item_id: Option<ItemId>,
     /// Callback to change the type of this building.
-    pub change_item: Callback<ItemId>,
+    pub on_change_item: Callback<ItemId>,
 }
 
 /// Displays and allows selection of the Building's item (fuel or resource).
@@ -29,21 +29,21 @@ pub fn ItemDisplay(
     &Props {
         building_id,
         item_id,
-        ref change_item,
+        ref on_change_item,
     }: &Props,
 ) -> Html {
     let db = use_db();
     let editing = use_state_eq(|| false);
     let setter = editing.setter();
 
-    let selected = use_callback(
-        (setter.clone(), change_item.clone()),
-        |id, (setter, change_item)| {
+    let on_selected = use_callback(
+        (setter.clone(), on_change_item.clone()),
+        |id, (setter, on_change_item)| {
             setter.set(false);
-            change_item.emit(id);
+            on_change_item.emit(id);
         },
     );
-    let cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
+    let on_cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
     let edit = use_callback(setter, |_, setter| setter.set(true));
 
     let (items, title) = match look_up_items(&db, building_id) {
@@ -55,7 +55,7 @@ pub fn ItemDisplay(
         let choices = create_item_choices(&db, items);
 
         html! {
-            <ChooseFromList<ItemId> class="ItemDisplay" {title} {choices} {selected} {cancelled} />
+            <ChooseFromList<ItemId> class="ItemDisplay" {title} {choices} {on_selected} {on_cancelled} />
         }
     } else {
         // Don't allow editing if only 1 choice is available.

@@ -20,7 +20,7 @@ pub struct Props {
     /// ID of the selected building, if any.
     pub recipe_id: Option<RecipeId>,
     /// Callback to change the type of this building.
-    pub change_recipe: Callback<RecipeId>,
+    pub on_change_recipe: Callback<RecipeId>,
 }
 
 /// Displays and allows selection of the Building's recipe.
@@ -29,21 +29,21 @@ pub fn RecipeDisplay(
     &Props {
         building_id,
         recipe_id,
-        ref change_recipe,
+        ref on_change_recipe,
     }: &Props,
 ) -> Html {
     let db = use_db();
     let editing = use_state_eq(|| false);
     let setter = editing.setter();
 
-    let selected = use_callback(
-        (setter.clone(), change_recipe.clone()),
-        |id, (setter, change_recipe)| {
+    let on_selected = use_callback(
+        (setter.clone(), on_change_recipe.clone()),
+        |id, (setter, on_change_recipe)| {
             setter.set(false);
-            change_recipe.emit(id);
+            on_change_recipe.emit(id);
         },
     );
-    let cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
+    let on_cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
     let edit = use_callback(setter, |_, setter| setter.set(true));
 
     let recipes = match look_up_recipes(&db, building_id) {
@@ -56,7 +56,7 @@ pub fn RecipeDisplay(
 
         html! {
             <ChooseFromList<RecipeId> class="RecipeDisplay" title="Recipe"
-                {choices} {selected} {cancelled} />
+                {choices} {on_selected} {on_cancelled} />
         }
     } else {
         // Don't allow editing if only 1 choice is available.

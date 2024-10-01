@@ -38,13 +38,13 @@ impl NodeDisplay {
     /// Build display for a building.
     pub(super) fn view_building(&self, ctx: &Context<Self>, building: &Building) -> Html {
         let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
-        let change_type = ctx.link().callback(|id| Msg::ChangeType { id });
+        let on_change_type = ctx.link().callback(|id| Msg::ChangeType { id });
         html! {
             <div class="NodeDisplay building">
                 <div class="section">
                     {self.drag_handle(ctx)}
                     <div class="section spaced">
-                        <BuildingTypeDisplay id={building.building} {change_type} />
+                        <BuildingTypeDisplay id={building.building} {on_change_type} />
                         {self.view_building_settings(ctx, building)}
                     </div>
                 </div>
@@ -104,12 +104,12 @@ impl NodeDisplay {
         settings: &ManufacturerSettings,
     ) -> Html {
         let link = ctx.link();
-        let change_recipe = link.callback(|id| Msg::ChangeRecipe { id });
+        let on_change_recipe = link.callback(|id| Msg::ChangeRecipe { id });
 
         html! {
             <>
                 <RecipeDisplay building_id={building} recipe_id={settings.recipe}
-                    {change_recipe} />
+                    {on_change_recipe} />
                 { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
             </>
         }
@@ -123,14 +123,14 @@ impl NodeDisplay {
         settings: &MinerSettings,
     ) -> Html {
         let link = ctx.link();
-        let change_item = link.callback(|id| Msg::ChangeItem { id });
-        let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
+        let on_change_item = link.callback(|id| Msg::ChangeItem { id });
+        let on_set_purity = link.callback(|purity| Msg::ChangePurity { purity });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
-                    {change_item} />
+                    {on_change_item} />
                 { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
-                <Purity purity={settings.purity} {set_purity} />
+                <Purity purity={settings.purity} {on_set_purity} />
             </>
         }
     }
@@ -142,11 +142,11 @@ impl NodeDisplay {
         building: BuildingId,
         settings: &GeneratorSettings,
     ) -> Html {
-        let change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
+        let on_change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.fuel}
-                    {change_item} />
+                    {on_change_item} />
                 { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
             </>
         }
@@ -160,20 +160,20 @@ impl NodeDisplay {
         settings: &PumpSettings,
     ) -> Html {
         let link = ctx.link();
-        let change_item = link.callback(|id| Msg::ChangeItem { id });
-        let update_pads =
+        let on_change_item = link.callback(|id| Msg::ChangeItem { id });
+        let on_update_pads =
             link.callback(|(purity, num_pads)| Msg::ChangePumpPurity { purity, num_pads });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
-                    {change_item} />
+                    {on_change_item} />
                 { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
                 <MultiPurity purity={ResourcePurity::Impure}
-                    num_pads={settings.impure_pads} update_pads={update_pads.clone()} />
+                    num_pads={settings.impure_pads} on_update_pads={&on_update_pads} />
                 <MultiPurity purity={ResourcePurity::Normal}
-                    num_pads={settings.normal_pads} update_pads={update_pads.clone()} />
+                    num_pads={settings.normal_pads} on_update_pads={&on_update_pads} />
                 <MultiPurity purity={ResourcePurity::Pure}
-                    num_pads={settings.pure_pads} {update_pads} />
+                    num_pads={settings.pure_pads} {on_update_pads} />
             </>
         }
     }
@@ -181,9 +181,9 @@ impl NodeDisplay {
     /// Display the settings for a geothermal plant.
     fn view_geothermal_settings(&self, ctx: &Context<Self>, settings: &GeothermalSettings) -> Html {
         let link = ctx.link();
-        let set_purity = link.callback(|purity| Msg::ChangePurity { purity });
+        let on_set_purity = link.callback(|purity| Msg::ChangePurity { purity });
         html! {
-            <Purity purity={settings.purity} {set_purity} />
+            <Purity purity={settings.purity} {on_set_purity} />
         }
     }
 
@@ -195,13 +195,13 @@ impl NodeDisplay {
         settings: &StationSettings,
     ) -> Html {
         let link = ctx.link();
-        let change_item = link.callback(|id| Msg::ChangeItem { id });
+        let on_change_item = link.callback(|id| Msg::ChangeItem { id });
         let update_consumption =
             link.callback(|consumption| Msg::ChangeConsumption { consumption });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.fuel}
-                    {change_item} />
+                    {on_change_item} />
                 <StationConsumption consumption={settings.consumption} {update_consumption} />
             </>
         }
@@ -223,10 +223,10 @@ impl NodeDisplay {
                 if maybe_building.is_none() {
                     warn!("Showing clock controls by default for unknown building {building}");
                 }
-                let update_speed = ctx
+                let on_update_speed = ctx
                     .link()
                     .callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
-                Some(html! { <ClockSpeed clock_speed={current_clock_speed} {update_speed} /> })
+                Some(html! { <ClockSpeed clock_speed={current_clock_speed} {on_update_speed} /> })
             }
         }
     }

@@ -40,9 +40,9 @@ pub struct Props<I: PartialEq> {
     pub class: Classes,
 
     /// Callback for when an item is chosen.
-    pub selected: Callback<I>,
+    pub on_selected: Callback<I>,
     /// Callback for when selection is cancelled.
-    pub cancelled: Callback<()>,
+    pub on_cancelled: Callback<()>,
 }
 
 impl<I: PartialEq> PartialEq for Props<I> {
@@ -192,7 +192,7 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
                 }
             }
             Msg::Cancel => {
-                ctx.props().cancelled.emit(());
+                ctx.props().on_cancelled.emit(());
                 false
             }
             Msg::UpdateInput { input } => {
@@ -220,7 +220,7 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             Msg::Select { filtered_idx } => {
                 let filtered_idx = filtered_idx.unwrap_or(self.highlighted);
                 if filtered_idx < self.filtered.len() {
-                    ctx.props().selected.emit(self.filtered[filtered_idx].1.id);
+                    ctx.props().on_selected.emit(self.filtered[filtered_idx].1.id);
                 } else {
                     warn!("Tried to select choice outside of filtered items");
                 }

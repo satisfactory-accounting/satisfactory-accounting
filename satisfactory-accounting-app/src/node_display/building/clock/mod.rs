@@ -14,17 +14,17 @@ pub struct Props {
     /// Last set value for the clock speed.
     pub clock_speed: f32,
     /// Callback to change the actual value.
-    pub update_speed: Callback<f32>,
+    pub on_update_speed: Callback<f32>,
 }
 
 /// Display and editing for clock speed.
 #[function_component]
 pub fn ClockSpeed(props: &Props) -> Html {
     let on_commit = use_callback(
-        props.update_speed.clone(),
-        |edit_text: AttrValue, update_speed| {
+        props.on_update_speed.clone(),
+        |edit_text: AttrValue, on_update_speed| {
             if let Ok(value) = edit_text.parse::<f32>() {
-                update_speed.emit(value.clamp(0.01, 2.5));
+                on_update_speed.emit(value.clamp(0.01, 2.5));
             }
         },
     );
