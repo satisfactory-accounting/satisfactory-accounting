@@ -5,7 +5,6 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
@@ -18,6 +17,7 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+use yew::html::ImplicitClone;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{Group, Node};
@@ -178,7 +178,7 @@ impl Worlds {
 }
 
 /// The choice of database for a particular world.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum DatabaseChoice {
     /// Use one of the standard databases.
     Standard(DatabaseVersion),
@@ -209,6 +209,8 @@ impl Default for DatabaseChoice {
         DatabaseChoice::Standard(DatabaseVersion::LATEST)
     }
 }
+
+impl ImplicitClone for DatabaseChoice {}
 
 /// A single world with a particular database and structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -416,8 +418,9 @@ pub enum Msg {
     CancelDelete,
     /// Permanently delete the world with the given ID.
     DeleteForever(WorldId),
-    /// Show or hide one of the overlay windows.
-    SetWindow(OverlayWindow),
+    /// Show or hide one of the overlay windows. If the current window is already this window, show
+    /// None. Otherwise show this window.
+    ToggleWindow(OverlayWindow),
 }
 
 /// Current state of the app.
@@ -444,11 +447,11 @@ pub struct App {
     // Cached Callbacks.
     undo: Callback<()>,
     redo: Callback<()>,
-    show_world_chooser: Callback<()>,
-    show_db_chooser: Callback<()>,
-    hide_window: Callback<()>,
     toggle_empty: Callback<()>,
-    show_user_settings: Callback<()>,
+    hide_window: Callback<()>,
+    toggle_world_chooser: Callback<()>,
+    toggle_db_chooser: Callback<()>,
+    toggle_user_settings: Callback<()>,
 }
 
 impl App {
@@ -552,11 +555,14 @@ impl Component for App {
 
             undo: link.callback(|()| Msg::Undo),
             redo: link.callback(|()| Msg::Redo),
-            show_world_chooser: link.callback(|()| Msg::SetWindow(OverlayWindow::WorldChooser)),
-            show_db_chooser: link.callback(|()| Msg::SetWindow(OverlayWindow::DatabaseChooser)),
-            hide_window: link.callback(|()| Msg::SetWindow(OverlayWindow::None)),
             toggle_empty: link.callback(|()| Msg::ToggleEmptyBalances),
-            show_user_settings: link.callback(|()| Msg::SetWindow(OverlayWindow::UserSettings)),
+            hide_window: link.callback(|()| Msg::ToggleWindow(OverlayWindow::None)),
+            toggle_world_chooser: link
+                .callback(|()| Msg::ToggleWindow(OverlayWindow::WorldChooser)),
+            toggle_db_chooser: link
+                .callback(|()| Msg::ToggleWindow(OverlayWindow::DatabaseChooser)),
+            toggle_user_settings: link
+                .callback(|()| Msg::ToggleWindow(OverlayWindow::UserSettings)),
         }
     }
 
@@ -749,17 +755,23 @@ impl Component for App {
                 }
                 true
             }
-            Msg::SetWindow(overlay) => {
+            Msg::ToggleWindow(overlay) => {
                 if self.pending_delete.is_some() {
+                    // If there is a pending delete, clear it and switch to the specified window.
+                    // Requires redraw because pending_delete changed.
                     self.pending_delete = None;
                     self.overlay_window = overlay;
-                    return true;
-                }
-                if self.overlay_window != overlay {
+                    true
+                } else if self.overlay_window == overlay {
+                    // Otherwise, if we're already on the specified window, close it. If the window
+                    // requested was None and we're already on None, do nothing.
+                    let changed = self.overlay_window == OverlayWindow::None;
+                    self.overlay_window = OverlayWindow::None;
+                    changed
+                } else {
+                    // If we're not already on the specified window, switch to it and redraw.
                     self.overlay_window = overlay;
                     true
-                } else {
-                    false
                 }
             }
         }
@@ -808,49 +820,24 @@ impl Component for App {
 
 impl App {
     fn app_header(&self) -> Html {
-        let dbname = self.name_db();
+        let db_choice = &self.world.database;
         let hide_empty = self.user_settings.hide_empty_balances;
 
-        let choose_world = if self.overlay_window == OverlayWindow::WorldChooser {
-            &self.hide_window
-        } else {
-            &self.show_world_chooser
-        };
-        let undo = (!self.undo_stack.is_empty()).then_some(self.undo.clone());
-        let redo = (!self.redo_stack.is_empty()).then_some(self.redo.clone());
-        let choose_db = if self.overlay_window == OverlayWindow::DatabaseChooser {
-            &self.hide_window
-        } else {
-            &self.show_db_chooser
-        };
-        let toggle_empty = &self.toggle_empty;
-        let open_settings = if self.overlay_window == OverlayWindow::UserSettings {
-            &self.hide_window
-        } else {
-            &self.show_user_settings
-        };
+        let on_choose_world = &self.toggle_world_chooser;
+        let on_undo = (!self.undo_stack.is_empty()).then_some(self.undo.clone());
+        let on_redo = (!self.redo_stack.is_empty()).then_some(self.redo.clone());
+        let on_choose_db = &self.toggle_db_chooser;
+        let on_toggle_empty = &self.toggle_empty;
+        let on_settings = &self.toggle_user_settings;
         html! {
-            <AppHeader {dbname} {hide_empty}
-                {choose_world} {undo} {redo} {choose_db} {toggle_empty} {open_settings} />
-        }
-    }
-
-    fn name_db(&self) -> Cow<'static, str> {
-        match self.world.database {
-            DatabaseChoice::Standard(version) => {
-                if version.is_deprecated() {
-                    Cow::Owned(format!("{version} \u{2013} Update Available!"))
-                } else {
-                    Cow::Borrowed(version.name())
-                }
-            }
-            DatabaseChoice::Custom(_) => Cow::Borrowed("Custom"),
+            <AppHeader {db_choice} {hide_empty} {on_choose_world} {on_undo} {on_redo}
+                {on_choose_db} {on_toggle_empty} {on_settings} />
         }
     }
 
     fn world_chooser(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+        let close = link.callback(|_| Msg::ToggleWindow(OverlayWindow::None));
         let new = link.callback(|_| Msg::CreateWorld);
 
         let worlds = self.worlds.worlds.iter().map(|(&id, meta)| {
@@ -904,7 +891,7 @@ impl App {
 
     fn database_chooser(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+        let close = link.callback(|_| Msg::ToggleWindow(OverlayWindow::None));
         let show_deprecated = self.show_deprecated_databases;
         let toggle_deprecated = link.callback(move |_| Msg::ShowDeprecated(!show_deprecated));
 
@@ -999,7 +986,7 @@ impl App {
     /// when not needed.
     fn user_settings_window(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link();
-        let close = link.callback(|_| Msg::SetWindow(OverlayWindow::None));
+        let close = link.callback(|_| Msg::ToggleWindow(OverlayWindow::None));
 
         let hide_empty_balances = self.user_settings.hide_empty_balances;
         let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances);
