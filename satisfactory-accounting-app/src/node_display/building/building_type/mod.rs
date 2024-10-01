@@ -17,32 +17,32 @@ pub struct Props {
     /// ID of the selected building, if any.
     pub id: Option<BuildingId>,
     /// Callback to change the type of this building.
-    pub change_type: Callback<BuildingId>,
+    pub on_change_type: Callback<BuildingId>,
 }
 
 /// Displays and allows selection of the Building's Type (BuildingId).
 #[function_component]
-pub fn BuildingTypeDisplay(Props { id, change_type }: &Props) -> Html {
+pub fn BuildingTypeDisplay(Props { id, on_change_type }: &Props) -> Html {
     let db = use_db();
 
     let editing = use_state_eq(|| false);
     let setter = editing.setter();
 
-    let selected = use_callback(
-        (setter.clone(), change_type.clone()),
-        |id, (setter, change_type)| {
+    let on_selected = use_callback(
+        (setter.clone(), on_change_type.clone()),
+        |id, (setter, on_change_type)| {
             setter.set(false);
-            change_type.emit(id);
+            on_change_type.emit(id);
         },
     );
-    let cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
+    let on_cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
     let edit = use_callback(setter, |_, setter| setter.set(true));
 
     if *editing {
         let choices = create_building_choices(&db);
         html! {
             <ChooseFromList<BuildingId> class="BuildingTypeDisplay" title="Building Type"
-                {choices} {selected} {cancelled} />
+                {choices} {on_selected} {on_cancelled} />
         }
     } else {
         match id {

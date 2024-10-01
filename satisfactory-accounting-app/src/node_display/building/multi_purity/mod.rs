@@ -18,16 +18,16 @@ pub struct Props {
     /// Last set value for the number of pads of this type.
     pub num_pads: u32,
     /// Callback to change the actual value.
-    pub update_pads: Callback<(ResourcePurity, u32)>,
+    pub on_update_pads: Callback<(ResourcePurity, u32)>,
 }
 
 #[function_component]
 pub fn MultiPurity(props: &Props) -> Html {
     let on_commit = use_callback(
-        (props.purity, props.update_pads.clone()),
-        |edit_text: AttrValue, &(purity, ref update_pads)| {
+        (props.purity, props.on_update_pads.clone()),
+        |edit_text: AttrValue, &(purity, ref on_update_pads)| {
             if let Ok(value) = edit_text.parse::<u32>() {
-                update_pads.emit((purity, value));
+                on_update_pads.emit((purity, value));
             }
         },
     );
