@@ -1,3 +1,4 @@
+@use "sass:color";
 @use "../../colors.scss";
 
 .Button {
@@ -12,9 +13,13 @@
     flex-direction: row;
     justify-content: space-evenly;
     align-items: center;
+    gap: 5px;
+    text-wrap: nowrap;
 
     height: $button-size;
     min-width: $button-size;
+    text-decoration: none;
+    cursor: pointer;
 
     .material-icons {
         font-size: 18px;
