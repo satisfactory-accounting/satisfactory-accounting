@@ -15,22 +15,22 @@ pub struct Props {
     /// Currently selected node purity.
     pub purity: ResourcePurity,
     /// Callback to update the purity.
-    pub set_purity: Callback<ResourcePurity>,
+    pub on_set_purity: Callback<ResourcePurity>,
 }
 
 #[function_component]
-pub fn Purity(Props { purity, set_purity }: &Props) -> Html {
+pub fn Purity(Props { purity, on_set_purity }: &Props) -> Html {
     let editing = use_state_eq(|| false);
     let setter = editing.setter();
 
-    let selected = use_callback(
-        (setter.clone(), set_purity.clone()),
-        |id, (setter, set_purity)| {
+    let on_selected = use_callback(
+        (setter.clone(), on_set_purity.clone()),
+        |id, (setter, on_set_purity)| {
             setter.set(false);
-            set_purity.emit(id);
+            on_set_purity.emit(id);
         },
     );
-    let cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
+    let on_cancelled = use_callback(setter.clone(), |(), setter| setter.set(false));
     let edit = use_callback(setter, |_, setter| setter.set(true));
 
     let choices = create_purity_choices();
@@ -38,7 +38,7 @@ pub fn Purity(Props { purity, set_purity }: &Props) -> Html {
     if *editing {
         html! {
             <ChooseFromList<ResourcePurity> class="Purity" title="Resource Node Purity"
-                {choices} {selected} {cancelled} />
+                {choices} {on_selected} {on_cancelled} />
         }
     } else {
         html! {
