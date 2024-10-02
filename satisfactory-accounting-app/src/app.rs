@@ -44,13 +44,7 @@ pub enum OverlayWindow {
     UserSettings,
 }
 
-/// App-wide settings specific to the user rather than the world.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct UserSettings {
-    /// Whether empty balance values should be hidden.
-    pub hide_empty_balances: bool,
-    pub balance_sort_mode: BalanceSortMode,
-}
+
 
 impl UserSettings {
     /// Load from LocalStorage if possible.
