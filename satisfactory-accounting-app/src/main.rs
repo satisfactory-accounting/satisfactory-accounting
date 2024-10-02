@@ -14,6 +14,7 @@ mod inputs;
 mod material;
 mod node_display;
 mod overlay_window;
+mod user_settings;
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).expect("Unable to init logger");
