@@ -1,4 +1,5 @@
+@use "../../../inputs/clickedit/sized-clickedit-mixin.scss";
+
 .ClockSpeed {
-    flex: 1 0 70px;
-    width: 70px;
+    @include sized-clickedit-mixin.sized-clickedit-mixin(2.125rem);
 }

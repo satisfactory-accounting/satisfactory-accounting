@@ -13,8 +13,12 @@ mod context;
 mod inputs;
 mod material;
 mod node_display;
+mod overlay_window;
 
 fn main() {
     console_log::init_with_level(log::Level::Debug).expect("Unable to init logger");
-    yew::Renderer::<App>::new().render();
+    let app_root = gloo::utils::document()
+        .get_element_by_id("app-host")
+        .expect("Missing the app-host element");
+    yew::Renderer::<App>::with_root(app_root).render();
 }
