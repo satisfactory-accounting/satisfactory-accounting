@@ -1,19 +1,11 @@
 @use "../../../colors.scss";
-@use "../../icon/icon-mixin.scss";
+@use "../name-mixin.scss";
 
 .Purity {
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 5px;
-    flex: 1 0 90px;
+    @include name-mixin.name_mixin(3.375rem);
 }
 
 .purity-icon {
-    @include icon-mixin.icon-size;
-
     &.impure-node {
         color: colors.$danger;
     }

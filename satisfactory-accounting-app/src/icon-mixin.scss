@@ -1,0 +1,7 @@
+$icon-size: 1.5rem;
+
+@mixin icon-size {
+    width: $icon-size;
+    height: $icon-size;
+    object-fit: contain;
+}

@@ -1,5 +1,5 @@
 @use "../name-mixin.scss";
 
 .RecipeDisplay {
-    @include name-mixin.name_mixin(250px);
+    @include name-mixin.name_mixin(13rem);
 }

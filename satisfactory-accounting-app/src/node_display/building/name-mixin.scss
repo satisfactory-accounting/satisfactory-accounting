@@ -1,6 +1,12 @@
+@use "../../icon-mixin.scss";
+
+$gap: 0.125rem;
+
 // Mixin for defining name-like select boxes (the building selector, recipe selector, and item
 // selector).
-@mixin name-mixin($size) {
+@mixin name-mixin($text-size) {
+    $size: calc($text-size + $gap + icon-mixin.$icon-size);
+
     box-sizing: border-box;
     cursor: text;
     min-width: min-content;
@@ -12,5 +18,5 @@
     flex-direction: row;
     justify-content: flex-start;
     align-items: center;
-    gap: 5px;
+    gap: $gap;
 }

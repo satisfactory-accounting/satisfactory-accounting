@@ -5,7 +5,7 @@ use yew::{function_component, html, Html};
 pub fn TitleBar() -> Html {
     html! {
         <div class="TitleBar">
-            <div class="app-title">{"SATISFACTORY ACCOUNTING"}</div>
+            <h1 class="app-title">{"SATISFACTORY ACCOUNTING"}</h1>
         </div>
     }
 }

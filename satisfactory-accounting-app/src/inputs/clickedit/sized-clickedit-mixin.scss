@@ -1,0 +1,10 @@
+@use "../../icon-mixin.scss";
+
+$gap: 0.125rem;
+
+@mixin sized-clickedit-mixin($text-size) {
+    $size: calc($text-size + icon-mixin.$icon-size + $gap);
+
+    flex: 1 0 $size;
+    width: $size;
+}

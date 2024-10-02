@@ -1,4 +1,5 @@
+@use "../../../inputs/clickedit/sized-clickedit-mixin.scss";
+
 .MultiPurity {
-    flex: 1 0 55px;
-    width: 55px;
+    @include sized-clickedit-mixin.sized-clickedit-mixin(1.5rem);
 }

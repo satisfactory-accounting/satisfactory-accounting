@@ -796,6 +796,7 @@ impl Component for App {
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
             <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
             <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
+            <crate::overlay_window::OverlayWindow title="Hello" />
             <div class="App">
                 {self.app_header()}
                 <div class={classes!("appbody", hidden_balances)}>
