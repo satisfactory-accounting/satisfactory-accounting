@@ -5,7 +5,7 @@ use yew::prelude::*;
 use crate::inputs::events::get_value_from_input_event;
 use crate::inputs::whitespace::space_to_nbsp;
 
-#[derive(Debug, Properties)]
+#[derive(Debug, Properties, PartialEq)]
 pub struct Props {
     /// Last committed value.
     pub value: AttrValue,
@@ -22,18 +22,6 @@ pub struct Props {
     pub suffix: Html,
     /// Callback to invoke when the edit is committed.
     pub on_commit: Callback<AttrValue>,
-}
-
-impl PartialEq for Props {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-            && self.title == other.title
-            && self.class == other.class
-            && self.prefix == other.prefix
-            && self.suffix == other.suffix
-            // Skip comparing on_commit, as change to on_commit should not trigger a re-draw, and
-            // will only affect the next call to update.
-    }
 }
 
 pub enum Msg {
@@ -107,10 +95,13 @@ impl Component for ClickEdit {
         let new_props = ctx.props();
         if new_props.class != old_props.class {
             self.class = classes!("ClickEdit", new_props.class.clone());
+            return true;
         }
-        // Caller has already checked new_props != old_props, so it's only worthwhile to do
-        // additional checks if we can avoid additional comparisons.
-        true
+        // Skip re-rendering if only the callback has changed.
+        new_props.value != old_props.value
+            || new_props.title != old_props.title
+            || new_props.prefix != old_props.prefix
+            || new_props.suffix != old_props.suffix
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {

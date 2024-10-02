@@ -1,7 +1,10 @@
 @use "colors.scss";
+
 @use "appheader/AppHeader.scss";
-@use "node_display/node_display.scss";
 @use "inputs/inputs.scss";
+@use "material/material-icons.scss";
+@use "node_display/node_display.scss";
+@use "overlay_window/OverlayWindow.scss";
 
 body {
     display: flex;
@@ -16,12 +19,18 @@ body {
     font-family: 'Rubik', 'Sans';
     background-color: colors.$bg-secondary;
     color: colors.$gray-dark;
-    font-size: 18px;
+    font-size: 100%;
+}
+
+#app-host {
+    display: flex;
+    flex-grow: 1;
+    min-height: 100%;
 }
 
 input {
     font-family: 'Rubik', 'Sans';
-    font-size: 18px;
+    font-size: inherit;
 }
 
 .App {

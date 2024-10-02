@@ -1,0 +1,8 @@
+@use "../icon-mixin.scss";
+
+.material-icons {
+    font-size: icon-mixin.$icon-size;
+}
+.material-icons-outlined {
+    font-size: icon-mixin.$icon-size;
+}
