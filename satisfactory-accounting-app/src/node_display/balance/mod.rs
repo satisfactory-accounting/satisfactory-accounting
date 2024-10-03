@@ -10,8 +10,9 @@ use satisfactory_accounting::database::Item;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use crate::context::{use_db, use_settings};
+use crate::context::use_db;
 use crate::node_display::icon::Icon;
+use crate::user_settings::use_user_settings;
 
 /// How entries in the balance should be sorted.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -57,7 +58,8 @@ pub struct Props {
 pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
     let balance = node.balance();
     let db = use_db();
-    let item_balances: Html = match use_settings().balance_sort_mode {
+    let user_settings = use_user_settings();
+    let item_balances: Html = match user_settings.balance_sort_mode {
         BalanceSortMode::Item => balance
             .balances
             .iter()

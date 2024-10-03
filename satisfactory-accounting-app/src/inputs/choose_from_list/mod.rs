@@ -210,7 +210,9 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             Msg::Select { filtered_idx } => {
                 let filtered_idx = filtered_idx.unwrap_or(self.highlighted);
                 if filtered_idx < self.filtered.len() {
-                    ctx.props().on_selected.emit(self.filtered[filtered_idx].1.id);
+                    ctx.props()
+                        .on_selected
+                        .emit(self.filtered[filtered_idx].1.id);
                 } else {
                     warn!("Tried to select choice outside of filtered items");
                 }
@@ -260,8 +262,7 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
             return true;
         }
         // Skip re-rendering if only the callbacks have changed.
-        new_props.choices != old_props.choices
-            || new_props.title != old_props.title
+        new_props.choices != old_props.choices || new_props.title != old_props.title
     }
 
     fn rendered(&mut self, _ctx: &Context<Self>, first_render: bool) {

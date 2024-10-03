@@ -73,8 +73,10 @@ fn overlay_contents(
                     {material_icon("close")}
                 </Button>
             </section>
-            <section class="window-content">
-                {children.clone()}
+            <section class="window-content-wrapper">
+                <div class="window-content">
+                    {children.clone()}
+                </div>
             </section>
         </div>
     }

@@ -16,14 +16,14 @@
     flex-direction: row;
     justify-content: space-evenly;
     align-items: center;
-    gap: 0.125rem;
+    gap: 4px;
     text-wrap: nowrap;
 
     height: $button-size;
     min-width: $button-size;
     text-decoration: none;
     cursor: pointer;
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: bold;
 
     @mixin color-button($base-color,

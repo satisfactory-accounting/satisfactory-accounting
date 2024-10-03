@@ -1,4 +1,6 @@
-use yew::{classes, function_component, html, use_callback, AttrValue, Callback, Classes, Html, Properties};
+use yew::{
+    classes, function_component, html, use_callback, AttrValue, Callback, Classes, Html, Properties,
+};
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
@@ -30,10 +32,7 @@ pub fn Button(
     }: &Props,
 ) -> Html {
     let disabled = onclick.is_none();
-    let class = classes!(
-        "Button",
-        class.clone()
-    );
+    let class = classes!("Button", class.clone());
     let onclick = use_callback(onclick.clone(), |_, onclick| {
         if let Some(onclick) = onclick {
             onclick.emit(())
@@ -81,10 +80,7 @@ pub fn LinkButton(
         target,
     }: &LinkProps,
 ) -> Html {
-    let class = classes!(
-        "Button",
-        class.clone()
-    );
+    let class = classes!("Button", class.clone());
 
     html! {
         <a {class} {href} {target} {title}>
