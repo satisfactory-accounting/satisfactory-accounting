@@ -6,11 +6,9 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use std::collections::HashMap;
 
 use log::warn;
-use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -34,48 +32,6 @@ mod drag;
 mod graph_manipulation;
 mod group;
 mod icon;
-
-/// Mapping of node medatata by node id.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct NodeMetadata(Rc<HashMap<Uuid, NodeMeta>>);
-
-impl NodeMetadata {
-    /// Get the metadata for a particular node by id.
-    pub fn meta(&self, uuid: Uuid) -> NodeMeta {
-        self.0.get(&uuid).cloned().unwrap_or_default()
-    }
-
-    /// Build a version of the metadata with the given value updated.
-    pub fn set_meta(&mut self, uuid: Uuid, meta: NodeMeta) {
-        Rc::make_mut(&mut self.0).insert(uuid, meta);
-    }
-
-    /// Build a version of the metadata with the given values updated.
-    pub fn batch_update(&mut self, update: impl IntoIterator<Item = (Uuid, NodeMeta)>) {
-        Rc::make_mut(&mut self.0).extend(update);
-    }
-
-    /// Prune metadata for anything that isn't referenced from the given node.
-    pub fn prune(&mut self, root: &Node) {
-        let used_uuids: HashSet<_> = root
-            .iter()
-            .filter_map(|node| match node.kind() {
-                NodeKind::Group(g) => Some(g.id),
-                NodeKind::Building(_) => None,
-            })
-            .collect();
-        Rc::make_mut(&mut self.0).retain(|k, _| used_uuids.contains(k));
-    }
-}
-
-/// Metadata about a node which isn't stored in the tree and isn't available for
-/// undo/redo.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeMeta {
-    /// Whether the node should be shown collapsed or expanded.
-    collapsed: bool,
-}
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
