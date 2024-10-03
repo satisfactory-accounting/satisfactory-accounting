@@ -5,6 +5,7 @@
 @use "material/material-icons.scss";
 @use "node_display/node_display.scss";
 @use "overlay_window/OverlayWindow.scss";
+@use "user_settings/UserSettingsWindow.scss";
 
 body {
     display: flex;
@@ -73,30 +74,6 @@ input {
         .choose-database {
             //@include colors.primary-button;
             //@include texticonbutton;
-        }
-
-        .settings {
-            //@include colors.primary-button;
-        }
-
-        .bug-report {
-            //@include colors.primary-button;
-            text-decoration: none;
-        }
-
-        .empty-balance-toggle {
-            //@include colors.primary-button;
-
-            input {
-                // Hide the default checkbox. The rest is to hide and allow tabbing, which
-                // display:none prevents.
-                visibility: hidden;
-                display: block;
-                height: 0;
-                width: 0;
-                position: absolute;
-                overflow: hidden;
-            }
         }
     }
 
@@ -208,29 +185,6 @@ input {
             .choose-db {
                 //@include colors.primary-button;
             }
-        }
-
-        &.user-settings h4 {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            white-space: normal;
-            margin: 0;
-        }
-
-        .setting-row {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-
-            &.toggle {
-                cursor: pointer;
-            }
-        }
-
-        .setting-group {
-            display: flex;
-            flex-direction: column;
         }
 
         .new-world {

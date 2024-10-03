@@ -72,11 +72,6 @@
     }
 }
 
-.hide-empty-balances .NodeBalance .entry-row.neutral {
+.hide-empty-balances .NodeBalance .item-entries .entry-row.neutral {
     display: none;
-
-    // Don't hide the power entry even if it's zero.
-    &.power-entry {
-        display: flex;
-    }
 }

@@ -14,9 +14,9 @@
     flex-direction: column;
     align-items: stretch;
     gap: 5px;
+    padding: 5px;
 
     box-sizing: border-box;
-    padding: 5px;
     border-radius: 10px;
 
     top: 70px;
@@ -34,6 +34,33 @@
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+    }
+
+    .window-content-wrapper {
+        background-color: colors.$dark;
+        border-radius: 5px;
+
+        box-sizing: border-box;
+        padding: 5px;
+
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        justify-items: stretch;
+
+        flex: 1 1;
+        min-height: 0;
+    }
+
+    .window-content {
+        overflow-y: scroll;
+        background-color: colors.$light;
+        border-radius: 5px;
+
+        box-sizing: border-box;
+        padding: 5px;
+
+        min-height: 0;
     }
 
     h1,

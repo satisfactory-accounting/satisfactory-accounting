@@ -25,6 +25,7 @@ use satisfactory_accounting::database::{Database, DatabaseVersion};
 
 use crate::appheader::AppHeader;
 use crate::node_display::{BalanceSortMode, NodeDisplay, NodeMeta, NodeMetadata};
+use crate::user_settings::{UserSettingsManager, UserSettingsWindowManager};
 
 /// Key that the app state is stored under.
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
@@ -33,7 +34,6 @@ const METADATA_KEY: &str = "zstewart.satisfactorydb.state.metadata";
 const GLOBAL_METADATA_KEY: &str = "zstewart.satisfactorydb.state.globalmetadata";
 
 const WORLD_MAP_KEY: &str = "zstewart.satisfactorydb.state.world";
-const USER_SETTINGS_KEY: &str = "zstewart.satisfactorydb.usersettings";
 
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum OverlayWindow {
@@ -41,23 +41,14 @@ pub enum OverlayWindow {
     None,
     WorldChooser,
     DatabaseChooser,
-    UserSettings,
 }
 
-
-
-impl UserSettings {
-    /// Load from LocalStorage if possible.
-    fn load() -> Result<Self, StorageError> {
-        LocalStorage::get(USER_SETTINGS_KEY)
-    }
-
-    /// Save the current user settings.
-    fn save(&self) {
-        if let Err(e) = LocalStorage::set(USER_SETTINGS_KEY, &self) {
-            warn!("Unable to save world: {}", e);
-        }
-    }
+/// App-wide settings specific to the user rather than the world.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UserSettings {
+    /// Whether empty balance values should be hidden.
+    pub hide_empty_balances: bool,
+    pub balance_sort_mode: BalanceSortMode,
 }
 
 /// Unique ID of a world.
@@ -390,12 +381,6 @@ pub enum Msg {
     BatchUpdateMetadata {
         updates: HashMap<Uuid, NodeMeta>,
     },
-    /// Switch the hide_empty_balances setting.
-    ToggleEmptyBalances,
-    /// Change to the specified balance sort mode.
-    SetBalanceSortMode {
-        sort_mode: BalanceSortMode,
-    },
     Undo,
     Redo,
     /// Set the database to the given database choice.
@@ -419,8 +404,6 @@ pub enum Msg {
 
 /// Current state of the app.
 pub struct App {
-    /// Current user's global settings.
-    user_settings: Rc<UserSettings>,
     /// Overlay window to show.
     overlay_window: OverlayWindow,
     /// World with a "confirm delete" window currently present.
@@ -441,11 +424,8 @@ pub struct App {
     // Cached Callbacks.
     undo: Callback<()>,
     redo: Callback<()>,
-    toggle_empty: Callback<()>,
-    hide_window: Callback<()>,
     toggle_world_chooser: Callback<()>,
     toggle_db_chooser: Callback<()>,
-    toggle_user_settings: Callback<()>,
 }
 
 impl App {
@@ -518,26 +498,7 @@ impl Component for App {
         };
         let database = world.database.get();
 
-        let user_settings = Rc::new(match UserSettings::load() {
-            Ok(settings) => settings,
-            Err(e) => {
-                if !matches!(e, StorageError::KeyNotFound(_)) {
-                    warn!("Failed to load user settings: {}", e);
-                }
-                let settings = UserSettings {
-                    // Intentionally using the deprecated field to pull the old value into
-                    // the new, non-deprecated field.
-                    #[allow(deprecated)]
-                    hide_empty_balances: world.global_metadata.hide_empty_balances,
-                    ..Default::default()
-                };
-                settings.save();
-                settings
-            }
-        });
-
         Self {
-            user_settings,
             overlay_window: OverlayWindow::None,
             pending_delete: None,
             show_deprecated_databases: false,
@@ -549,14 +510,10 @@ impl Component for App {
 
             undo: link.callback(|()| Msg::Undo),
             redo: link.callback(|()| Msg::Redo),
-            toggle_empty: link.callback(|()| Msg::ToggleEmptyBalances),
-            hide_window: link.callback(|()| Msg::ToggleWindow(OverlayWindow::None)),
             toggle_world_chooser: link
                 .callback(|()| Msg::ToggleWindow(OverlayWindow::WorldChooser)),
             toggle_db_chooser: link
                 .callback(|()| Msg::ToggleWindow(OverlayWindow::DatabaseChooser)),
-            toggle_user_settings: link
-                .callback(|()| Msg::ToggleWindow(OverlayWindow::UserSettings)),
         }
     }
 
@@ -592,20 +549,6 @@ impl Component for App {
                     true
                 }
             }
-            Msg::ToggleEmptyBalances => {
-                let hide_empty = &mut Rc::make_mut(&mut self.user_settings).hide_empty_balances;
-                *hide_empty = !*hide_empty;
-                self.user_settings.save();
-                true
-            }
-            Msg::SetBalanceSortMode { sort_mode }
-                if self.user_settings.balance_sort_mode != sort_mode =>
-            {
-                Rc::make_mut(&mut self.user_settings).balance_sort_mode = sort_mode;
-                self.user_settings.save();
-                true
-            }
-            Msg::SetBalanceSortMode { sort_mode: _ } => false,
             Msg::Undo => match self.undo_stack.pop() {
                 Some(previous) => {
                     let next = self.world.apply_undo_state(previous);
@@ -781,19 +724,16 @@ impl Component for App {
         let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
         let move_node =
             Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
-
-        let hidden_balances = self
-            .user_settings
-            .hide_empty_balances
-            .then_some("hide-empty-balances");
         html! {
+            <UserSettingsManager>
             <ContextProvider<Rc<Database>> context={Rc::clone(&self.database)}>
-            <ContextProvider<Rc<UserSettings>> context={Rc::clone(&self.user_settings)}>
             <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
-            <crate::overlay_window::OverlayWindow title="Hello" />
             <div class="App">
+                <UserSettingsWindowManager>
                 {self.app_header()}
-                <div class={classes!("appbody", hidden_balances)}>
+                </UserSettingsWindowManager>
+                // TODO: hide empty balances.
+                <div class={classes!("appbody")}>
                     <NodeDisplay node={self.world.root.clone()}
                         path={Vec::new()}
                         {replace} {set_metadata} {batch_set_metadata}
@@ -801,14 +741,13 @@ impl Component for App {
                 </div>
                 { self.world_chooser(ctx) }
                 { self.database_chooser(ctx) }
-                { self.user_settings_window(ctx) }
                 if let Some(pending) = self.pending_delete {
                     { self.confirm_delete(ctx, pending) }
                 }
             </div>
             </ContextProvider<NodeMetadata>>
-            </ContextProvider<Rc<UserSettings>>>
             </ContextProvider<Rc<Database>>>
+            </UserSettingsManager>
         }
     }
 }
@@ -816,17 +755,13 @@ impl Component for App {
 impl App {
     fn app_header(&self) -> Html {
         let db_choice = &self.world.database;
-        let hide_empty = self.user_settings.hide_empty_balances;
 
         let on_choose_world = &self.toggle_world_chooser;
         let on_undo = (!self.undo_stack.is_empty()).then_some(self.undo.clone());
         let on_redo = (!self.redo_stack.is_empty()).then_some(self.redo.clone());
         let on_choose_db = &self.toggle_db_chooser;
-        let on_toggle_empty = &self.toggle_empty;
-        let on_settings = &self.toggle_user_settings;
         html! {
-            <AppHeader {db_choice} {hide_empty} {on_choose_world} {on_undo} {on_redo}
-                {on_choose_db} {on_toggle_empty} {on_settings} />
+            <AppHeader {db_choice} {on_choose_world} {on_undo} {on_redo} {on_choose_db} />
         }
     }
 
@@ -972,74 +907,6 @@ impl App {
                         <span>{"Delete"}</span>
                         <span class="material-icons">{"delete_forever"}</span>
                     </button>
-                </div>
-            </div>
-        }
-    }
-
-    /// Display the user settings window. This is always displayed and is hidden in CSS
-    /// when not needed.
-    fn user_settings_window(&self, ctx: &Context<Self>) -> Html {
-        let link = ctx.link();
-        let close = link.callback(|_| Msg::ToggleWindow(OverlayWindow::None));
-
-        let hide_empty_balances = self.user_settings.hide_empty_balances;
-        let toggle_empty_balances = link.callback(move |_| Msg::ToggleEmptyBalances);
-
-        let sort_by_item = link.callback(move |_| Msg::SetBalanceSortMode {
-            sort_mode: BalanceSortMode::Item,
-        });
-
-        let sort_by_ioitem = link.callback(move |_| Msg::SetBalanceSortMode {
-            sort_mode: BalanceSortMode::IOItem,
-        });
-
-        let hidden = match self.overlay_window {
-            OverlayWindow::UserSettings => None,
-            _ => Some("hide"),
-        };
-        html! {
-            <div class={classes!("overlay-window", "user-settings", hidden)}>
-                <div class="close-bar">
-                    <h3>{"Settings"}</h3>
-                    <button class="close" title="Close" onclick={close}>
-                        <span class="material-icons">{"close"}</span>
-                    </button>
-                </div>
-                <div class="settings-list">
-                    <span class="setting-row toggle" onclick={toggle_empty_balances}>
-                        <span>{"Hide Empty Balances"}</span>
-                        <span class="material-icons">{
-                            if hide_empty_balances {
-                                "check_box"
-                            } else {
-                                "check_box_outline_blank"
-                            }
-                        }</span>
-                    </span>
-                    <div class="setting-group">
-                        <h4>{"Balance Sort Mode"}</h4>
-                        <span class="setting-row toggle" onclick={sort_by_item}>
-                            <span>{"Sort by item"}</span>
-                            <span class="material-icons">{
-                                if self.user_settings.balance_sort_mode == BalanceSortMode::Item {
-                                    "radio_button_checked"
-                                } else {
-                                    "radio_button_unchecked"
-                                }
-                            }</span>
-                        </span>
-                        <span class="setting-row toggle" onclick={sort_by_ioitem}>
-                            <span>{"Sort by inputs vs outputs, then by item"}</span>
-                            <span class="material-icons">{
-                                if self.user_settings.balance_sort_mode == BalanceSortMode::IOItem {
-                                    "radio_button_checked"
-                                } else {
-                                    "radio_button_unchecked"
-                                }
-                            }</span>
-                        </span>
-                    </div>
                 </div>
             </div>
         }
