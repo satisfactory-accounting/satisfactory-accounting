@@ -5,7 +5,6 @@ use yew::prelude::*;
 
 use satisfactory_accounting::database::Database;
 
-use crate::app::UserSettings;
 use crate::node_display::{NodeMeta, NodeMetadata};
 
 /// Helper to grab the database from Context.
@@ -40,10 +39,4 @@ impl<T: Component> CtxHelper for Context<T> {
 #[hook]
 pub(crate) fn use_db() -> Rc<Database> {
     use_context::<Rc<Database>>().expect("expected database context to be set")
-}
-
-/// Get the settings from context.
-#[hook]
-pub(crate) fn use_settings() -> Rc<UserSettings> {
-    use_context::<Rc<UserSettings>>().expect("expected user settings context to be set")
 }

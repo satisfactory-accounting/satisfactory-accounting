@@ -19,7 +19,12 @@ pub struct Props {
 }
 
 #[function_component]
-pub fn Purity(Props { purity, on_set_purity }: &Props) -> Html {
+pub fn Purity(
+    Props {
+        purity,
+        on_set_purity,
+    }: &Props,
+) -> Html {
     let editing = use_state_eq(|| false);
     let setter = editing.setter();
 

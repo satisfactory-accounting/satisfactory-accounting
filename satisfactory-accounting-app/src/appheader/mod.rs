@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use yew::html::IntoPropValue;
-use yew::{function_component, html, Callback, Html, Properties};
+use yew::{function_component, html, use_callback, Callback, Html, Properties};
 
 use menubar::MenuBar;
 use titlebar::TitleBar;
@@ -9,6 +9,9 @@ use titlebar::TitleBar;
 use crate::app::DatabaseChoice;
 use crate::inputs::button::{Button, LinkButton};
 use crate::material::material_icon;
+use crate::user_settings::{
+    use_user_settings, use_user_settings_dispatcher, use_user_settings_window,
+};
 
 mod menubar;
 mod titlebar;
@@ -50,8 +53,6 @@ impl PartialEq for DatabaseChoiceShallowEq {
 pub struct Props {
     /// Name of the currently selected database.
     pub db_choice: DatabaseChoiceShallowEq,
-    /// Whether to hide empty balances.
-    pub hide_empty: bool,
 
     /// Callback to open the world-chooser.
     pub on_choose_world: Callback<()>,
@@ -61,10 +62,6 @@ pub struct Props {
     pub on_redo: Option<Callback<()>>,
     /// Callback to open the database-chooser.
     pub on_choose_db: Callback<()>,
-    /// Callback to toggle displaying empty balances.
-    pub on_toggle_empty: Callback<()>,
-    /// Callback to toggle showing settings.
-    pub on_settings: Callback<()>,
 }
 
 /// Displays the App header including titlebar and menubar.
@@ -72,15 +69,25 @@ pub struct Props {
 pub fn AppHeader(
     Props {
         db_choice: DatabaseChoiceShallowEq(db_choice),
-        hide_empty,
         on_choose_world,
         on_undo,
         on_redo,
         on_choose_db,
-        on_toggle_empty,
-        on_settings,
     }: &Props,
 ) -> Html {
+    let hide_empty = use_user_settings().hide_empty_balances;
+
+    let settings_dispatcher = use_user_settings_dispatcher();
+    let on_toggle_empty = use_callback(settings_dispatcher, |(), settings_dispatcher| {
+        settings_dispatcher.toggle_hide_empty_balances();
+    });
+
+    let settings_window_dispatcher = use_user_settings_window();
+    let on_settings = use_callback(
+        settings_window_dispatcher,
+        |(), settings_window_dispatcher| settings_window_dispatcher.toggle_window(),
+    );
+
     let left = html! {
         <>
             <Button title="Choose World" onclick={on_choose_world}>
@@ -98,7 +105,7 @@ pub fn AppHeader(
             </Button>
             <Button class="hide-empty-button" title="Hide Empty Balances" onclick={on_toggle_empty}>
                 {material_icon("exposure_zero")}
-                if *hide_empty {
+                if hide_empty {
                     {material_icon("visibility_off")}
                 } else {
                     {material_icon("visibility")}
