@@ -31,41 +31,6 @@ pub enum OverlayWindow {
     DatabaseChooser,
 }
 
-impl World {
-    /// Updates the Root Node and returns an undo state that will go back to the previous
-    /// root. If the new root has a different name from the current root, returns a string
-    /// of the new name.
-    fn update_root(&mut self, root: Node) -> (UnReDoState, Option<AttrValue>) {
-        assert!(root.group().is_some(), "new root was not a group");
-        let new_name = {
-            let new_name = &root.group().unwrap().name;
-            let old_name = &self.root.group().unwrap().name;
-            if new_name != old_name {
-                Some(new_name.clone())
-            } else {
-                None
-            }
-        };
-
-        let old = mem::replace(&mut self.root, root);
-        (
-            UnReDoState {
-                database: self.database.clone(),
-                root: old,
-            },
-            new_name,
-        )
-    }
-
-    /// Gets metadata for this world.
-    fn storage_metadata(&self) -> WorldMetadata {
-        WorldMetadata {
-            name: self.name(),
-            load_error: false,
-        }
-    }
-}
-
 /// Messages for communicating with App.
 pub enum Msg {
     ReplaceRoot {
@@ -191,60 +156,6 @@ impl Component for App {
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::ReplaceRoot { replacement } => {
-                let (previous, new_name) = self.world.update_root(replacement);
-                self.add_undo_state(previous);
-                if let Some(new_name) = new_name {
-                    match self.worlds.worlds.entry(self.worlds.selected) {
-                        Entry::Occupied(mut entry) => entry.get_mut().name = new_name,
-                        Entry::Vacant(entry) => {
-                            warn!("World {} was not in the worlds map", self.worlds.selected);
-                            entry.insert(self.world.storage_metadata());
-                        }
-                    }
-                    self.worlds.save();
-                }
-                self.save_world();
-                true
-            }
-            Msg::UpdateMetadata { id, meta } => {
-                self.world.node_metadata.set_meta(id, meta);
-                self.save_world();
-                true
-            }
-            Msg::BatchUpdateMetadata { updates } => {
-                if updates.is_empty() {
-                    false
-                } else {
-                    self.world.node_metadata.batch_update(updates.into_iter());
-                    self.save_world();
-                    true
-                }
-            }
-            Msg::Undo => match self.undo_stack.pop() {
-                Some(previous) => {
-                    let next = self.world.apply_undo_state(previous);
-                    self.redo_stack.push(next);
-                    self.save_world();
-                    true
-                }
-                None => {
-                    warn!("Nothing to undo");
-                    false
-                }
-            },
-            Msg::Redo => match self.redo_stack.pop() {
-                Some(next) => {
-                    let previous = self.world.apply_undo_state(next);
-                    self.undo_stack.push(previous);
-                    self.save_world();
-                    true
-                }
-                None => {
-                    warn!("Nothing to redo");
-                    false
-                }
-            },
             Msg::SetDb(database) => {
                 self.database = database.get();
                 let previous = UnReDoState {
