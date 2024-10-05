@@ -9,6 +9,7 @@ use log::warn;
 use satisfactory_accounting::accounting::Node;
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 use uuid::Uuid;
+use yew::html::Scope;
 use yew::{html, Callback, Component, Context, Html, Properties};
 
 use crate::user_settings::UserSettingsDispatcher;
@@ -58,6 +59,9 @@ pub struct WorldManager {
     undo_stack: VecDeque<UnReDoState>,
     /// Stack of future states for redo.
     redo_stack: VecDeque<UnReDoState>,
+
+    /// Cached rc-wrapped link back to this component, used for the context managers it provides.
+    link: Rc<Scope<Self>>
 }
 
 impl WorldManager {
@@ -72,6 +76,11 @@ impl WorldManager {
             self.database = self.world.database.get();
         }
         prior_state
+    }
+
+    /// Saves the current state of the current world
+    fn save_world(&self) {
+        save_world(self.worlds.selected(), &self.world);
     }
 
     /// Add an undo state, clearing the redo states.
@@ -109,20 +118,62 @@ impl WorldManager {
         self.add_undo_state(undo);
 
         // Save the world, and if necessary update the world's metadata as well.
-        let selected = self.worlds.selected();
-        save_world(selected, &self.world);
+        self.save_world();
         if old_name != new_name {
-            match self.worlds.entry(selected) {
+            match self.worlds.entry(self.worlds.selected()) {
                 Entry::Occupied(mut entry) => entry.get_mut().name = new_name,
                 Entry::Vacant(entry) => {
-                    warn!("World {selected} was not in the worlds map");
+                    warn!("World {} was not in the worlds map", entry.key());
                     entry.insert(self.world.metadata());
                 }
             }
             save_worlds_list(&self.worlds);
         }
-
         true
+    }
+
+    /// Message handler for SetNodeMeta. Returns true if redraw is needed.
+    fn update_node_meta(&mut self, id: Uuid, meta: NodeMetadatum) -> bool {
+        self.world.node_metadata.set_meta(id, meta);
+        self.save_world();
+        true
+    }
+
+    /// Message handler for Undo. Returns true if redraw is needed.
+    fn undo(&mut self) -> bool {
+        match self.undo_stack.pop_back() {
+            Some(previous) => {
+                let next = self.apply_undo_state(previous);
+                // We rely on the limit on the size of the undo stack to limit the size of the redo
+                // stack.
+                self.redo_stack.push_back(next);
+                self.save_world();
+                true
+            }
+            None => {
+                warn!("Nothing to undo");
+                false
+            }
+        }
+    }
+
+    /// Message handler for Redo. Returns true if redraw is needed.
+    fn redo(&mut self) -> bool {
+        match self.redo_stack.pop_back() {
+            Some(next) => {
+                let previous = self.apply_undo_state(next);
+                // Rely on the limit on number of undo states enforced earlier to enforce the size
+                // limit now.
+                // We can't use add_undo_state because that would clear the redo stack.
+                self.undo_stack.push_back(previous);
+                self.save_world();
+                true
+            }
+            None => {
+                warn!("Nothing to redo");
+                false
+            }
+        }
     }
 }
 
@@ -186,6 +237,7 @@ impl Component for WorldManager {
             database,
             undo_stack: VecDeque::with_capacity(MAX_UNDO),
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
+            link: Rc::new(ctx.link().clone()),
         }
     }
 
@@ -193,9 +245,9 @@ impl Component for WorldManager {
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::SetRoot { root } => self.set_root(root),
-            Msg::UpdateNodeMeta { id, meta } => todo!(),
-            Msg::Undo => todo!(),
-            Msg::Redo => todo!(),
+            Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
+            Msg::Undo => self.undo(),
+            Msg::Redo => self.redo(),
             Msg::SetDb(database_version) => todo!(),
             Msg::SetWorld(world_id) => todo!(),
             Msg::DeleteWorld(world_id) => todo!(),
