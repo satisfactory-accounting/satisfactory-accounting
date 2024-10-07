@@ -175,6 +175,21 @@ impl WorldManager {
             }
         }
     }
+
+    /// Set the current database version.
+    fn set_db(&mut self, database_version: DatabaseVersion) -> bool {
+        self.database = database_version.load_database();
+        let previous = UnReDoState {
+            database: mem::replace(&mut self.world.database, database_version.into()),
+            root: {
+                let new_root = self.world.root.rebuild(&self.database);
+                mem::replace(&mut self.world.root, new_root)
+            },
+        };
+        self.add_undo_state(previous);
+        self.save_world();
+        true
+    }
 }
 
 impl Component for WorldManager {
@@ -248,7 +263,7 @@ impl Component for WorldManager {
             Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
             Msg::Undo => self.undo(),
             Msg::Redo => self.redo(),
-            Msg::SetDb(database_version) => todo!(),
+            Msg::SetDb(database_version) => self.set_db(database_version),
             Msg::SetWorld(world_id) => todo!(),
             Msg::DeleteWorld(world_id) => todo!(),
         }

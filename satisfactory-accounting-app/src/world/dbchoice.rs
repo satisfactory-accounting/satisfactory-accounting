@@ -17,7 +17,7 @@ impl DatabaseChoice {
     /// Get the database for this database choice.
     pub(super) fn get(&self) -> Rc<Database> {
         match *self {
-            DatabaseChoice::Standard(version) => Rc::new(version.load_database()),
+            DatabaseChoice::Standard(version) => version.load_database(),
             DatabaseChoice::Custom(ref db) => Rc::clone(db),
         }
     }
@@ -38,3 +38,9 @@ impl Default for DatabaseChoice {
 }
 
 impl ImplicitClone for DatabaseChoice {}
+
+impl From<DatabaseVersion> for DatabaseChoice {
+    fn from(value: DatabaseVersion) -> Self {
+        Self::Standard(value)
+    }
+}

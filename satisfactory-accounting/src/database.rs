@@ -5,12 +5,13 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use internment::Intern;
 use serde::{Deserialize, Serialize};
@@ -64,12 +65,25 @@ macro_rules! db_version_info {
         ];
 
         /// Load the database at a particuler version.
-        pub fn load_database(self) -> Database {
+        pub fn load_database(self) -> Rc<Database> {
             match self {
                 $(
                     $version_pat => {
                         const SERIALIZED_DB: &str = include_str!($file);
-                        serde_json::from_str(SERIALIZED_DB).expect(concat!("Failed to parse ", $file))
+                        thread_local! {
+                            static DB_REF: RefCell<Weak<Database>> = Default::default();
+                        }
+                        DB_REF.with_borrow_mut(|db_ref| {
+                            match db_ref.upgrade() {
+                                Some(rc) => rc,
+                                None => {
+                                    let rc: Rc<Database> = serde_json::from_str(SERIALIZED_DB)
+                                        .expect(concat!("Failed to parse ", $file));
+                                    *db_ref = Rc::downgrade(&rc);
+                                    rc
+                                }
+                            }
+                        })
                     }
                 )*
             }
@@ -243,7 +257,7 @@ impl Database {
     }
 
     /// Load the default version of the database.
-    pub fn load_default() -> Database {
+    pub fn load_default() -> Rc<Database> {
         DatabaseVersion::U7(U7Subversion::Initial).load_database()
     }
 
