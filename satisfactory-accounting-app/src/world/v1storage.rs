@@ -4,8 +4,6 @@
 // This code explicitly handles legacy stuff, so allow deprecated.
 #![allow(deprecated)]
 
-use std::rc::Rc;
-
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
 use log::warn;
@@ -46,8 +44,8 @@ fn load_v1_db_or_fallback() -> DatabaseChoice {
             // All databases in the DB_KEY should be pre-U6 which means they shouldn't
             // have an icon prefix, and we can set the icon prefix to u5, unless for
             // some reason it's already set.
-            if database.icon_prefix.is_empty() {
-                database.icon_prefix = "u5/".to_string();
+            if database.icon_prefix().is_empty() {
+                database.set_icon_prefix("u5/");
             }
             DatabaseVersion::ALL
                 .iter()
@@ -57,7 +55,7 @@ fn load_v1_db_or_fallback() -> DatabaseChoice {
                     }
                     _ => None,
                 })
-                .unwrap_or_else(move || DatabaseChoice::Custom(Rc::new(database)))
+                .unwrap_or_else(move || DatabaseChoice::Custom(database))
         }
         Err(e) => {
             if !matches!(e, StorageError::KeyNotFound(_)) {

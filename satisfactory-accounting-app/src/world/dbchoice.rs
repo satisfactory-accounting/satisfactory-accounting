@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 use serde::{Deserialize, Serialize};
 use yew::html::ImplicitClone;
@@ -10,15 +8,15 @@ pub enum DatabaseChoice {
     /// Use one of the standard databases.
     Standard(DatabaseVersion),
     /// This world uses a custom database.
-    Custom(Rc<Database>),
+    Custom(Database),
 }
 
 impl DatabaseChoice {
     /// Get the database for this database choice.
-    pub(super) fn get(&self) -> Rc<Database> {
+    pub(super) fn get(&self) -> Database {
         match *self {
             DatabaseChoice::Standard(version) => version.load_database(),
-            DatabaseChoice::Custom(ref db) => Rc::clone(db),
+            DatabaseChoice::Custom(ref db) => db.clone(),
         }
     }
 

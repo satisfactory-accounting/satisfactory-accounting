@@ -9,6 +9,7 @@ use yew::html::Scope;
 use yew::{html, Component, Context, ContextProvider, Html, Properties};
 
 use crate::node_display::BalanceSortMode;
+use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettings;
 
 /// Local storage key used to save user settings.
@@ -147,16 +148,16 @@ impl Component for UserSettingsManager {
 }
 
 /// Dispatcher which can be used to update user settings.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct UserSettingsDispatcher {
-    inner: Rc<InnerDispatcher>,
+    inner: RefEqRc<InnerDispatcher>,
 }
 
 impl UserSettingsDispatcher {
     /// Wraps the Scope from UserSettingsManager.
     fn new(scope: Scope<UserSettingsManager>) -> Self {
         Self {
-            inner: Rc::new(InnerDispatcher { scope }),
+            inner: RefEqRc::new(InnerDispatcher { scope }),
         }
     }
 
@@ -178,15 +179,6 @@ impl UserSettingsDispatcher {
         self.inner
             .scope
             .send_message(Msg::SetBalanceSortMode { sort_mode });
-    }
-}
-
-impl PartialEq for UserSettingsDispatcher {
-    fn eq(&self, other: &Self) -> bool {
-        // Compare dispatchers for just ptr equality.
-        // NOTE: this relies on the fact that UserSettingsManager constructs a single dispatcher
-        // during its `create` and just clones that whenever it needs another reference.
-        Rc::ptr_eq(&self.inner, &other.inner)
     }
 }
 

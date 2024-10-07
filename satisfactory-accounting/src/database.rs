@@ -65,22 +65,22 @@ macro_rules! db_version_info {
         ];
 
         /// Load the database at a particuler version.
-        pub fn load_database(self) -> Rc<Database> {
+        pub fn load_database(self) -> Database {
             match self {
                 $(
                     $version_pat => {
                         const SERIALIZED_DB: &str = include_str!($file);
                         thread_local! {
-                            static DB_REF: RefCell<Weak<Database>> = Default::default();
+                            static SHARED_INNER: RefCell<Weak<DatabaseInner>> = Default::default();
                         }
-                        DB_REF.with_borrow_mut(|db_ref| {
-                            match db_ref.upgrade() {
-                                Some(rc) => rc,
+                        SHARED_INNER.with_borrow_mut(|shared_inner| {
+                            match shared_inner.upgrade() {
+                                Some(inner) => Database { inner },
                                 None => {
-                                    let rc: Rc<Database> = serde_json::from_str(SERIALIZED_DB)
+                                    let inner: Rc<DatabaseInner> = serde_json::from_str(SERIALIZED_DB)
                                         .expect(concat!("Failed to parse ", $file));
-                                    *db_ref = Rc::downgrade(&rc);
-                                    rc
+                                    *shared_inner = Rc::downgrade(&inner);
+                                    Database { inner }
                                 }
                             }
                         })
@@ -237,17 +237,25 @@ impl fmt::Display for DatabaseVersion {
 }
 
 /// Database of satisfactory ... stuff.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// This is an rc-based shared type with Cow semantics.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Database {
-    /// Which version of the database this is, if it corresponds to a particular version.
+    inner: Rc<DatabaseInner>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct DatabaseInner {
+    /// Prefix used for static paths for icons in this version of the database.
     #[serde(default)]
-    pub icon_prefix: String,
+    icon_prefix: String,
     /// Core recipe storage. We only store machine recipes.
-    pub recipes: BTreeMap<RecipeId, Recipe>,
+    recipes: BTreeMap<RecipeId, Recipe>,
     /// Core item storage.
-    pub items: BTreeMap<ItemId, Item>,
+    items: BTreeMap<ItemId, Item>,
     /// Core buildings storage.
-    pub buildings: BTreeMap<BuildingId, BuildingType>,
+    buildings: BTreeMap<BuildingId, BuildingType>,
 }
 
 impl Database {
@@ -257,15 +265,40 @@ impl Database {
     }
 
     /// Load the default version of the database.
-    pub fn load_default() -> Rc<Database> {
-        DatabaseVersion::U7(U7Subversion::Initial).load_database()
+    pub fn load_latest() -> Database {
+        DatabaseVersion::LATEST.load_database()
     }
 
     /// Compare this database to another database, ignoring their icon prefixes.
     pub fn compare_ignore_prefix(&self, other: &Database) -> bool {
-        self.recipes == other.recipes
-            && self.items == other.items
-            && self.buildings == other.buildings
+        self.inner.recipes == other.inner.recipes
+            && self.inner.items == other.inner.items
+            && self.inner.buildings == other.inner.buildings
+    }
+
+    /// Prefix used for static paths for icons in this version of the database.
+    pub fn icon_prefix(&self) -> &str {
+        &self.inner.icon_prefix
+    }
+
+    /// Set the icon prefix for this database. Clones self if necessary to prevent shared mutation.
+    pub fn set_icon_prefix<S>(&mut self, prefix: S)
+    where
+        S: Into<String>,
+    {
+        Rc::make_mut(&mut self.inner).icon_prefix = prefix.into();
+    }
+}
+
+impl PartialEq for Database {
+    fn eq(&self, other: &Self) -> bool {
+        // Do a ptr-eq first to optimize the common case where two instances are using the same
+        // database by reference.
+        if Rc::ptr_eq(&self.inner, &other.inner) {
+            return true;
+        }
+        // If different pointers, fall back on structural equality.
+        self.inner == other.inner
     }
 }
 
@@ -374,7 +407,7 @@ macro_rules! typed_symbol {
                 type Info = $info;
 
                 fn fetch(self, database: &Database) -> Option<&Self::Info> {
-                    database.$map.get(&self)
+                    database.inner.$map.get(&self)
                 }
             }
 

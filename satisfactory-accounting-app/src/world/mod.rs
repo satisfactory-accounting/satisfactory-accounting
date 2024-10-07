@@ -11,6 +11,7 @@ use yew::AttrValue;
 pub use self::dbchoice::DatabaseChoice;
 pub use self::id::{ParseWorldIdError, WorldId};
 pub use self::list::{WorldList, WorldMetadata};
+pub use self::manager::{use_db, WorldManager};
 
 mod dbchoice;
 mod id;
