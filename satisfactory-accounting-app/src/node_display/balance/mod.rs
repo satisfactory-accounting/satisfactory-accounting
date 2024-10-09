@@ -10,9 +10,9 @@ use satisfactory_accounting::database::Item;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use crate::context::use_db;
 use crate::node_display::icon::Icon;
 use crate::user_settings::use_user_settings;
+use crate::world::use_db;
 
 /// How entries in the balance should be sorted.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]

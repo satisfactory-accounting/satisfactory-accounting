@@ -10,7 +10,11 @@ pub struct Props {
 
     /// Callback to activate when the button is clicked.
     #[prop_or_default]
-    pub onclick: Option<Callback<()>>,
+    pub onclick: Callback<()>,
+
+    /// Whether the button should be disabled.
+    #[prop_or_default]
+    pub disabled: bool,
 
     /// Extra classes to apply to the button.
     #[prop_or_default]
@@ -27,17 +31,14 @@ pub fn Button(
     Props {
         children,
         onclick,
+        disabled,
         class,
         title,
     }: &Props,
 ) -> Html {
-    let disabled = onclick.is_none();
+    let disabled = *disabled;
     let class = classes!("Button", class.clone());
-    let onclick = use_callback(onclick.clone(), |_, onclick| {
-        if let Some(onclick) = onclick {
-            onclick.emit(())
-        }
-    });
+    let onclick = use_callback(onclick.clone(), |_, onclick| onclick.emit(()));
 
     html! {
         <button {class} {onclick} {disabled} {title}>

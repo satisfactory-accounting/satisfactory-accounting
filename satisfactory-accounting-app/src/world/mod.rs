@@ -17,6 +17,7 @@ pub use self::manager::{
 };
 
 mod dbchoice;
+mod dbwindow;
 mod id;
 mod list;
 mod manager;

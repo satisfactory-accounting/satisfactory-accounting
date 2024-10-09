@@ -1,83 +1,16 @@
 //! Provides the user settings window.
 
-use std::rc::Rc;
-
-use yew::{
-    function_component, html, use_callback, use_reducer_eq, ContextProvider, Html, Properties,
-    Reducible, UseReducerDispatcher,
-};
+use yew::{function_component, html, use_callback, Html};
 
 use crate::node_display::BalanceSortMode;
+use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
 use crate::user_settings::{
     use_user_settings, use_user_settings_dispatcher, use_user_settings_window,
 };
 
-enum Action {
-    /// Hide the user settings window.
-    Hide,
-    /// Toggle the user settings window.
-    Toggle,
-}
-
-/// The state of user settings.
-#[derive(Default, PartialEq, Copy, Clone)]
-struct ShowUserSettings {
-    /// Whether user settings are currently shown.
-    show_window: bool,
-}
-
-impl Reducible for ShowUserSettings {
-    type Action = Action;
-
-    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
-        Self {
-            show_window: match action {
-                Action::Hide => false,
-                Action::Toggle => !self.show_window,
-            },
-        }
-        .into()
-    }
-}
-
-/// Dispatcher for toggling the user settings window.
-#[derive(PartialEq, Clone)]
-pub struct UserSettingsWindowDispatcher(UseReducerDispatcher<ShowUserSettings>);
-
-impl UserSettingsWindowDispatcher {
-    /// Toggles the user settings window.
-    pub fn toggle_window(&self) {
-        self.0.dispatch(Action::Toggle);
-    }
-
-    /// Hides the user settings window.
-    pub fn hide_window(&self) {
-        self.0.dispatch(Action::Hide);
-    }
-}
-
-#[derive(Debug, PartialEq, Properties)]
-pub struct Props {
-    /// Children of the UserSettingsWindow. Items within this set have access to a context which can
-    /// be used to toggle the user settings window.
-    pub children: Html,
-}
-
-#[function_component]
-pub fn UserSettingsWindowManager(Props { children }: &Props) -> Html {
-    let show_user_settings = use_reducer_eq(ShowUserSettings::default);
-    let window_dispatcher = UserSettingsWindowDispatcher(show_user_settings.dispatcher());
-
-    html! {
-        <ContextProvider<UserSettingsWindowDispatcher> context={window_dispatcher}>
-        { children.clone() }
-        if show_user_settings.show_window {
-            <UserSettingsWindow />
-        }
-        </ContextProvider<UserSettingsWindowDispatcher>>
-    }
-}
+pub type UserSettingsWindowManager = WindowManager<UserSettingsWindow>;
+pub type UserSettingsWindowDispatcher = ShowWindowDispatcher<UserSettingsWindow>;
 
 #[function_component]
 fn UserSettingsWindow() -> Html {
