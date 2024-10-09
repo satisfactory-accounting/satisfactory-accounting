@@ -8,6 +8,8 @@ use yew::{
 use crate::inputs::button::Button;
 use crate::material::material_icon;
 
+pub mod controller;
+
 #[derive(Properties, PartialEq)]
 pub struct Props {
     /// Window title, shown in a row with the close button.
