@@ -7,7 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use yew::prelude::*;
 
-use crate::context::use_db;
+use crate::world::use_db;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
@@ -22,7 +22,7 @@ pub fn icon(props: &Props) -> Html {
 
     match &props.icon {
         Some(icon) => html! {
-            <img src={slug_to_icon(icon, &db.icon_prefix)} class="Icon" alt="?" />
+            <img src={slug_to_icon(icon, db.icon_prefix())} class="Icon" alt="?" />
         },
         None => html! {
             <span class="Icon material-icons error">{"error"}</span>
