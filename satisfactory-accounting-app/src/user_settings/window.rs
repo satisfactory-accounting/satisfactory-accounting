@@ -1,16 +1,25 @@
 //! Provides the user settings window.
 
-use yew::{function_component, html, use_callback, Html};
+use yew::{function_component, hook, html, use_callback, use_context, Html};
 
+use crate::inputs::toggle::{MaterialCheckbox, MaterialRadio};
 use crate::node_display::BalanceSortMode;
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
-use crate::user_settings::{
-    use_user_settings, use_user_settings_dispatcher, use_user_settings_window,
-};
+use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 
 pub type UserSettingsWindowManager = WindowManager<UserSettingsWindow>;
 pub type UserSettingsWindowDispatcher = ShowWindowDispatcher<UserSettingsWindow>;
+
+/// Gets access to the user settings window dispatcher which controls showing the user settings
+/// window.
+#[hook]
+pub fn use_user_settings_window() -> UserSettingsWindowDispatcher {
+    use_context::<UserSettingsWindowDispatcher>().expect(
+        "use_user_settings_window can only be used from within a child of \
+        UserSettingsWindowManager.",
+    )
+}
 
 #[function_component]
 fn UserSettingsWindow() -> Html {
@@ -48,16 +57,8 @@ fn UserSettingsWindow() -> Html {
                         <li>
                             <label>
                                 <span>{"Hide Neutral Balances"}</span>
-                                <input class="hidden-checkbox" type="checkbox"
-                                    checked={user_settings.hide_empty_balances}
+                                <MaterialCheckbox checked={user_settings.hide_empty_balances}
                                     onclick={toggle_hide_empty} />
-                                <span class="input-display material-icons">
-                                    if user_settings.hide_empty_balances {
-                                        {"check_box"}
-                                    } else {
-                                        {"check_box_outline_blank"}
-                                    }
-                                </span>
                             </label>
                         </li>
                     </ul>
@@ -70,31 +71,17 @@ fn UserSettingsWindow() -> Html {
                         <li>
                             <label>
                                 <span>{"Sort by item"}</span>
-                                <input class="hidden-radio" type="radio" name="balance-sort" value="item"
+                                <MaterialRadio
                                     checked={user_settings.balance_sort_mode == BalanceSortMode::Item}
                                     onclick={set_sort_mode_item} />
-                                <span class="input-display material-icons">
-                                    if user_settings.balance_sort_mode == BalanceSortMode::Item {
-                                        {"radio_button_checked"}
-                                    } else {
-                                        {"radio_button_unchecked"}
-                                    }
-                                </span>
                             </label>
                         </li>
                         <li>
                             <label>
                                 <span>{"Sort by inputs vs outputs, then by item"}</span>
-                                <input class="hidden-radio" type="radio" name="balance-sort" value="io-item"
+                                <MaterialRadio
                                     checked={user_settings.balance_sort_mode == BalanceSortMode::IOItem}
                                     onclick={set_sort_mode_ioitem} />
-                                <span class="input-display material-icons">
-                                    if user_settings.balance_sort_mode == BalanceSortMode::IOItem {
-                                        {"radio_button_checked"}
-                                    } else {
-                                        {"radio_button_unchecked"}
-                                    }
-                                </span>
                             </label>
                         </li>
                     </ul>

@@ -6,7 +6,7 @@ use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
 use log::warn;
 use yew::html::Scope;
-use yew::{html, Component, Context, ContextProvider, Html, Properties};
+use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Properties};
 
 use crate::node_display::BalanceSortMode;
 use crate::refeqrc::RefEqRc;
@@ -46,6 +46,8 @@ pub enum Msg {
         /// The new sort mode to use.
         sort_mode: BalanceSortMode,
     },
+    /// Toggles the show deprecated databases setting.
+    ToggleShowDeprecated,
 }
 
 pub struct UserSettingsManager {
@@ -61,6 +63,63 @@ pub struct UserSettingsManager {
 
     /// Settings dispatcher for this instance.
     dispatcher: UserSettingsDispatcher,
+}
+
+impl UserSettingsManager {
+    /// Message handler for MaybeInitFromWorld.
+    fn maybe_init_from_world(
+        &mut self,
+        hide_empty_balances_from_deprecated_global_metadata: bool,
+    ) -> bool {
+        if self.fallback_to_world_global_metadata {
+            self.fallback_to_world_global_metadata = false;
+            if self.user_settings.hide_empty_balances
+                != hide_empty_balances_from_deprecated_global_metadata
+            {
+                Rc::make_mut(&mut self.user_settings).hide_empty_balances =
+                    hide_empty_balances_from_deprecated_global_metadata;
+                save_user_settings(&self.user_settings);
+                true
+            } else {
+                // If the existing global metadata state matches, there's no need to redraw, we
+                // just have to update the fallback_to_world_global_metadata flag.
+                false
+            }
+        } else {
+            // If fallback_to_world_global_metadata is false, ignore MaybeInitFromWorld and don't
+            // redraw.
+            false
+        }
+    }
+
+    /// Message handler for ToggleHideEmptyBalances
+    fn toggle_hide_empty_balances(&mut self) -> bool {
+        self.fallback_to_world_global_metadata = false;
+        let user_settings = Rc::make_mut(&mut self.user_settings);
+        user_settings.hide_empty_balances = !user_settings.hide_empty_balances;
+        save_user_settings(user_settings);
+        true
+    }
+
+    /// Message handler for SetBalanceSortMode.
+    fn set_balance_sort_mode(&mut self, sort_mode: BalanceSortMode) -> bool {
+        if self.user_settings.balance_sort_mode != sort_mode {
+            Rc::make_mut(&mut self.user_settings).balance_sort_mode = sort_mode;
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            // If the current balance sort mode already matches, do nothing and don't redraw.
+            false
+        }
+    }
+
+    /// Message handler for ToggleShowDeprecated.
+    fn toggle_show_deprecated(&mut self) -> bool {
+        let user_settings = Rc::make_mut(&mut self.user_settings);
+        user_settings.show_deprecated_databases = !user_settings.show_deprecated_databases;
+        save_user_settings(user_settings);
+        true
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -97,40 +156,10 @@ impl Component for UserSettingsManager {
         match msg {
             Msg::MaybeInitFromWorld {
                 hide_empty_balances_from_deprecated_global_metadata,
-            } if self.fallback_to_world_global_metadata => {
-                self.fallback_to_world_global_metadata = false;
-                if self.user_settings.hide_empty_balances
-                    != hide_empty_balances_from_deprecated_global_metadata
-                {
-                    Rc::make_mut(&mut self.user_settings).hide_empty_balances =
-                        hide_empty_balances_from_deprecated_global_metadata;
-                    save_user_settings(&self.user_settings);
-                    true
-                } else {
-                    // If the existing global metadata state matches, there's no need to redraw, we
-                    // just have to update hte fallback_to_world_global_metadata flag.
-                    false
-                }
-            }
-            // If fallback_to_world_global_metadata is false, ignore MaybeInitFromWorld and don't
-            // redraw.
-            Msg::MaybeInitFromWorld { .. } => false,
-            Msg::ToggleHideEmptyBalances => {
-                self.fallback_to_world_global_metadata = false;
-                let user_settings = Rc::make_mut(&mut self.user_settings);
-                user_settings.hide_empty_balances = !user_settings.hide_empty_balances;
-                save_user_settings(user_settings);
-                true
-            }
-            Msg::SetBalanceSortMode { sort_mode }
-                if self.user_settings.balance_sort_mode != sort_mode =>
-            {
-                Rc::make_mut(&mut self.user_settings).balance_sort_mode = sort_mode;
-                save_user_settings(&self.user_settings);
-                true
-            }
-            // If the current balance sort mode already matches, do nothing and don't redraw.
-            Msg::SetBalanceSortMode { .. } => false,
+            } => self.maybe_init_from_world(hide_empty_balances_from_deprecated_global_metadata),
+            Msg::ToggleHideEmptyBalances => self.toggle_hide_empty_balances(),
+            Msg::SetBalanceSortMode { sort_mode } => self.set_balance_sort_mode(sort_mode),
+            Msg::ToggleShowDeprecated => self.toggle_show_deprecated(),
         }
     }
 
@@ -150,39 +179,54 @@ impl Component for UserSettingsManager {
 /// Dispatcher which can be used to update user settings.
 #[derive(Clone, Debug, PartialEq)]
 pub struct UserSettingsDispatcher {
-    inner: RefEqRc<InnerDispatcher>,
+    scope: RefEqRc<Scope<UserSettingsManager>>,
 }
 
 impl UserSettingsDispatcher {
     /// Wraps the Scope from UserSettingsManager.
     fn new(scope: Scope<UserSettingsManager>) -> Self {
         Self {
-            inner: RefEqRc::new(InnerDispatcher { scope }),
+            scope: RefEqRc::new(scope),
         }
     }
 
     /// Sets the value of `hide_empty_balances` only if `UserSettings` failed to load and the user
     /// has not yet set a new value.
     pub fn maybe_init_from_world(&self, hide_empty_balances_from_deprecated_global_metadata: bool) {
-        self.inner.scope.send_message(Msg::MaybeInitFromWorld {
+        self.scope.send_message(Msg::MaybeInitFromWorld {
             hide_empty_balances_from_deprecated_global_metadata,
         });
     }
 
     /// Toggles whether `hide_empty_balances` is set.
     pub fn toggle_hide_empty_balances(&self) {
-        self.inner.scope.send_message(Msg::ToggleHideEmptyBalances);
+        self.scope.send_message(Msg::ToggleHideEmptyBalances);
     }
 
     /// Sets the balance sort mode.
     pub fn set_sort_mode(&self, sort_mode: BalanceSortMode) {
-        self.inner
-            .scope
+        self.scope
             .send_message(Msg::SetBalanceSortMode { sort_mode });
+    }
+
+    /// Toggles whether deprecated databases are shown in the database chooser window.
+    pub fn toggle_show_deprecated(&self) {
+        self.scope.send_message(Msg::ToggleShowDeprecated);
     }
 }
 
-#[derive(Debug)]
-struct InnerDispatcher {
-    scope: Scope<UserSettingsManager>,
+/// Get the current settings from the context and respond to changes to the settings.
+#[hook]
+pub fn use_user_settings() -> Rc<UserSettings> {
+    use_context::<Rc<UserSettings>>()
+        .expect("use_user_settings can only be used from within a child of UserSettingsManager.")
+}
+
+/// Get the UserSettingsDispatcher. Only triggers redraw if the UserSettingsManager is replaced
+/// somehow which shouldn't happen.
+#[hook]
+pub fn use_user_settings_dispatcher() -> UserSettingsDispatcher {
+    use_context::<UserSettingsDispatcher>().expect(
+        "use_user_settings_dispatcher can only be used from within a child of UserSettingsManager.",
+    )
 }

@@ -483,12 +483,7 @@ fn main() {
         }
     }
 
-    let database = Database {
-        icon_prefix: "v1.0/".to_string(),
-        recipes,
-        items,
-        buildings,
-    };
+    let database = Database::new("v1.0/".to_string(), recipes, items, buildings);
 
     serde_json::to_writer_pretty(std::io::stdout().lock(), &database)
         .expect("Unable to write database");

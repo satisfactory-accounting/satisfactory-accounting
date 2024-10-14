@@ -90,14 +90,14 @@ macro_rules! db_version_info {
         }
 
         /// Get the displayable name for this database version.
-        pub fn name(self) -> &'static str {
+        pub const fn name(self) -> &'static str {
             match self {
                 $($version_pat => $name,)*
             }
         }
 
         /// Get the description for this version.
-        pub fn description(self) -> &'static str {
+        pub const fn description(self) -> &'static str {
             match self {
                 $($version_pat => $description,)*
             }
@@ -244,6 +244,33 @@ impl fmt::Display for DatabaseVersion {
 pub struct Database {
     inner: Rc<DatabaseInner>,
 }
+
+impl Database {
+    /// Construct a new Database with the given values.
+    pub fn new(
+        icon_prefix: String,
+        recipes: BTreeMap<RecipeId, Recipe>,
+        items: BTreeMap<ItemId, Item>,
+        buildings: BTreeMap<BuildingId, BuildingType>,
+    ) -> Self {
+        Self {
+            inner: Rc::new(DatabaseInner {
+                icon_prefix,
+                recipes,
+                items,
+                buildings,
+            }),
+        }
+    }
+
+    /// Gets an iterator over the buildings in the database.
+    pub fn buildings(&self) -> BuildingsIter {
+        self.inner.buildings.values()
+    }
+}
+
+/// Iterator over the list of available buildings.
+pub type BuildingsIter<'a> = std::collections::btree_map::Values<'a, BuildingId, BuildingType>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct DatabaseInner {

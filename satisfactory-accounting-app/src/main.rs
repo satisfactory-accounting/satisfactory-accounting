@@ -9,6 +9,7 @@ use crate::app::App;
 
 mod app;
 mod appheader;
+mod collections;
 mod inputs;
 mod material;
 mod node_display;

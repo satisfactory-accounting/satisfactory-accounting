@@ -21,9 +21,9 @@ pub struct Props {
     #[prop_or_default]
     pub class: Classes,
 
-    /// Callback for when the window is closed.
+    /// Callback for when the window is closed. No close button is shown if this is None.
     #[prop_or_default]
-    pub on_close: Callback<()>,
+    pub on_close: Option<Callback<()>>,
 }
 
 /// Draws an overlay window relative to its parent.
@@ -71,9 +71,11 @@ fn overlay_contents(
         <div class={classes!("OverlayWindow", class.clone())}>
             <section class="window-title">
                 <h1>{title}</h1>
-                <Button title="Close" class="red" onclick={on_close}>
-                    {material_icon("close")}
-                </Button>
+                if let Some(on_close) = on_close {
+                    <Button title="Close" class="red" onclick={on_close}>
+                        {material_icon("close")}
+                    </Button>
+                }
             </section>
             <section class="window-content-wrapper">
                 <div class="window-content">

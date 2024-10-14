@@ -16,6 +16,7 @@ use yew::prelude::*;
 
 use crate::inputs::events::get_value_from_input_event;
 use crate::inputs::whitespace::space_to_nbsp;
+use crate::collections::IShareVec;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
@@ -31,7 +32,7 @@ pub struct Choice<Id> {
 #[derive(Properties, PartialEq)]
 pub struct Props<I: PartialEq> {
     /// Available choices for this chooser.
-    pub choices: Vec<Choice<I>>,
+    pub choices: IShareVec<Choice<I>>,
     /// Title to apply to the root of the chooser.
     #[prop_or_default]
     pub title: Option<AttrValue>,

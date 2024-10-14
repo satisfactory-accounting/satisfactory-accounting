@@ -1,0 +1,18 @@
+@use "../../colors.scss";
+
+.MaterialToggle {
+    input[type="checkbox"],
+    input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+
+        &:hover+.hidden-input-display {
+            color: colors.$bg-primary;
+        }
+
+        &:focus+.hidden-input-display {
+            color: colors.$bg-primary;
+            filter: drop-shadow(0 0 5px);
+        }
+    }
+}
