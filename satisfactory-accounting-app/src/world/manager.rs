@@ -5,7 +5,7 @@ use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
 use log::warn;
 use satisfactory_accounting::accounting::Node;
-use satisfactory_accounting::database::{Database, DatabaseVersion};
+use satisfactory_accounting::database::Database;
 use uuid::Uuid;
 use yew::html::Scope;
 use yew::{
@@ -15,7 +15,9 @@ use yew::{
 use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettingsDispatcher;
 use crate::world::list::WorldEntry;
-use crate::world::{v1storage, DatabaseChoice, NodeMetadata, NodeMetadatum, WorldId};
+use crate::world::{
+    v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMetadata, NodeMetadatum, WorldId,
+};
 use crate::world::{World, WorldList};
 
 #[derive(PartialEq, Properties)]
@@ -40,7 +42,7 @@ pub enum Msg {
     /// Change to the most recent redo state, pushing the current state to the undo stack.
     Redo,
     /// Switch to the specified DatabaseVersion.
-    SetDb(DatabaseVersion),
+    SetDb(DatabaseVersionSelector),
 
     /// Change to the specified World ID.
     SetWorld(WorldId),
@@ -181,10 +183,10 @@ impl WorldManager {
     }
 
     /// Message hander for SetDb. Set the current database version.
-    fn set_db(&mut self, database_version: DatabaseVersion) -> bool {
-        self.database = database_version.load_database();
+    fn set_db(&mut self, selector: DatabaseVersionSelector) -> bool {
+        self.database = selector.load_database();
         let previous = UnReDoState {
-            database: mem::replace(&mut self.world.database, database_version.into()),
+            database: mem::replace(&mut self.world.database, selector.into()),
             root: {
                 let new_root = self.world.root.rebuild(&self.database);
                 mem::replace(&mut self.world.root, new_root)
@@ -306,7 +308,7 @@ impl WorldManager {
     /// Creates the DbController for the current db.
     fn db_controller(&self) -> DbController {
         DbController {
-            current: self.world.database_version(),
+            current: self.world.database.version_selector(),
             link: self.link.clone(),
         }
     }
@@ -331,7 +333,8 @@ impl Component for WorldManager {
             .context::<UserSettingsDispatcher>(Callback::noop())
             .expect("WorldManager must be nested in the UserSettingsManager");
 
-        let (worlds, world) = match load_worlds_list() {
+        let mut needs_rebuild = false;
+        let (worlds, mut world) = match load_worlds_list() {
             Ok(mut worlds) => {
                 let world = match load_world(worlds.selected_id()) {
                     Ok(world) => {
@@ -339,6 +342,11 @@ impl Component for WorldManager {
                         #[allow(deprecated)]
                         user_settings_dispatcher
                             .maybe_init_from_world(world.global_metadata.hide_empty_balances);
+                        // Only rebuild on load if the databse choice is latest and the world is
+                        // new.
+                        if world.database == DatabaseChoice::Latest {
+                            needs_rebuild = true
+                        }
                         world
                     }
                     Err(e) => {
@@ -377,6 +385,11 @@ impl Component for WorldManager {
             }
         };
         let database = world.database.get();
+        if needs_rebuild {
+            let new_root = world.root.rebuild(&database);
+            // On-load rebuild doesn't create an undo state.
+            world.root = new_root;
+        }
 
         Self {
             worlds,
@@ -395,7 +408,7 @@ impl Component for WorldManager {
             Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
             Msg::Undo => self.undo(),
             Msg::Redo => self.redo(),
-            Msg::SetDb(database_version) => self.set_db(database_version),
+            Msg::SetDb(selector) => self.set_db(selector),
             Msg::SetWorld(world_id) => self.set_world(world_id),
             Msg::DeleteWorld(world_id) => self.delete_world(world_id),
             Msg::CreateWorld => self.create_world(),
@@ -475,21 +488,37 @@ pub fn use_db() -> Database {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbController {
     /// Current database, if the current database is not custom.
-    current: Option<DatabaseVersion>,
+    current: Option<DatabaseVersionSelector>,
     /// Link used to send messages to the WorldManager.
     link: RefEqRc<Scope<WorldManager>>,
 }
 
 impl DbController {
-    /// Gets the current database version. If the current database is a custom database, returns
+    /// Gets the current database selector. If the current database is a custom database, returns
     /// None.
-    pub fn current_version(&self) -> Option<DatabaseVersion> {
+    pub fn current_selector(&self) -> Option<DatabaseVersionSelector> {
         self.current
     }
 
+    /// Gets the current database dispatcher
+    pub fn dispatcher(&self) -> DbDispatcher {
+        DbDispatcher {
+            link: self.link.clone(),
+        }
+    }
+}
+
+/// Dispatcher for updating the selected database.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbDispatcher {
+    /// Link used to send messages to the WorldManager.
+    link: RefEqRc<Scope<WorldManager>>,
+}
+
+impl DbDispatcher {
     /// Updates the current database version.
-    pub fn set_database(&self, version: DatabaseVersion) {
-        self.link.send_message(Msg::SetDb(version));
+    pub fn set_database(&self, selector: DatabaseVersionSelector) {
+        self.link.send_message(Msg::SetDb(selector));
     }
 }
 

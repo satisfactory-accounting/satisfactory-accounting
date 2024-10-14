@@ -6,12 +6,11 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use log::warn;
-use satisfactory_accounting::database::DatabaseVersion;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use yew::AttrValue;
 
-use crate::world::WorldId;
+use crate::world::{DatabaseVersionSelector, WorldId};
 
 /// Info about a particular world. Used in the world map to avoid needing to load the
 /// whole world to get info about it.
@@ -21,7 +20,7 @@ pub struct WorldMetadata {
     pub name: AttrValue,
     /// Version of the database used by this world, if known.
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub database: Option<DatabaseVersion>,
+    pub database: Option<DatabaseVersionSelector>,
     /// If we attempted to load this world this session but it failed, it is flagged here.
     /// This is not serialized in order to allow it to be retried next time the app is opened.
     #[serde(skip, default)]

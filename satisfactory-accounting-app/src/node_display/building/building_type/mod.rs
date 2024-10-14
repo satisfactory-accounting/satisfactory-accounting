@@ -8,9 +8,9 @@
 use satisfactory_accounting::database::{BuildingId, Database};
 use yew::prelude::*;
 
-use crate::context::use_db;
 use crate::inputs::choose_from_list::{Choice, ChooseFromList};
 use crate::node_display::icon::Icon;
+use crate::world::use_db;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {
@@ -70,8 +70,7 @@ pub fn BuildingTypeDisplay(Props { id, on_change_type }: &Props) -> Html {
 }
 
 fn create_building_choices(db: &Database) -> Vec<Choice<BuildingId>> {
-    db.buildings
-        .values()
+    db.buildings()
         .map(|building| Choice {
             id: building.id,
             name: building.name.clone().into(),

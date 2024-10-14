@@ -23,20 +23,6 @@
         justify-content: space-between;
     }
 
-    input[type="checkbox"],
-    input[type="radio"] {
-        position: absolute;
-        opacity: 0;
-
-        &:hover + .input-display {
-            color: colors.$bg-primary;
-        }
-        &:focus + .input-display {
-            color: colors.$bg-primary;
-            filter: drop-shadow(0 0 5px);
-        }
-    }
-
     ul {
         list-style-type: none;
         padding: 0 20px;

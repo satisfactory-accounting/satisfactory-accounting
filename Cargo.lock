@@ -947,6 +947,7 @@ dependencies = [
  "console_log",
  "fuzzy-matcher",
  "gloo 0.11.0",
+ "implicit-clone",
  "log",
  "satisfactory-accounting",
  "serde",

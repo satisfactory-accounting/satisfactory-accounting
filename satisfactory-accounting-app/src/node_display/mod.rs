@@ -51,8 +51,6 @@ pub struct Props {
     pub move_node: Callback<(Vec<usize>, Vec<usize>)>,
     /// Callback to set the metadata of a node.
     pub set_metadata: Callback<(Uuid, NodeMeta)>,
-    /// Callback to set the metadata of many nodes at once.
-    pub batch_set_metadata: Callback<HashMap<Uuid, NodeMeta>>,
 }
 
 /// Messages which can be sent to a Node.

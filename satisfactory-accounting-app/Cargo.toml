@@ -6,9 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gloo = "0.11"
 console_log = "1"
 fuzzy-matcher = "0.3"
+gloo = "0.11"
+implicit-clone = "0.4"
 # Not direclty used but `now` doesn't link properly if we don't set the wasm-bindgen
 # feature, and that's needed when actually using Serde or Serde-Json, and breaks the whole
 # app.

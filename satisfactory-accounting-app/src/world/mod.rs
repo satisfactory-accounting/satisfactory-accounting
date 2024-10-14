@@ -3,18 +3,18 @@ use std::rc::Rc;
 
 use log::warn;
 use satisfactory_accounting::accounting::{Group, Node, NodeKind};
-use satisfactory_accounting::database::DatabaseVersion;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use yew::AttrValue;
 
-pub use self::dbchoice::DatabaseChoice;
+pub use self::dbchoice::{DatabaseChoice, DatabaseVersionSelector};
 pub use self::id::{ParseWorldIdError, WorldId};
 pub use self::list::{WorldList, WorldMetadata};
 pub use self::manager::{
     use_db, use_db_controller, use_undo_controller, DbController, UndoController, UndoDispatcher,
     WorldManager,
 };
+pub use self::dbwindow::{DbChooserWindowDispatcher, DbChooserWindowManager, use_db_chooser_window};
 
 mod dbchoice;
 mod dbwindow;
@@ -62,19 +62,11 @@ impl World {
         }
     }
 
-    /// Get the selected database version or None if the database is custom.
-    fn database_version(&self) -> Option<DatabaseVersion> {
-        match self.database {
-            DatabaseChoice::Standard(version) => Some(version),
-            DatabaseChoice::Custom(_) => None,
-        }
-    }
-
     /// Gets WorldMetadata for this world.
     fn metadata(&self) -> WorldMetadata {
         WorldMetadata {
             name: self.name(),
-            database: self.database_version(),
+            database: self.database.version_selector(),
             // An existing World should never have a load_error.
             load_error: false,
         }
