@@ -1,4 +1,4 @@
-use yew::{classes, function_component, html, Html};
+use yew::{function_component, html, Html};
 
 // Copyright 2021, 2022 Zachary Stewart
 //
@@ -8,20 +8,12 @@ use yew::{classes, function_component, html, Html};
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use crate::appheader::AppHeader;
+use crate::node_display::NodeTreeDisplay;
 use crate::user_settings::{UserSettingsManager, UserSettingsWindowManager};
 use crate::world::{DbChooserWindowManager, WorldManager};
 
 #[function_component]
 pub fn App() -> Html {
-    //     let link = ctx.link();
-    //     let replace = link.callback(|(idx, replacement)| {
-    //         assert!(idx == 0, "Attempting to replace index {} at the root", idx);
-    //         Msg::ReplaceRoot { replacement }
-    //     });
-    //     let set_metadata = link.callback(|(id, meta)| Msg::UpdateMetadata { id, meta });
-    //     let batch_set_metadata = link.callback(|updates| Msg::BatchUpdateMetadata { updates });
-    //     let move_node =
-    //         Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
     html! {
         <UserSettingsManager>
         <WorldManager>
@@ -31,13 +23,7 @@ pub fn App() -> Html {
                     <AppHeader />
                 </DbChooserWindowManager>
                 </UserSettingsWindowManager>
-                // TODO: hide empty balances.
-                <div class={classes!("appbody")}>
-                    //<NodeDisplay node={self.world.root.clone()}
-                    //    path={Vec::new()}
-                    //    {replace} {set_metadata} {batch_set_metadata}
-                    //    {move_node} />
-                </div>
+                <NodeTreeDisplay />
             </div>
         </WorldManager>
         </UserSettingsManager>

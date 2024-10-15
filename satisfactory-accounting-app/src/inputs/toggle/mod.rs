@@ -1,5 +1,5 @@
-pub use radio::MaterialRadio;
 pub use checkbox::MaterialCheckbox;
+pub use radio::MaterialRadio;
 
-mod radio;
 mod checkbox;
+mod radio;

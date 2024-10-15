@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use implicit_clone::ImplicitClone;
+use yew::html::IntoPropValue;
 
 /// Contains a slice of [T] with ownership and cheap cloning.
 ///
@@ -66,13 +67,25 @@ impl<T: 'static> From<Rc<[T]>> for IShareArray<T> {
     }
 }
 
-impl<T: 'static> From<Rc<Vec<T>>> for IShareArray<T> {
-    fn from(value: Rc<Vec<T>>) -> Self {
-        Self(ShareableArrayTypes::RcVec(value))
+impl<T: 'static> From<Vec<T>> for IShareArray<T> {
+    fn from(value: Vec<T>) -> Self {
+        Self(ShareableArrayTypes::RcVec(Rc::new(value)))
     }
 }
 
 impl<T: 'static> ImplicitClone for IShareArray<T> {}
+
+impl<T: 'static> IntoPropValue<IShareArray<T>> for &'static [T] {
+    fn into_prop_value(self) -> IShareArray<T> {
+        self.into()
+    }
+}
+
+impl<T: 'static> IntoPropValue<IShareArray<T>> for Vec<T> {
+    fn into_prop_value(self) -> IShareArray<T> {
+        self.into()
+    }
+}
 
 /// Supported shareable array implementation types.
 enum ShareableArrayTypes<T: 'static> {

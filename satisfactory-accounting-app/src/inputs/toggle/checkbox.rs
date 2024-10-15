@@ -10,7 +10,12 @@ pub struct Props {
 
 /// Displays a radio button using a material icon in place of the default display type.
 #[function_component]
-pub fn MaterialCheckbox(&Props { checked, ref onclick }: &Props) -> Html {
+pub fn MaterialCheckbox(
+    &Props {
+        checked,
+        ref onclick,
+    }: &Props,
+) -> Html {
     html! {
         <div class="MaterialToggle checkbox">
             <input type="checkbox" {checked} {onclick} />

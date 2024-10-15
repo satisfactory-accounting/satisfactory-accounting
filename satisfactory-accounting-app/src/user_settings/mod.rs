@@ -5,6 +5,7 @@ use crate::node_display::BalanceSortMode;
 pub use crate::user_settings::manager::{
     use_user_settings, use_user_settings_dispatcher, UserSettingsDispatcher, UserSettingsManager,
 };
+#[allow(unused_imports)]
 pub use crate::user_settings::window::{
     use_user_settings_window, UserSettingsWindowDispatcher, UserSettingsWindowManager,
 };

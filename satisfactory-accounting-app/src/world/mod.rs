@@ -1,26 +1,29 @@
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
-
 use log::warn;
-use satisfactory_accounting::accounting::{Group, Node, NodeKind};
+use satisfactory_accounting::accounting::{Group, Node};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use yew::AttrValue;
 
 pub use self::dbchoice::{DatabaseChoice, DatabaseVersionSelector};
+#[allow(unused_imports)]
+pub use self::dbwindow::{
+    use_db_chooser_window, DbChooserWindowDispatcher, DbChooserWindowManager,
+};
+#[allow(unused_imports)]
 pub use self::id::{ParseWorldIdError, WorldId};
 pub use self::list::{WorldList, WorldMetadata};
+#[allow(unused_imports)]
 pub use self::manager::{
-    use_db, use_db_controller, use_undo_controller, DbController, UndoController, UndoDispatcher,
-    WorldManager,
+    use_db, use_db_controller, use_undo_controller, use_world_dispatcher, use_world_root,
+    DbController, UndoController, UndoDispatcher, WorldDispatcher, WorldManager,
 };
-pub use self::dbwindow::{DbChooserWindowDispatcher, DbChooserWindowManager, use_db_chooser_window};
+pub use self::meta::{NodeMeta, NodeMetas};
 
 mod dbchoice;
 mod dbwindow;
 mod id;
 mod list;
 mod manager;
+mod meta;
 mod v1storage;
 
 /// A single world with a particular database and structure.
@@ -31,7 +34,7 @@ struct World {
     /// Root node for this world.
     root: Node,
     /// Non-undo metadata about nodes.
-    node_metadata: NodeMetadata,
+    node_metadata: NodeMetas,
     /// Non-undo metadata about this particular world.
     /// This has been superceded by the
     #[deprecated]
@@ -84,46 +87,4 @@ struct GlobalMetadata {
     /// of the selected world.
     #[deprecated]
     hide_empty_balances: bool,
-}
-
-/// Mapping of node medatata by node id.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct NodeMetadata(Rc<HashMap<Uuid, NodeMetadatum>>);
-
-impl NodeMetadata {
-    /// Get the metadata for a particular node by id.
-    pub fn meta(&self, uuid: Uuid) -> NodeMetadatum {
-        self.0.get(&uuid).cloned().unwrap_or_default()
-    }
-
-    /// Build a version of the metadata with the given value updated.
-    pub fn set_meta(&mut self, uuid: Uuid, meta: NodeMetadatum) {
-        Rc::make_mut(&mut self.0).insert(uuid, meta);
-    }
-
-    /// Build a version of the metadata with the given values updated.
-    pub fn batch_update(&mut self, update: impl IntoIterator<Item = (Uuid, NodeMetadatum)>) {
-        Rc::make_mut(&mut self.0).extend(update);
-    }
-
-    /// Prune metadata for anything that isn't referenced from the given node.
-    pub fn prune(&mut self, root: &Node) {
-        let used_uuids: HashSet<_> = root
-            .iter()
-            .filter_map(|node| match node.kind() {
-                NodeKind::Group(g) => Some(g.id),
-                NodeKind::Building(_) => None,
-            })
-            .collect();
-        Rc::make_mut(&mut self.0).retain(|k, _| used_uuids.contains(k));
-    }
-}
-
-/// Metadata about a node which isn't stored in the tree and isn't available for
-/// undo/redo.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct NodeMetadatum {
-    /// Whether the node should be shown collapsed or expanded.
-    collapsed: bool,
 }

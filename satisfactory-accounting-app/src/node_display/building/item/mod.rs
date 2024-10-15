@@ -9,9 +9,9 @@ use log::warn;
 use satisfactory_accounting::database::{BuildingId, BuildingKind, Database, ItemId};
 use yew::prelude::*;
 
-use crate::world::use_db;
 use crate::inputs::choose_from_list::{Choice, ChooseFromList};
 use crate::node_display::icon::Icon;
+use crate::world::use_db;
 
 #[derive(PartialEq, Properties)]
 pub struct Props {

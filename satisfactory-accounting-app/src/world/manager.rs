@@ -1,9 +1,9 @@
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::mem;
 
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
-use log::warn;
+use log::{error, warn};
 use satisfactory_accounting::accounting::Node;
 use satisfactory_accounting::database::Database;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettingsDispatcher;
 use crate::world::list::WorldEntry;
 use crate::world::{
-    v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMetadata, NodeMetadatum, WorldId,
+    v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMeta, NodeMetas, WorldId,
 };
 use crate::world::{World, WorldList};
 
@@ -35,8 +35,10 @@ pub enum Msg {
         /// UUID of the node to update the metadata of.
         id: Uuid,
         /// Meta for the individual node being updated.
-        meta: NodeMetadatum,
+        meta: NodeMeta,
     },
+    /// Update many node metas at once.
+    BatchUpdateNodeMeta(HashMap<Uuid, NodeMeta>),
     /// Change the most recent undo state, pushing the current state to the redo stack.
     Undo,
     /// Change to the most recent redo state, pushing the current state to the undo stack.
@@ -109,10 +111,10 @@ impl WorldManager {
 
     /// Message handler for SetRoot. Returns true if redraw is needed.
     fn set_root(&mut self, new_root: Node) -> bool {
-        assert!(
-            new_root.group().is_some(),
-            "new root {new_root:?} was not a group"
-        );
+        if new_root.group().is_none() {
+            error!("new root {new_root:?} was not a group");
+            return false;
+        }
         // Update the world state, tracking the old and new name.
         let old_name = self.world.name();
         let old_root = mem::replace(&mut self.world.root, new_root);
@@ -139,8 +141,15 @@ impl WorldManager {
     }
 
     /// Message handler for SetNodeMeta. Returns true if redraw is needed.
-    fn update_node_meta(&mut self, id: Uuid, meta: NodeMetadatum) -> bool {
+    fn update_node_meta(&mut self, id: Uuid, meta: NodeMeta) -> bool {
         self.world.node_metadata.set_meta(id, meta);
+        self.save_world();
+        true
+    }
+
+    /// Message handler for BatchUpdateNodeMeta. Returns true if redarw is needed.
+    fn batch_update_node_meta(&mut self, updates: HashMap<Uuid, NodeMeta>) -> bool {
+        self.world.node_metadata.batch_update(updates);
         self.save_world();
         true
     }
@@ -305,7 +314,14 @@ impl WorldManager {
         true
     }
 
-    /// Creates the DbController for the current db.
+    /// Creates the [`WorldDispatcher`] for this `WorldManager`.
+    fn world_dispatcher(&self) -> WorldDispatcher {
+        WorldDispatcher {
+            link: self.link.clone(),
+        }
+    }
+
+    /// Creates the [`DbController`] for the current db.
     fn db_controller(&self) -> DbController {
         DbController {
             current: self.world.database.version_selector(),
@@ -313,7 +329,7 @@ impl WorldManager {
         }
     }
 
-    /// Creates the UndoController for the current undo state.
+    /// Creates the [`UndoController`] for the current undo state.
     fn undo_controller(&self) -> UndoController {
         UndoController {
             has_undo: !self.undo_stack.is_empty(),
@@ -406,6 +422,7 @@ impl Component for WorldManager {
         match msg {
             Msg::SetRoot { root } => self.set_root(root),
             Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
+            Msg::BatchUpdateNodeMeta(updates) => self.batch_update_node_meta(updates),
             Msg::Undo => self.undo(),
             Msg::Redo => self.redo(),
             Msg::SetDb(selector) => self.set_db(selector),
@@ -419,13 +436,15 @@ impl Component for WorldManager {
         html! {
             <ContextProvider<Database> context={self.database.clone()}>
             <ContextProvider<WorldRoot> context={WorldRoot(self.world.root.clone())}>
-            <ContextProvider<NodeMetadata> context={self.world.node_metadata.clone()}>
+            <ContextProvider<NodeMetas> context={self.world.node_metadata.clone()}>
+            <ContextProvider<WorldDispatcher> context={self.world_dispatcher()}>
             <ContextProvider<UndoController> context={self.undo_controller()}>
             <ContextProvider<DbController> context={self.db_controller()}>
             {ctx.props().children.clone()}
             </ContextProvider<DbController>>
             </ContextProvider<UndoController>>
-            </ContextProvider<NodeMetadata>>
+            </ContextProvider<WorldDispatcher>>
+            </ContextProvider<NodeMetas>>
             </ContextProvider<WorldRoot>>
             </ContextProvider<Database>>
         }
@@ -477,6 +496,46 @@ fn save_world(id: WorldId, world: &World) {
 /// Context wrapper for the root node of the current world.
 #[derive(Debug, Clone, PartialEq)]
 struct WorldRoot(Node);
+
+/// Gets the root node of the world.
+#[hook]
+pub fn use_world_root() -> Node {
+    use_context::<WorldRoot>()
+        .expect("use_world_root can only be used from within a child of WorldManager")
+        .0
+        .clone()
+}
+
+/// Dispatcher used to make changes to the World.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WorldDispatcher {
+    /// Link used to send messages back to the WorldManager.
+    link: RefEqRc<Scope<WorldManager>>,
+}
+
+impl WorldDispatcher {
+    /// Set the world root.
+    pub fn set_root(&self, root: Node) {
+        self.link.send_message(Msg::SetRoot { root });
+    }
+
+    /// Update a single node's metadata.
+    pub fn update_node_meta(&self, id: Uuid, meta: NodeMeta) {
+        self.link.send_message(Msg::UpdateNodeMeta { id, meta });
+    }
+
+    /// Update a many nodes' metadata.
+    pub fn batch_update_node_meta(&self, updates: HashMap<Uuid, NodeMeta>) {
+        self.link.send_message(Msg::BatchUpdateNodeMeta(updates));
+    }
+}
+
+/// Gets the world dispatcher.
+#[hook]
+pub fn use_world_dispatcher() -> WorldDispatcher {
+    use_context::<WorldDispatcher>()
+        .expect("use_world_dispatcher can only be used from within a child of WorldManager")
+}
 
 /// Get the database from context.
 #[hook]

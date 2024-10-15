@@ -13,7 +13,6 @@ use satisfactory_accounting::accounting::{
 use satisfactory_accounting::database::BuildingId;
 use yew::prelude::*;
 
-use crate::context::CtxHelper;
 use crate::node_display::balance::NodeBalance;
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay};
@@ -214,8 +213,7 @@ impl NodeDisplay {
         building: BuildingId,
         current_clock_speed: f32,
     ) -> Option<Html> {
-        let db = ctx.db();
-        match db.get(building) {
+        match self.db.get(building) {
             Some(building) if !building.overclockable() => None,
             // Treat missing buildings as overclockable by default; only hide the clock control if
             // explicitly not overclockable.

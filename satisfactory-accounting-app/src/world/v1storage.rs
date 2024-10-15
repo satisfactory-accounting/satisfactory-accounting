@@ -10,7 +10,7 @@ use log::warn;
 use satisfactory_accounting::accounting::{Group, Node};
 use satisfactory_accounting::database::{Database, DatabaseVersion};
 
-use crate::world::{DatabaseChoice, GlobalMetadata, NodeMetadata, World};
+use crate::world::{DatabaseChoice, GlobalMetadata, NodeMetas, World};
 
 /// Key wehere the v1 database was stored.
 const DB_KEY: &str = "zstewart.satisfactorydb.state.database";
@@ -77,7 +77,7 @@ fn load_v1_root_node_or_empty() -> Node {
 }
 
 /// Try to load a v1 world's per-node metadata.
-fn load_v1_node_metadata_or_empty() -> NodeMetadata {
+fn load_v1_node_metadata_or_empty() -> NodeMetas {
     LocalStorage::get(METADATA_KEY).unwrap_or_else(|e| {
         if !matches!(e, StorageError::KeyNotFound(_)) {
             warn!("Failed to load metadata: {}", e);
