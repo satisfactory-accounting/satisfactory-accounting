@@ -8,7 +8,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use log::warn;
+use log::{error, warn};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -18,10 +18,11 @@ use satisfactory_accounting::accounting::{
     StationSettings,
 };
 use satisfactory_accounting::database::{
-    BuildingId, BuildingKind, BuildingKindId, BuildingType, ItemId, RecipeId,
+    BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, ItemId, RecipeId,
 };
 
-use crate::context::CtxHelper;
+use crate::user_settings::use_user_settings;
+use crate::world::{use_world_dispatcher, use_world_root, NodeMeta, NodeMetas};
 
 pub use self::balance::BalanceSortMode;
 
@@ -33,8 +34,46 @@ mod graph_manipulation;
 mod group;
 mod icon;
 
+/// Displays the root of the node tree.
+#[function_component]
+pub fn NodeTreeDisplay() -> Html {
+    let root = use_world_root();
+    let dispatcher = use_world_dispatcher();
+
+    let user_settings = use_user_settings();
+    let class = classes!(
+        "NodeTreeDisplay",
+        user_settings
+            .hide_empty_balances
+            .then_some("hide-empty-balances")
+    );
+
+    let replace = use_callback(dispatcher.clone(), |(idx, replacement), dispatcher| {
+        if idx == 0 {
+            dispatcher.set_root(replacement);
+        } else {
+            error!("Attempting to replace index {idx} at the root");
+        }
+    });
+    let set_metadata = use_callback(dispatcher.clone(), |(id, meta), dispatcher| {
+        dispatcher.update_node_meta(id, meta);
+    });
+    let batch_set_metadata = use_callback(dispatcher.clone(), |updates, dispatcher| {
+        dispatcher.batch_update_node_meta(updates);
+    });
+    let move_node =
+        Callback::from(|_| warn!("Root node tried to ask parent to move one of its children"));
+
+    html! {
+        <div {class}>
+            <NodeDisplay node={root} path={vec![]} {replace} {move_node}
+                {set_metadata} {batch_set_metadata} />
+        </div>
+    }
+}
+
 #[derive(Debug, PartialEq, Properties)]
-pub struct Props {
+struct Props {
     /// The node to display.
     pub node: Node,
     /// Path to this node in the tree.
@@ -51,10 +90,12 @@ pub struct Props {
     pub move_node: Callback<(Vec<usize>, Vec<usize>)>,
     /// Callback to set the metadata of a node.
     pub set_metadata: Callback<(Uuid, NodeMeta)>,
+    /// Callback to set the metadata of many nodes at once.
+    pub batch_set_metadata: Callback<HashMap<Uuid, NodeMeta>>,
 }
 
 /// Messages which can be sent to a Node.
-pub enum Msg {
+enum Msg {
     // Shared messages:
     /// Set the number of virtual copies of this building or group.
     SetCopyCount { copies: u32 },
@@ -102,11 +143,15 @@ pub enum Msg {
     },
     /// Change the consumption of a Station.
     ChangeConsumption { consumption: f32 },
+
+    /// Update the database from the context.
+    DbContextChange(Database),
+    /// Update the metadata from the context.
+    MetaContextChange(NodeMetas),
 }
 
 /// Display for a single AccountingGraph node.
-#[derive(Default)]
-pub struct NodeDisplay {
+struct NodeDisplay {
     /// Element where children are attached.
     children: NodeRef,
     /// When a drag is in progress and over our children area, this is the proposed insert
@@ -115,20 +160,74 @@ pub struct NodeDisplay {
     /// Number of virtual insert markers requested. Used to prevent flicker, since
     /// dragenter happens for a new element before dragleave for the prior element.
     insert_count: usize,
+
+    /// Maintains the listener for the database context.
+    _db_handle: ContextHandle<Database>,
+    /// Maintains the listener for the metadata context.
+    _meta_handle: ContextHandle<NodeMetas>,
+
+    /// Database from the context.
+    db: Database,
+    /// Metadata from the context.
+    meta: NodeMeta,
 }
 
 impl Component for NodeDisplay {
     type Message = Msg;
     type Properties = Props;
 
-    fn create(_: &Context<Self>) -> Self {
-        Default::default()
+    fn create(ctx: &Context<Self>) -> Self {
+        let (db, db_handle) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::DbContextChange))
+            .expect("NodeDisplay must be inside of the WorldManager's context providers");
+
+        let (metas, meta_handle) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::MetaContextChange))
+            .expect("NodeDisplay must be inside of the WorldManager's context providers");
+
+        let meta = ctx
+            .props()
+            .node
+            .group()
+            .map(|g| metas.meta(g.id))
+            .unwrap_or_default();
+
+        NodeDisplay {
+            children: NodeRef::default(),
+            insert_pos: None,
+            insert_count: 0,
+
+            _db_handle: db_handle,
+            _meta_handle: meta_handle,
+
+            db,
+            meta,
+        }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let our_idx = ctx.props().path.last().copied().unwrap_or_default();
-        let db = ctx.db();
         match msg {
+            Msg::DbContextChange(db) => {
+                self.db = db;
+                true
+            }
+            Msg::MetaContextChange(metas) => {
+                let meta = ctx
+                    .props()
+                    .node
+                    .group()
+                    .map(|g| metas.meta(g.id))
+                    .unwrap_or_default();
+                if self.meta != meta {
+                    self.meta = meta;
+                    true
+                } else {
+                    false
+                }
+            }
             Msg::SetCopyCount { copies } => {
                 match ctx.props().node.kind() {
                     NodeKind::Group(group) => {
@@ -139,7 +238,7 @@ impl Component for NodeDisplay {
                     NodeKind::Building(building) => {
                         let mut new_bldg = building.clone();
                         new_bldg.copies = copies;
-                        match new_bldg.build_node(&db) {
+                        match new_bldg.build_node(&self.db) {
                             Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                             Err(e) => warn!("Unable to build node: {}", e),
                         }
@@ -186,9 +285,13 @@ impl Component for NodeDisplay {
                     if idx < group.children.len() {
                         let mut new_group = group.clone();
                         let new_meta = RefCell::new(HashMap::new());
+                        let (metas, _) = ctx
+                            .link()
+                            .context::<NodeMetas>(Callback::noop())
+                            .expect("NodeDisplay must be in the WorldManager's context");
                         let copied = new_group.children[idx].create_copy_with_visitor(
                             &|old: &Group, new: &mut Group| {
-                                let meta = ctx.meta(old.id);
+                                let meta = metas.meta(old.id);
                                 new_meta.borrow_mut().insert(new.id, meta);
                             },
                         );
@@ -301,14 +404,14 @@ impl Component for NodeDisplay {
                     if building.building != Some(id) {
                         let mut new_bldg = building.clone();
                         new_bldg.building = Some(id);
-                        match db.get(id) {
+                        match self.db.get(id) {
                             Some(building) => {
                                 new_bldg.settings =
                                     new_bldg.settings.build_new_settings(&building.kind);
                             }
                             None => warn!("New building ID is unknown."),
                         }
-                        match new_bldg.build_node(&db) {
+                        match new_bldg.build_node(&self.db) {
                             Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                             Err(e) => warn!("Unable to build node: {}", e),
                         }
@@ -327,7 +430,7 @@ impl Component for NodeDisplay {
                     }
                 };
                 if let Some(building_id) = building.building {
-                    match db.get(building_id) {
+                    match self.db.get(building_id) {
                         Some(BuildingType {
                             kind: BuildingKind::Manufacturer(m),
                             ..
@@ -370,7 +473,7 @@ impl Component for NodeDisplay {
                     settings,
                     ..building.clone()
                 };
-                match new_bldg.build_node(&db) {
+                match new_bldg.build_node(&self.db) {
                     Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
@@ -385,7 +488,7 @@ impl Component for NodeDisplay {
                     }
                 };
                 let kind_id = if let Some(building_id) = building.building {
-                    match db.get(building_id) {
+                    match self.db.get(building_id) {
                         Some(BuildingType {
                             kind: BuildingKind::Miner(m),
                             ..
@@ -511,7 +614,7 @@ impl Component for NodeDisplay {
                     settings,
                     ..building.clone()
                 };
-                match new_bldg.build_node(&db) {
+                match new_bldg.build_node(&self.db) {
                     Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
@@ -523,7 +626,7 @@ impl Component for NodeDisplay {
                     if building.settings.clock_speed() != clock_speed {
                         let mut new_bldg = building.clone();
                         new_bldg.settings.set_clock_speed(clock_speed);
-                        match new_bldg.build_node(&db) {
+                        match new_bldg.build_node(&self.db) {
                             Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                             Err(e) => warn!("Unable to build node: {}", e),
                         }
@@ -568,7 +671,7 @@ impl Component for NodeDisplay {
                     settings,
                     ..building.clone()
                 };
-                match new_bldg.build_node(&db) {
+                match new_bldg.build_node(&self.db) {
                     Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
@@ -609,7 +712,7 @@ impl Component for NodeDisplay {
                     settings,
                     ..building.clone()
                 };
-                match new_bldg.build_node(&db) {
+                match new_bldg.build_node(&self.db) {
                     Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
@@ -646,7 +749,7 @@ impl Component for NodeDisplay {
                     settings,
                     ..building.clone()
                 };
-                match new_bldg.build_node(&db) {
+                match new_bldg.build_node(&self.db) {
                     Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                     Err(e) => warn!("Unable to build node: {}", e),
                 }

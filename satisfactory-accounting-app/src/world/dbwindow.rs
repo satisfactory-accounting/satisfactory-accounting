@@ -4,9 +4,7 @@ use yew::{classes, function_component, hook, html, use_callback, use_context, Ht
 use crate::inputs::toggle::{MaterialCheckbox, MaterialRadio};
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
-use crate::user_settings::{
-    use_user_settings, use_user_settings_dispatcher, use_user_settings_window,
-};
+use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 use crate::world::{use_db_controller, DatabaseVersionSelector};
 
 pub type DbChooserWindowManager = WindowManager<DbChooserWindow>;
@@ -22,8 +20,8 @@ pub fn use_db_chooser_window() -> DbChooserWindowDispatcher {
 
 /// Shows the database chooser window.
 #[function_component]
-fn DbChooserWindow() -> Html {
-    let window_dispatcher = use_user_settings_window();
+pub fn DbChooserWindow() -> Html {
+    let window_dispatcher = use_db_chooser_window();
     let close = use_callback(window_dispatcher, |(), window_dispatcher| {
         window_dispatcher.hide_window();
     });
@@ -77,12 +75,7 @@ struct DbListRowProps {
 fn DbListRow(&DbListRowProps { version }: &DbListRowProps) -> Html {
     let db_controller = use_db_controller();
 
-    let classes = if version.is_deprecated() {
-        classes!("DbListRow", "depreated")
-    } else {
-        classes!("DbListRow")
-    };
-
+    let classes = classes!("DbListRow", version.is_deprecated().then_some("deprecated"));
     let checked = db_controller.current_selector() == Some(version);
     let onclick = use_callback(
         (version, db_controller.dispatcher()),

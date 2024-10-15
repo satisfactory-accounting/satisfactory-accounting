@@ -14,9 +14,9 @@ use wasm_bindgen::JsCast;
 use web_sys::{HtmlElement, HtmlInputElement};
 use yew::prelude::*;
 
+use crate::collections::IShareArray;
 use crate::inputs::events::get_value_from_input_event;
 use crate::inputs::whitespace::space_to_nbsp;
-use crate::collections::IShareVec;
 
 /// An option to choose from.
 #[derive(PartialEq, Clone, Debug)]
@@ -30,9 +30,9 @@ pub struct Choice<Id> {
 }
 
 #[derive(Properties, PartialEq)]
-pub struct Props<I: PartialEq> {
+pub struct Props<I: PartialEq + 'static> {
     /// Available choices for this chooser.
-    pub choices: IShareVec<Choice<I>>,
+    pub choices: IShareArray<Choice<I>>,
     /// Title to apply to the root of the chooser.
     #[prop_or_default]
     pub title: Option<AttrValue>,

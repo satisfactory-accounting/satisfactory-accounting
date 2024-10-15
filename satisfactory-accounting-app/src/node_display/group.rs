@@ -8,7 +8,6 @@
 use satisfactory_accounting::accounting::{Building, Group};
 use yew::prelude::*;
 
-use crate::context::CtxHelper;
 use crate::node_display::balance::{BalanceShape, NodeBalance};
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay, NodeMeta, DRAG_INSERT_POINT};
@@ -20,8 +19,7 @@ mod group_name;
 impl NodeDisplay {
     /// Build the display for a Group.
     pub(super) fn view_group(&self, ctx: &Context<Self>, group: &Group) -> Html {
-        let meta = ctx.meta(group.id);
-        if meta.collapsed {
+        if self.meta.collapsed {
             self.view_group_collapsed(ctx, group)
         } else {
             self.view_group_expanded(ctx, group)
@@ -136,21 +134,24 @@ impl NodeDisplay {
             // No collapse for root.
             html! {}
         } else {
-            let meta = ctx.meta(group.id);
             let set_metadata = ctx.props().set_metadata.clone();
             let update = (
                 group.id,
                 NodeMeta {
-                    collapsed: !meta.collapsed,
-                    ..meta.clone()
+                    collapsed: !self.meta.collapsed,
+                    ..self.meta.clone()
                 },
             );
             let onclick = Callback::from(move |_| set_metadata.emit(update.clone()));
-            let title = if meta.collapsed { "Expand" } else { "Collapse" };
+            let title = if self.meta.collapsed {
+                "Expand"
+            } else {
+                "Collapse"
+            };
             html! {
                 <button class="expand-collapse" {onclick} {title}>
                     <span class="material-icons">
-                        if meta.collapsed {
+                        if self.meta.collapsed {
                             {"expand_more"}
                         } else {
                             {"expand_less"}

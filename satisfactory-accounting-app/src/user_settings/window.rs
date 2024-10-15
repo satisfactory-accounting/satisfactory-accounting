@@ -22,7 +22,7 @@ pub fn use_user_settings_window() -> UserSettingsWindowDispatcher {
 }
 
 #[function_component]
-fn UserSettingsWindow() -> Html {
+pub fn UserSettingsWindow() -> Html {
     let window_dispatcher = use_user_settings_window();
     let close = use_callback(window_dispatcher, |(), window_dispatcher| {
         window_dispatcher.hide_window();
