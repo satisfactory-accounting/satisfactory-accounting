@@ -13,18 +13,24 @@ pub use self::id::{ParseWorldIdError, WorldId};
 pub use self::list::{WorldList, WorldMetadata};
 #[allow(unused_imports)]
 pub use self::manager::{
-    use_db, use_db_controller, use_undo_controller, use_world_dispatcher, use_world_root,
-    DbController, UndoController, UndoDispatcher, WorldDispatcher, WorldManager,
+    use_db, use_db_controller, use_undo_controller, use_world_dispatcher, use_world_list,
+    use_world_list_dispatcher, use_world_root, DbController, UndoController, UndoDispatcher,
+    WorldDispatcher, WorldListDispatcher, WorldManager,
 };
 pub use self::meta::{NodeMeta, NodeMetas};
+#[allow(unused_imports)]
+pub use self::worldwindow::{
+    use_world_chooser_window, WorldChooserWindow, WorldChooserWindowManager,
+};
 
 mod dbchoice;
 mod dbwindow;
 mod id;
-mod list;
+pub mod list;
 mod manager;
 mod meta;
 mod v1storage;
+mod worldwindow;
 
 /// A single world with a particular database and structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]

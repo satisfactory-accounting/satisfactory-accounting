@@ -2,7 +2,7 @@
 @use "../name-mixin.scss";
 
 .Purity {
-    @include name-mixin.name_mixin(3.375rem);
+    @include name-mixin.name_mixin(3.375em);
 }
 
 .purity-icon {

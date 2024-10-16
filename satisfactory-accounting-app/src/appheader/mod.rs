@@ -11,7 +11,8 @@ use crate::user_settings::{
     use_user_settings, use_user_settings_dispatcher, use_user_settings_window,
 };
 use crate::world::{
-    use_db_chooser_window, use_db_controller, use_undo_controller, DatabaseVersionSelector,
+    use_db_chooser_window, use_db_controller, use_undo_controller, use_world_chooser_window,
+    DatabaseVersionSelector,
 };
 
 mod menubar;
@@ -20,7 +21,10 @@ mod titlebar;
 /// Displays the App header including titlebar and menubar.
 #[function_component]
 pub fn AppHeader() -> Html {
-    // TODO: choose world.
+    let world_window_dispatcher = use_world_chooser_window();
+    let on_choose_world = use_callback(world_window_dispatcher, |(), world_window_dispatcher| {
+        world_window_dispatcher.toggle_window();
+    });
 
     let undo_controller = use_undo_controller();
     let on_undo = use_callback(undo_controller.dispatcher(), |(), undo_dispatcher| {
@@ -50,7 +54,7 @@ pub fn AppHeader() -> Html {
 
     let left = html! {
         <>
-            <Button title="Choose World">
+            <Button title="Choose World" onclick={on_choose_world}>
                 {material_icon("folder_open")}
             </Button>
             <Button title="Undo" onclick={on_undo} disabled={!undo_controller.has_undo()}>

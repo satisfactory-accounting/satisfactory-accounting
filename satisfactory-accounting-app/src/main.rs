@@ -12,6 +12,7 @@ mod appheader;
 mod collections;
 mod inputs;
 mod material;
+mod modal;
 mod node_display;
 mod overlay_window;
 mod refeqrc;
