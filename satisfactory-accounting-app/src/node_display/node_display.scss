@@ -6,24 +6,13 @@
 @use "copies/VirtualCopies.scss";
 @use "group/GroupName.scss";
 @use "icon/Icon.scss";
+@use "NodeTreeDisplay.scss";
 
 .NodeDisplay {
     .drag-handle {
         display: flex;
         color: colors.$gray-dark;
         cursor: move;
-    }
-
-    .delete {
-        // @include colors.red-button();
-    }
-
-    .copy {
-        // @include colors.green-button;
-    }
-
-    .expand-collapse {
-        // @include colors.primary-button;
     }
 
     input[type="text"] {

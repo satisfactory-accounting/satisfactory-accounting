@@ -53,12 +53,10 @@ pub fn WorldChooserWindow() -> Html {
             <div class="overview">
                 <p>{"Satisfactory Accounting allows you to have multiple worlds. You can create \
                 new ones and switch between them here."}</p>
-                <label class="new-world-row">
-                    <span>{"Create New"}</span>
                     <Button class="green" onclick={create_world}>
                         {material_icon("add")}
+                        <span>{"Create New World"}</span>
                     </Button>
-                </label>
             </div>
             {for world_rows}
         </OverlayWindow>

@@ -52,14 +52,16 @@ pub fn DbChooserWindow() -> Html {
                 <p>{"Each version has a description which should note roughly what was changed in \
                 that version. The version names are arbitrary and just chosen to be unique to \
                 particular versions."}</p>
-                <label>
+                <label class="show-deprecated">
                     <span>{"Show deprecated versions"}</span>
                     <MaterialCheckbox checked={user_settings.show_deprecated_databases}
                         onclick={toggle_show_deprecated} />
                 </label>
             </div>
-            <DbListRow version={DatabaseVersionSelector::Latest} />
-            {for databases}
+            <div class="versions">
+                <DbListRow version={DatabaseVersionSelector::Latest} />
+                {for databases}
+            </div>
         </OverlayWindow>
     }
 }

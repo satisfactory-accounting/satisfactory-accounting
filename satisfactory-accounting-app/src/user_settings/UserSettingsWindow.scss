@@ -1,20 +1,7 @@
 @use "../colors.scss";
 
 .UserSettingsWindow {
-    width: 800px;
-
-    h2,
-    h3 {
-        text-align: left;
-    }
-
-    h3 {
-        margin: 15px 0 0;
-    }
-
-    p {
-        margin: 0 0 10px;
-    }
+    width: 600px;
 
     label {
         font-weight: bold;
