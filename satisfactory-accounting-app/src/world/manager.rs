@@ -109,6 +109,22 @@ impl WorldManager {
         self.undo_stack.push_back(state);
     }
 
+    /// Update the metadata for the currently selected world.
+    fn update_world_metadata(&mut self) {
+        let world_meta = self.world.metadata();
+        match self.worlds.selected_entry() {
+            // Do nothing if the entry already exists and has the correct metadata.
+            WorldEntry::Present(entry) if *entry.meta() == world_meta => {}
+            entry => {
+                if !entry.exists() {
+                    warn!("World {} was not in the worlds map", entry.id());
+                }
+                entry.insert_or_update_and_select(self.world.metadata());
+            }
+        }
+        save_worlds_list(&self.worlds);
+    }
+
     /// Message handler for SetRoot. Returns true if redraw is needed.
     fn set_root(&mut self, new_root: Node) -> bool {
         if new_root.group().is_none() {
@@ -116,9 +132,7 @@ impl WorldManager {
             return false;
         }
         // Update the world state, tracking the old and new name.
-        let old_name = self.world.name();
         let old_root = mem::replace(&mut self.world.root, new_root);
-        let new_name = self.world.name();
         let undo = UnReDoState {
             root: old_root,
             database: self.world.database.clone(),
@@ -127,16 +141,7 @@ impl WorldManager {
 
         // Save the world, and if necessary update the world's metadata as well.
         self.save_world();
-        if old_name != new_name {
-            match self.worlds.selected_entry() {
-                WorldEntry::Present(mut entry) => entry.meta_mut().name = new_name,
-                WorldEntry::Absent(entry) => {
-                    warn!("World {} was not in the worlds map", entry.id());
-                    entry.insert_and_select(self.world.metadata());
-                }
-            }
-            save_worlds_list(&self.worlds);
-        }
+        self.update_world_metadata();
         true
     }
 
@@ -163,6 +168,7 @@ impl WorldManager {
                 // stack.
                 self.redo_stack.push_back(next);
                 self.save_world();
+                self.update_world_metadata();
                 true
             }
             None => {
@@ -182,6 +188,7 @@ impl WorldManager {
                 // We can't use add_undo_state because that would clear the redo stack.
                 self.undo_stack.push_back(previous);
                 self.save_world();
+                self.update_world_metadata();
                 true
             }
             None => {
@@ -203,6 +210,7 @@ impl WorldManager {
         };
         self.add_undo_state(previous);
         self.save_world();
+        self.update_world_metadata();
         true
     }
 
@@ -228,7 +236,7 @@ impl WorldManager {
                 Ok(world) => {
                     entry.select();
                     self.set_world_inner(world);
-                    save_worlds_list(&self.worlds);
+                    self.update_world_metadata();
                     true
                 }
                 Err(e) => {
@@ -311,10 +319,18 @@ impl WorldManager {
         save_world(entry.id(), &world);
         entry.insert_and_select(world.metadata());
         save_worlds_list(&self.worlds);
+        self.set_world_inner(world);
         true
     }
 
-    /// Creates the [`WorldDispatcher`] for this `WorldManager`.
+    /// Creates the [`WorldListDispatcher`] for this [`WorldManager`].
+    fn world_list_dispatcher(&self) -> WorldListDispatcher {
+        WorldListDispatcher {
+            link: self.link.clone(),
+        }
+    }
+
+    /// Creates the [`WorldDispatcher`] for this [`WorldManager`].
     fn world_dispatcher(&self) -> WorldDispatcher {
         WorldDispatcher {
             link: self.link.clone(),
@@ -407,14 +423,16 @@ impl Component for WorldManager {
             world.root = new_root;
         }
 
-        Self {
+        let mut manager = Self {
             worlds,
             world,
             database,
             undo_stack: VecDeque::with_capacity(MAX_UNDO),
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
             link: RefEqRc::new(ctx.link().clone()),
-        }
+        };
+        manager.update_world_metadata();
+        manager
     }
 
     /// Update the WorldManager.
@@ -434,19 +452,23 @@ impl Component for WorldManager {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
+            <ContextProvider<WorldList> context={self.worlds.clone()}>
             <ContextProvider<Database> context={self.database.clone()}>
             <ContextProvider<WorldRoot> context={WorldRoot(self.world.root.clone())}>
             <ContextProvider<NodeMetas> context={self.world.node_metadata.clone()}>
+            <ContextProvider<WorldListDispatcher> context={self.world_list_dispatcher()}>
             <ContextProvider<WorldDispatcher> context={self.world_dispatcher()}>
             <ContextProvider<UndoController> context={self.undo_controller()}>
             <ContextProvider<DbController> context={self.db_controller()}>
-            {ctx.props().children.clone()}
+                {ctx.props().children.clone()}
             </ContextProvider<DbController>>
             </ContextProvider<UndoController>>
             </ContextProvider<WorldDispatcher>>
+            </ContextProvider<WorldListDispatcher>>
             </ContextProvider<NodeMetas>>
             </ContextProvider<WorldRoot>>
             </ContextProvider<Database>>
+            </ContextProvider<WorldList>>
         }
     }
 }
@@ -491,6 +513,44 @@ fn save_world(id: WorldId, world: &World) {
     if let Err(e) = LocalStorage::set(id.to_string(), world) {
         warn!("Unable to save world: {}", e);
     }
+}
+
+/// Gets the current world list.
+#[hook]
+pub fn use_world_list() -> WorldList {
+    use_context::<WorldList>()
+        .expect("use_world_list can only be used from within a child of WorldManager")
+}
+
+/// Dispatcher used to make changes to the world list.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WorldListDispatcher {
+    /// Link used to send messages back to the WorldManager.
+    link: RefEqRc<Scope<WorldManager>>,
+}
+
+impl WorldListDispatcher {
+    /// Set the currently selected world.
+    pub fn set_world(&self, world_id: WorldId) {
+        self.link.send_message(Msg::SetWorld(world_id));
+    }
+
+    /// Permanently deletes this world. Does not trigger a confirmation.
+    pub fn delete_world(&self, world_id: WorldId) {
+        self.link.send_message(Msg::DeleteWorld(world_id));
+    }
+
+    /// Creates a new empty world and switches to it.
+    pub fn create_world(&self) {
+        self.link.send_message(Msg::CreateWorld);
+    }
+}
+
+/// Gets the dispatcher used to manage the world list.
+#[hook]
+pub fn use_world_list_dispatcher() -> WorldListDispatcher {
+    use_context::<WorldListDispatcher>()
+        .expect("use_world_list_dispatcher can only be used from within a child of WorldManager")
 }
 
 /// Context wrapper for the root node of the current world.

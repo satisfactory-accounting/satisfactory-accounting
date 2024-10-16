@@ -411,6 +411,26 @@ impl<'a> WorldEntry<'a> {
             Self::Absent(_) => false,
         }
     }
+
+    /// Gets the id of this entry
+    pub fn id(&self) -> WorldId {
+        match self {
+            Self::Present(entry) => entry.id(),
+            Self::Absent(entry) => entry.id(),
+        }
+    }
+
+    /// Inserts the value if missing or updates the value if it exists and makes this world the
+    /// selected world.
+    pub fn insert_or_update_and_select(self, meta: WorldMetadata) {
+        match self {
+            Self::Present(mut entry) => {
+                *entry.meta_mut() = meta;
+                entry.select();
+            }
+            Self::Absent(entry) => entry.insert_and_select(meta),
+        }
+    }
 }
 
 /// Entry for a world that is present.
@@ -427,6 +447,11 @@ impl<'a> PresentWorld<'a> {
         *self.entry.key()
     }
 
+    /// Get an immutable reference to the metadata for the world.
+    pub fn meta(&self) -> &WorldMetadata {
+        self.entry.get()
+    }
+
     /// Gets a mutable reference to the metadata for the world.
     pub fn meta_mut(&mut self) -> &mut WorldMetadata {
         self.entry.get_mut()
@@ -437,9 +462,10 @@ impl<'a> PresentWorld<'a> {
         *self.selected == self.id()
     }
 
-    /// Makes this world the selected world.
+    /// Makes this world the selected world. Also clears any load_error.
     pub fn select(&mut self) {
         *self.selected = self.id();
+        self.meta_mut().load_error = false;
     }
 }
 

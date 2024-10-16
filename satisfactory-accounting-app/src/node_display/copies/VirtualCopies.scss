@@ -1,6 +1,6 @@
 @use "../../inputs/clickedit/sized-clickedit-mixin.scss";
 
 .VirtualCopies {
-    @include sized-clickedit-mixin.sized-clickedit-mixin(1.375rem);
+    @include sized-clickedit-mixin.sized-clickedit-mixin(1.375em);
     text-align: right;
 }
