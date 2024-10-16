@@ -52,6 +52,13 @@ pub fn DbChooserWindow() -> Html {
                 <p>{"Each version has a description which should note roughly what was changed in \
                 that version. The version names are arbitrary and just chosen to be unique to \
                 particular versions."}</p>
+                <p>{"If you choose a specific version, your world will be pinned at that version
+                until you change it. If you choose \"Latest\", your world will be updated to the
+                latest database version when it is loaded."}</p>
+                <p>{"Note that version changes are non-destructive. If you change database version \
+                and an item or recipe is missing in the new version, it won't display properly, \
+                but you can always change back to the previous database version without losing \
+                anything."}</p>
                 <label class="show-deprecated">
                     <span>{"Show deprecated versions"}</span>
                     <MaterialCheckbox checked={user_settings.show_deprecated_databases}
