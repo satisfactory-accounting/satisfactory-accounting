@@ -6,6 +6,7 @@
 @use "node_display/node_display.scss";
 @use "overlay_window/OverlayWindow.scss";
 @use "user_settings/UserSettingsWindow.scss";
+@use "world/world.scss";
 
 body {
     display: flex;
@@ -41,51 +42,6 @@ input {
     justify-content: flex-start;
     align-items: stretch;
     flex-grow: 1;
-
-    .menubar {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 10px;
-        gap: 5px;
-
-        .section {
-            box-sizing: border-box;
-
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 5px;
-        }
-
-        background-color: colors.$light;
-
-        .unredo {
-            // @include colors.primary-button;
-        }
-
-        .open-world {
-            //@include colors.primary-button;
-        }
-
-        .choose-database {
-            //@include colors.primary-button;
-            //@include texticonbutton;
-        }
-    }
-
-    .appbody {
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        align-items: stretch;
-        flex-grow: 1;
-        padding: 10px;
-    }
 
     .overlay-window {
         position: fixed;
@@ -153,57 +109,6 @@ input {
             padding: 5px;
             border-radius: 5px;
         }
-
-        .database-list-row {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            background-color: colors.$gray-light;
-            box-sizing: border-box;
-            padding: 5px;
-            border-radius: 5px;
-            gap: 5px;
-
-            &.deprecated {
-                background-color: #a18f76;
-            }
-
-            .version-namedesc {
-                display: flex;
-                flex-direction: row;
-                justify-content: flex-start;
-                align-items: center;
-                gap: 5px;
-
-                .version-name {
-                    width: 100px;
-                    flex-shrink: 0;
-                }
-            }
-
-            .choose-db {
-                //@include colors.primary-button;
-            }
-        }
-
-        .new-world {
-            //@include colors.green-button;
-        }
-
-        .delete-world {
-            //@include colors.red-button;
-        }
-
-        .close {
-            //@include colors.primary-button;
-        }
-
-        .show-deprecated {
-            //@include colors.primary-button;
-            //@include texticonbutton;
-        }
-
     }
 
     .overlay-delete-window {
