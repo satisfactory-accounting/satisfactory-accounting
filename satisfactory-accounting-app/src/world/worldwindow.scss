@@ -79,3 +79,15 @@
         grid-column: delete;
     }
 }
+
+.modal-delete-forever {
+    width: 500px;
+
+    .window-content {
+        padding: 15px;
+    }
+
+    .delete-content {
+        margin-bottom: 15px;
+    }
+}

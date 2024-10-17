@@ -361,8 +361,8 @@ impl<'d> ModalBuilder<'d> {
     }
 
     /// Set the extra classes to display on the modal.
-    pub fn class(mut self, class: Classes) -> Self {
-        self.modal.class = class;
+    pub fn class<C: Into<Classes>>(mut self, class: C) -> Self {
+        self.modal.class = class.into();
         self
     }
 
