@@ -1,0 +1,81 @@
+@use "sass:color";
+@use "../colors.scss";
+
+@mixin world-row {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: name / end;
+
+    background-color: colors.$gray-light;
+    box-sizing: border-box;
+    padding: 5px;
+    border-radius: 5px;
+
+    align-items: center;
+
+    .world-name {
+        grid-column: name;
+        box-sizing: border-box;
+        // Add a little more space on top of the column gap.
+        padding-right: 5px;
+    }
+
+    .world-version {
+        grid-column: version;
+        box-sizing: border-box;
+        // Add a little more space on top of the column gap.
+        padding-right: 5px;
+    }
+}
+
+.WorldChooserWindow {
+    width: 700px;
+
+    .overview {
+        margin-bottom: 5px;
+    }
+
+    .world-rows {
+        display: grid;
+        grid-template-columns:
+            [name] minmax(min-content, auto)
+            [version] minmax(min-content, auto)
+            [open] minmax(min-content, 1fr)
+            [delete] min-content
+            [end];
+
+        row-gap: 5px;
+        column-gap: 5px;
+    }
+
+    .create-button-row {
+        @include world-row;
+
+        .world-name,
+        .world-version {
+            font-weight: bold;
+        }
+    }
+
+    .create-button {
+        grid-column: open / end;
+        justify-self: right;
+    }
+}
+
+.WorldListRow {
+    @include world-row;
+
+    &.selected {
+        background-color: color.mix(colors.$gray-light, colors.$green, 50%);
+    }
+
+    .switch-to-world {
+        justify-self: right;
+        grid-column: open;
+    }
+
+    .delete-world {
+        grid-column: delete;
+    }
+}
