@@ -1,0 +1,20 @@
+.ModalWindow {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    .modal-buttons {
+        display: flex;
+
+        flex-direction: row;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+        text-align: center;
+    }
+}

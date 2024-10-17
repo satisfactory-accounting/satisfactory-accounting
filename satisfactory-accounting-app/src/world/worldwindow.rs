@@ -107,11 +107,12 @@ fn WorldListRow(
                 .builder()
                 .title("Confirm Delete")
                 .content(html! {
-                   <>
+                   <div class="delete-content">
                        <p>{"Are you sure you want to delete the world "}{name}{"?"}</p>
                        <h2>{"This CANNOT be undone!"}</h2>
-                   </>
+                   </div>
                 })
+                .class("modal-delete-forever")
                 .kind(CancelDelete::delete(delete_forever.clone()))
                 .build();
             *modal_handle.borrow_mut() = Some(modal);
