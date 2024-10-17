@@ -53,12 +53,18 @@ pub fn WorldChooserWindow() -> Html {
             <div class="overview">
                 <p>{"Satisfactory Accounting allows you to have multiple worlds. You can create \
                 new ones and switch between them here."}</p>
-                    <Button class="green" onclick={create_world}>
+            </div>
+            <div class="world-rows">
+                <div class="create-button-row">
+                    <span class="world-name">{"World Name"}</span>
+                    <span class="world-version">{"World Version"}</span>
+                    <Button class="green create-button" onclick={create_world}>
                         {material_icon("add")}
                         <span>{"Create New World"}</span>
                     </Button>
+                </div>
+                {for world_rows}
             </div>
-            {for world_rows}
         </OverlayWindow>
     }
 }
@@ -116,24 +122,22 @@ fn WorldListRow(
 
     html! {
         <div class={classes}>
-            <span>{&meta.name}</span>
-            <span>
+            <span class="world-name">{&meta.name}</span>
+            <span class="world-version">
                 {meta.database.map(DatabaseVersionSelector::name)}
             </span>
-            <span class="right-buttons">
-                if !selected {
-                    <Button class="green" title="Switch to this World" onclick={select_world}>
-                        if meta.load_error {
-                            {material_icon("warning")}
-                        } else {
-                            {material_icon("open_in_browser")}
-                        }
-                    </Button>
-                }
-                <Button class="red" title="Delete World" onclick={delete_world}>
-                    {material_icon("delete")}
+            if !selected {
+                <Button class="green switch-to-world" title="Switch to this World" onclick={select_world}>
+                    if meta.load_error {
+                        {material_icon("warning")}
+                    } else {
+                        {material_icon("open_in_browser")}
+                    }
                 </Button>
-            </span>
+            }
+            <Button class="red delete-world" title="Delete World" onclick={delete_world}>
+                {material_icon("delete")}
+            </Button>
         </div>
     }
 }

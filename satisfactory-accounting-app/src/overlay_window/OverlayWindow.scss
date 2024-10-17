@@ -92,7 +92,8 @@
     p {
         margin: 0.5lh 0;
 
-        &:first-child {
+        &:first-child,
+        &:last-child {
             margin-top: 0;
         }
     }
