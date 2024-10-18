@@ -40,20 +40,16 @@ impl NodeDisplay {
         let on_change_type = ctx.link().callback(|id| Msg::ChangeType { id });
         html! {
             <div class="NodeDisplay building">
-                <div class="section">
-                    {self.drag_handle(ctx)}
-                    <div class="section spaced">
-                        <BuildingTypeDisplay id={building.building} {on_change_type} />
-                        {self.view_building_settings(ctx, building)}
-                    </div>
-                </div>
-                <div class="section">
-                    if let Some(warning) = ctx.props().node.warning() {
-                        {self.view_warning(warning)}
-                    } else {
-                        <NodeBalance node={&ctx.props().node} />
-                    }
-                    <VirtualCopies copies={building.copies} {update_copies} />
+                {self.drag_handle(ctx)}
+                <BuildingTypeDisplay id={building.building} {on_change_type} />
+                {self.view_building_settings(ctx, building)}
+                if let Some(warning) = ctx.props().node.warning() {
+                    {self.view_warning(warning)}
+                } else {
+                    <NodeBalance node={&ctx.props().node} />
+                }
+                <VirtualCopies copies={building.copies} {update_copies} />
+                <div class="section copy-delete">
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
@@ -167,12 +163,14 @@ impl NodeDisplay {
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {on_change_item} />
                 { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
-                <MultiPurity purity={ResourcePurity::Impure}
-                    num_pads={settings.impure_pads} on_update_pads={&on_update_pads} />
-                <MultiPurity purity={ResourcePurity::Normal}
-                    num_pads={settings.normal_pads} on_update_pads={&on_update_pads} />
-                <MultiPurity purity={ResourcePurity::Pure}
-                    num_pads={settings.pure_pads} {on_update_pads} />
+                <div class="section multi-purity-group">
+                    <MultiPurity purity={ResourcePurity::Impure}
+                        num_pads={settings.impure_pads} on_update_pads={&on_update_pads} />
+                    <MultiPurity purity={ResourcePurity::Normal}
+                        num_pads={settings.normal_pads} on_update_pads={&on_update_pads} />
+                    <MultiPurity purity={ResourcePurity::Pure}
+                        num_pads={settings.pure_pads} {on_update_pads} />
+                </div>
             </>
         }
     }

@@ -8,6 +8,8 @@
 use satisfactory_accounting::accounting::{Building, Group};
 use yew::prelude::*;
 
+use crate::inputs::button::Button;
+use crate::material::material_icon;
 use crate::node_display::balance::{BalanceShape, NodeBalance};
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay, NodeMeta, DRAG_INSERT_POINT};
@@ -56,17 +58,21 @@ impl NodeDisplay {
             <div class="NodeDisplay group expanded" key={group.id.as_u128()}>
                 <div class="header">
                     {self.drag_handle(ctx)}
-                    <GroupName name={group.name.clone()} {rename} />
+                    <div class="section group-name">
+                        {self.collapse_button(ctx, group)}
+                        <GroupName name={group.name.clone()} {rename} />
+                    </div>
                     {self.child_warnings(ctx)}
-                    {self.collapse_button(ctx, group)}
                     if !ctx.props().path.is_empty() {
                         <VirtualCopies copies={group.copies} {update_copies} />
                     }
-                    {self.copy_button(ctx)}
-                    {self.delete_button(ctx)}
+                    <div class="section copy-delete">
+                        {self.copy_button(ctx)}
+                        {self.delete_button(ctx)}
+                    </div>
                 </div>
                 <div class="body">
-                    <div class="children-display"
+                    <div class="children-display node-grid"
                         {ondragover} {ondragenter} {ondragleave} {ondrop}
                         ref={self.children.clone()}>
                         { for group.children.iter().cloned().enumerate().map(|(i, node)| {
@@ -94,14 +100,14 @@ impl NodeDisplay {
                     <NodeBalance node={&ctx.props().node} shape={BalanceShape::Vertical} />
                 </div>
                 <div class="footer">
-                    <button class="create create-group" title="Add Group"
+                    <Button class="green" title="Add Group"
                         onclick={add_group}>
-                        <span class="material-icons">{"create_new_folder"}</span>
-                    </button>
-                    <button class="create create-building" title="Add Building"
+                        {material_icon("create_new_folder")}
+                    </Button>
+                    <Button class="green" title="Add Building"
                         onclick={add_building}>
-                        <span class="material-icons">{"add"}</span>
-                    </button>
+                        {material_icon("add")}
+                    </Button>
                 </div>
             </div>
         }
@@ -112,15 +118,17 @@ impl NodeDisplay {
         let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
         html! {
             <div class="NodeDisplay group collapsed" key={group.id.as_u128()}>
-                <div class="summary">
-                    {self.drag_handle(ctx)}
-                    <GroupName name={group.name.clone()} {rename} />
-                    <NodeBalance node={&ctx.props().node} />
-                    {self.child_warnings(ctx)}
+                {self.drag_handle(ctx)}
+                <div class="section group-name">
                     {self.collapse_button(ctx, group)}
-                    if !ctx.props().path.is_empty() {
-                        <VirtualCopies copies={group.copies} {update_copies} />
-                    }
+                    <GroupName name={group.name.clone()} {rename} />
+                </div>
+                <NodeBalance node={&ctx.props().node} />
+                {self.child_warnings(ctx)}
+                if !ctx.props().path.is_empty() {
+                    <VirtualCopies copies={group.copies} {update_copies} />
+                }
+                <div class="section copy-delete">
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
@@ -149,15 +157,13 @@ impl NodeDisplay {
                 "Collapse"
             };
             html! {
-                <button class="expand-collapse" {onclick} {title}>
-                    <span class="material-icons">
-                        if self.meta.collapsed {
-                            {"expand_more"}
-                        } else {
-                            {"expand_less"}
-                        }
-                    </span>
-                </button>
+                <Button class="expand-collapse" {onclick} {title}>
+                    if self.meta.collapsed {
+                        {material_icon("expand_more")}
+                    } else {
+                        {material_icon("expand_less")}
+                    }
+                </Button>
             }
         }
     }

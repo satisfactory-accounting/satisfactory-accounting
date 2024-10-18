@@ -1,0 +1,67 @@
+@use "building/name-mixin.scss";
+
+$whole-row: drag / end;
+
+@mixin node-subgrid {
+    grid-column: $whole-row;
+    display: grid;
+    grid-template-columns: subgrid;
+
+    align-items: center;
+}
+
+@mixin flex-span {
+    display: flex;
+    grid-column: $whole-row;
+}
+
+.node-grid {
+    display: grid;
+    grid-template-columns:
+        [drag] min-content
+        [name] min-content
+        [recipe] min-content
+        [clock] min-content
+        [purity] min-content
+        [spacer] 1fr
+        [balance-negative] min-content
+        [balance-neutral] min-content
+        [balance-positive] min-content
+        [balance-power] min-content
+        [multiplier] min-content
+        [copy-delete] min-content
+        [end];
+
+    align-items: center;
+
+    .drag-handle {
+        grid-column: drag;
+    }
+    .BuildingTypeDisplay {
+        grid-column: name;
+    }
+    .group-name {
+        grid-column: name / span 2;
+        justify-self: stretch;
+        min-width: 24em;
+    }
+    .ItemDisplay,
+    .RecipeDisplay {
+        grid-column: recipe;
+    }
+    .StationConsumption,
+    .ClockSpeed {
+        grid-column: clock;
+    }
+    .Purity,
+    .multi-purity-group {
+        grid-column: purity;
+    }
+    .VirtualCopies {
+        grid-column: multiplier;
+        justify-self: flex-end;
+    }
+    .copy-delete {
+        grid-column: copy-delete;
+    }
+}

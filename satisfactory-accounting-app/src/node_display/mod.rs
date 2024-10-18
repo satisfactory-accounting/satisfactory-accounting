@@ -8,7 +8,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use log::{error, warn};
+use log::{error, info, warn};
 use uuid::Uuid;
 use yew::prelude::*;
 
@@ -21,6 +21,8 @@ use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, ItemId, RecipeId,
 };
 
+use crate::inputs::button::Button;
+use crate::material::material_icon;
 use crate::user_settings::use_user_settings;
 use crate::world::{use_world_dispatcher, use_world_root, NodeMeta, NodeMetas};
 
@@ -66,8 +68,10 @@ pub fn NodeTreeDisplay() -> Html {
 
     html! {
         <div {class}>
-            <NodeDisplay node={root} path={vec![]} {replace} {move_node}
-                {set_metadata} {batch_set_metadata} />
+            <div class="tree-content-inner node-grid">
+                <NodeDisplay node={root} path={vec![]} {replace} {move_node}
+                    {set_metadata} {batch_set_metadata} />
+            </div>
         </div>
     }
 }
@@ -168,6 +172,8 @@ struct NodeDisplay {
 
     /// Database from the context.
     db: Database,
+    /// Metas for all nodes.
+    metas: NodeMetas,
     /// Metadata from the context.
     meta: NodeMeta,
 }
@@ -203,8 +209,19 @@ impl Component for NodeDisplay {
             _meta_handle: meta_handle,
 
             db,
+            metas,
             meta,
         }
+    }
+
+    fn changed(&mut self, ctx: &Context<Self>, _old_props: &Self::Properties) -> bool {
+        self.meta = ctx
+            .props()
+            .node
+            .group()
+            .map(|g| self.metas.meta(g.id))
+            .unwrap_or_default();
+        true
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -215,11 +232,12 @@ impl Component for NodeDisplay {
                 true
             }
             Msg::MetaContextChange(metas) => {
+                self.metas = metas;
                 let meta = ctx
                     .props()
                     .node
                     .group()
-                    .map(|g| metas.meta(g.id))
+                    .map(|g| self.metas.meta(g.id))
                     .unwrap_or_default();
                 if self.meta != meta {
                     self.meta = meta;
@@ -786,9 +804,9 @@ impl NodeDisplay {
                     .expect("Parent provided a delete callback, but this is the root node.");
                 let onclick = Callback::from(move |_| delete_from_parent.emit(idx));
                 html! {
-                    <button {onclick} class="delete" title="Delete">
-                        <span class="material-icons">{"delete"}</span>
-                    </button>
+                    <Button {onclick} class="red" title="Delete">
+                        {material_icon("delete")}
+                    </Button>
                 }
             }
             None => html! {},
@@ -807,9 +825,9 @@ impl NodeDisplay {
                     .expect("Parent provided a copy callback, but this is the root node.");
                 let onclick = Callback::from(move |_| copy_from_parent.emit(idx));
                 html! {
-                    <button {onclick} class="copy" title="Copy">
-                        <span class="material-icons">{"content_copy"}</span>
-                    </button>
+                    <Button {onclick} class="green" title="Copy">
+                        {material_icon("content_copy")}
+                    </Button>
                 }
             }
             None => html! {},

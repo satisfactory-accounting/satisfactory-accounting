@@ -2,10 +2,15 @@
 
 $gap: 4px;
 
+// Get the size of a name.
+@function name-size($text-size) {
+    @return calc($text-size + $gap + icon-mixin.$icon-size);
+}
+
 // Mixin for defining name-like select boxes (the building selector, recipe selector, and item
 // selector).
 @mixin name-mixin($text-size) {
-    $size: calc($text-size + $gap + icon-mixin.$icon-size);
+    $size: name-size($text-size);
 
     box-sizing: border-box;
     cursor: text;

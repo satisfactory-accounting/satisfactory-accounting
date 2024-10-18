@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use std::rc::Rc;
 
-use log::info;
 use yew::{
     function_component, html, use_reducer_eq, BaseComponent, ContextProvider, Html, Properties,
     Reducible, UseReducerDispatcher,
@@ -16,17 +15,10 @@ enum Action {
 }
 
 /// The state of a window.
-#[derive(PartialEq, Copy, Clone)]
+#[derive(Default, PartialEq, Copy, Clone)]
 struct ShowWindowState {
     /// Whether user settings are currently shown.
     show_window: bool,
-}
-
-impl Default for ShowWindowState {
-    fn default() -> Self {
-        info!("Created a new ShowWindowState");
-        Self { show_window: false }
-    }
 }
 
 impl Reducible for ShowWindowState {

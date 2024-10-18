@@ -60,26 +60,50 @@ pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
     let db = use_db();
     let user_settings = use_user_settings();
     let item_balances: Html = match user_settings.balance_sort_mode {
-        BalanceSortMode::Item => balance
-            .balances
-            .iter()
-            .map(|(&itemid, &rate)| display_item(db.get(itemid), rate))
-            .collect(),
-        BalanceSortMode::IOItem => balance
-            .balances
-            .iter()
-            .filter(|(_, &rate)| rate > 0.0)
-            .chain(balance.balances.iter().filter(|(_, &rate)| rate == 0.0))
-            .chain(balance.balances.iter().filter(|(_, &rate)| rate < 0.0))
-            // Weird NaN handling? I guess I could probably just use is_nan here?
-            .chain(
-                balance
-                    .balances
-                    .iter()
-                    .filter(|(_, &rate)| !(rate < 0.0) && !(rate == 0.0) && !(rate > 0.0)),
-            )
-            .map(|(&itemid, &rate)| display_item(db.get(itemid), rate))
-            .collect(),
+        BalanceSortMode::Item => {
+            let combined_balances = balance
+                .balances
+                .iter()
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+            html! {
+                <div class="item-entries combined">
+                    {for combined_balances}
+                </div>
+            }
+        }
+        BalanceSortMode::IOItem => {
+            let positive_balances = balance
+                .balances
+                .iter()
+                .filter(|(_, &rate)| rate > 0.0)
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+            let negative_balances = balance
+                .balances
+                .iter()
+                .filter(|(_, &rate)| rate < 0.0)
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+
+            let neutral_balances = balance
+                .balances
+                .iter()
+                // Weird NaN handling? I guess I could probably just use is_nan here?
+                .filter(|(_, &rate)| rate == 0.0 || !(rate < 0.0 || rate > 0.0))
+                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+
+            html! {
+                <>
+                <div class="item-entries positive">
+                    {for positive_balances}
+                </div>
+                <div class="item-entries neutral">
+                    {for neutral_balances}
+                </div>
+                <div class="item-entries negative">
+                    {for negative_balances}
+                </div>
+                </>
+            }
+        }
     };
     html! {
         <div class={classes!("NodeBalance", shape.to_class_name())}>
@@ -87,9 +111,7 @@ pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
                 <Icon icon="power-line" />
                 <div class="balance-value">{rounded(balance.power)}</div>
             </div>
-            <div class="item-entries">
             { item_balances }
-            </div>
         </div>
     }
 }

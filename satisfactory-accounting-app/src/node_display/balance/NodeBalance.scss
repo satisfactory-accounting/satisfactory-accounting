@@ -3,59 +3,96 @@
 
 .NodeBalance {
     box-sizing: border-box;
-    display: flex;
-    justify-content: flex-start;
-    align-items: stretch;
-
-    .item-entries {
-        box-sizing: border-box;
-        display: flex;
-        margin: 0;
-        padding: 0;
-    }
-
-    $text-value-gap: 2px;
+    display: grid;
+    align-items: center;
 
     .entry-row {
         box-sizing: border-box;
-
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
         cursor: pointer;
-        gap: $text-value-gap;
-
-
+        align-items: center;
     }
 
     &.vertical {
-        flex-direction: column;
+        grid-template-columns: [icon] min-content [qty] minmax(3em, auto);
 
         border-radius: 5px;
         background-color: colors.$light;
         padding: 5px;
-        gap: 5px;
+        row-gap: 5px;
 
         .item-entries {
-            flex-direction: column;
-            gap: 5px;
+            display: grid;
+            grid-template-columns: subgrid;
+            grid-column: icon / span 2;
+            row-gap: inherit;
+
+            &:empty {
+                display: none;
+            }
         }
 
         .entry-row {
-            .balance-value {
-                min-width: calc(2.5em - $text-value-gap);
-            }
+            display: grid;
+            grid-template-columns: subgrid;
+            grid-column: icon / span 2;
+            column-gap: 5px;
+            align-items: center;
+        }
+
+        .Icon {
+            grid-column: icon;
+        }
+
+        .balance-value {
+            grid-column: qty;
         }
     }
 
     &.horizontal {
-        flex-direction: row-reverse;
-        gap: 10px;
+        grid-template-columns: subgrid;
+        grid-column: balance-negative / span 4;
+
+        column-gap: 10px;
 
         .item-entries {
-            flex-direction: row-reverse;
-            gap: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            column-gap: inherit;
+
+            &.positive {
+                grid-column: balance-positive;
+                grid-row: 1;
+            }
+
+            &.neutral {
+                grid-column: balance-neutral;
+                grid-row: 1;
+            }
+
+            &.negative {
+                grid-column: balance-negative;
+                grid-row: 1;
+            }
+
+            &:empty {
+                display: none;
+            }
+        }
+
+        .entry-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+
+            &.power-entry {
+                grid-column: balance-power;
+                grid-row: 1;
+                justify-self: stretch;
+            }
         }
     }
 
@@ -72,6 +109,13 @@
     }
 }
 
-.hide-empty-balances .NodeBalance .item-entries .entry-row.neutral {
-    display: none;
+.hide-empty-balances .NodeBalance {
+
+    .item-entries.neutral {
+        display: none;
+    }
+    // Don't catch the power in this.
+    .item-entries .entry-row.neutral {
+        display: none;
+    }
 }
