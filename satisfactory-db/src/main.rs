@@ -196,43 +196,6 @@ fn main() {
                 is_alternate: false,
                 produced_in: vec!["Desc_WaterPump_C".into()],
             },
-            // The resipe for Alien Power Matrices is missing from the source for some reason.
-            Recipe {
-                name: "Alien Power Matrix".into(),
-                id: "Recipe_AlienPowerFuel_C".into(),
-                image: "alien-power-matrix".into(),
-                time: 24.0,
-                ingredients: vec![
-                    ItemAmount {
-                        item: "Desc_SAMFluctuator_C".into(),
-                        amount: 5.0,
-                    },
-                    ItemAmount {
-                        item: "Desc_CrystalShard_C".into(),
-                        amount: 3.0,
-                    },
-                    ItemAmount {
-                        item: "Desc_QuantumOscillator_C".into(),
-                        amount: 3.0,
-                    },
-                    ItemAmount {
-                        item: "Desc_QuantumEnergy_C".into(),
-                        amount: 24.0,
-                    },
-                ],
-                products: vec![
-                    ItemAmount {
-                        item: "Desc_AlienPowerFuel_C".into(),
-                        amount: 1.0,
-                    },
-                    ItemAmount {
-                        item: "Desc_DarkEnergy_C".into(),
-                        amount: 24.0,
-                    },
-                ],
-                is_alternate: false,
-                produced_in: vec!["Desc_QuantumEncoder_C".into()],
-            },
             // Map the Main Portal as a manufacturer that only consumes singularity cells with no
             // products.
             Recipe {

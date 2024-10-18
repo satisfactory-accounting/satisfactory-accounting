@@ -153,6 +153,13 @@ impl DatabaseVersion {
                 so they scale linearly with changes to their clock speed, which has been how the
                 game has worked since U7.",
         },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Rocket),
+            file: "../db-v1.0-rocket.json",
+            name: "1.0 \u{2013} Rocket",
+            description: "This update to the databse for Satisfactory 1.0 corrects the production \
+                rate of the Nitro Rocket Fuel alternate recipe.",
+        },
     ];
 
     /// Latest version of the database.
@@ -204,6 +211,9 @@ pub enum V1_0Subversion {
     Semiquantum,
     /// Update to make power plant overclock scaling linear.
     Powerline,
+    /// Update to fix the production rate of nitro rocket fuel, released in Satisfactory Accounting
+    /// 1.2.8.
+    Rocket,
 }
 
 impl fmt::Display for DatabaseVersion {

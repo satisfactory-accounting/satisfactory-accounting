@@ -465,7 +465,6 @@ impl Component for App {
                     Ok(world) => world,
                     Err(e) => {
                         warn!("Failed to load selected world: {}", e);
-                        worlds.worlds.remove(&worlds.selected);
                         worlds.selected = WorldId::new();
                         let world = World::new();
                         match worlds.worlds.entry(worlds.selected) {
