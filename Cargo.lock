@@ -930,7 +930,7 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
 name = "satisfactory-accounting"
-version = "1.2.8"
+version = "1.2.9"
 dependencies = [
  "implicit-clone",
  "internment",
@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "satisfactory-accounting-app"
-version = "1.2.8"
+version = "1.2.9"
 dependencies = [
  "console_log",
  "fuzzy-matcher",
