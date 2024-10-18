@@ -62,11 +62,11 @@ impl NodeDisplay {
                         {self.collapse_button(ctx, group)}
                         <GroupName name={group.name.clone()} {rename} />
                     </div>
-                    {self.child_warnings(ctx)}
                     if !ctx.props().path.is_empty() {
                         <VirtualCopies copies={group.copies} {update_copies} />
                     }
                     <div class="section copy-delete">
+                        {self.child_warnings(ctx)}
                         {self.copy_button(ctx)}
                         {self.delete_button(ctx)}
                     </div>
@@ -124,11 +124,11 @@ impl NodeDisplay {
                     <GroupName name={group.name.clone()} {rename} />
                 </div>
                 <NodeBalance node={&ctx.props().node} />
-                {self.child_warnings(ctx)}
                 if !ctx.props().path.is_empty() {
                     <VirtualCopies copies={group.copies} {update_copies} />
                 }
                 <div class="section copy-delete">
+                    {self.child_warnings(ctx)}
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>

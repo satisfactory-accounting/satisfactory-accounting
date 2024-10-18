@@ -26,6 +26,10 @@
         justify-content: flex-start;
         align-items: center;
         gap: 5px;
+
+        &.copy-delete {
+            justify-content: flex-end;
+        }
     }
 
     &.group {
