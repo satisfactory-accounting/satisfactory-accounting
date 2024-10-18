@@ -1,5 +1,6 @@
 use log::warn;
 use satisfactory_accounting::accounting::{Group, Node};
+use satisfactory_accounting::database::Database;
 use serde::{Deserialize, Serialize};
 use yew::AttrValue;
 
@@ -79,6 +80,14 @@ impl World {
             // An existing World should never have a load_error.
             load_error: false,
         }
+    }
+
+    /// Performs the world post-load actions. This fetches the current database, then rebuilds the
+    /// root node in place (without creating an undo state). It then returns the database.
+    fn post_load(&mut self) -> Database {
+        let db = self.database.get();
+        self.root = self.root.rebuild(&db);
+        db
     }
 }
 

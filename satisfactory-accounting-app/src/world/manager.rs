@@ -216,8 +216,8 @@ impl WorldManager {
 
     /// Shared helper to set the current world + database + clear the undo/redo stacks. Does not do
     /// any loading or saving.
-    fn set_world_inner(&mut self, world: World) {
-        self.database = world.database.get();
+    fn set_world_inner(&mut self, mut world: World) {
+        self.database = world.post_load();
         self.world = world;
         self.undo_stack.clear();
         self.redo_stack.clear();
@@ -365,7 +365,6 @@ impl Component for WorldManager {
             .context::<UserSettingsDispatcher>(Callback::noop())
             .expect("WorldManager must be nested in the UserSettingsManager");
 
-        let mut needs_rebuild = false;
         let (worlds, mut world) = match load_worlds_list() {
             Ok(mut worlds) => {
                 let world = match load_world(worlds.selected_id()) {
@@ -374,11 +373,6 @@ impl Component for WorldManager {
                         #[allow(deprecated)]
                         user_settings_dispatcher
                             .maybe_init_from_world(world.global_metadata.hide_empty_balances);
-                        // Only rebuild on load if the databse choice is latest and the world is
-                        // new.
-                        if world.database == DatabaseChoice::Latest {
-                            needs_rebuild = true
-                        }
                         world
                     }
                     Err(e) => {
@@ -416,12 +410,7 @@ impl Component for WorldManager {
                 (worlds, world)
             }
         };
-        let database = world.database.get();
-        if needs_rebuild {
-            let new_root = world.root.rebuild(&database);
-            // On-load rebuild doesn't create an undo state.
-            world.root = new_root;
-        }
+        let database = world.post_load();
 
         let mut manager = Self {
             worlds,
