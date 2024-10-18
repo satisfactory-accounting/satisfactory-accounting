@@ -8,7 +8,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use log::{error, info, warn};
+use log::{error, warn};
 use uuid::Uuid;
 use yew::prelude::*;
 

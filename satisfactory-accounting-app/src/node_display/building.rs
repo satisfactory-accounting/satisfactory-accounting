@@ -43,13 +43,14 @@ impl NodeDisplay {
                 {self.drag_handle(ctx)}
                 <BuildingTypeDisplay id={building.building} {on_change_type} />
                 {self.view_building_settings(ctx, building)}
-                if let Some(warning) = ctx.props().node.warning() {
-                    {self.view_warning(warning)}
-                } else {
+                if ctx.props().node.warning().is_none() {
                     <NodeBalance node={&ctx.props().node} />
                 }
                 <VirtualCopies copies={building.copies} {update_copies} />
                 <div class="section copy-delete">
+                    if let Some(warning) = ctx.props().node.warning() {
+                        {self.view_warning(warning)}
+                    }
                     {self.copy_button(ctx)}
                     {self.delete_button(ctx)}
                 </div>
