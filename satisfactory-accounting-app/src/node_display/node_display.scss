@@ -7,6 +7,7 @@
 @use "group/GroupName.scss";
 @use "icon/Icon.scss";
 @use "NodeTreeDisplay.scss";
+@use "node-grid.scss";
 
 .NodeDisplay {
     .drag-handle {
@@ -15,52 +16,48 @@
         cursor: move;
     }
 
-    input[type="text"] {
-        background-color: colors.$white;
-        border: none;
-        outline: none;
+    font-size: 1.125rem;
+
+    .section {
+        box-sizing: border-box;
+
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 5px;
     }
 
     &.group {
+        @include node-grid.node-subgrid;
+
         box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
         justify-content: flex-start;
-        align-items: stretch;
+        align-items: center;
 
         border-radius: 5px;
 
         background-color: colors.$light;
 
+        &.collapsed {
+            padding: 2px 5px;
+        }
+
         .header {
-            box-sizing: border-box;
+            @include node-grid.node-subgrid;
 
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
+            box-sizing: border-box;
             align-items: center;
-            padding: 5px;
-            min-height: 40px;
+
+            padding: 2px 5px;
             gap: 5px;
 
-       }
-
-        .summary {
-            box-sizing: border-box;
-
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            padding: 5px;
-            gap: 5px;
-
-       }
+        }
 
         .body {
-            box-sizing: border-box;
+            @include node-grid.flex-span;
 
-            display: flex;
+            box-sizing: border-box;
             justify-content: space-between;
             flex-direction: row;
             align-items: flex-start;
@@ -68,16 +65,10 @@
             background-color: colors.$dark;
             border-radius: 5px;
             padding: 5px;
-            flex-grow: 1;
             gap: 5px;
 
             .children-display {
                 box-sizing: border-box;
-
-                display: flex;
-                justify-content: flex-start;
-                flex-direction: column;
-                align-items: stretch;
                 flex-grow: 1;
                 align-self: stretch;
                 gap: 5px;
@@ -86,14 +77,17 @@
                     height: 10px;
                     border-radius: 5px;
                     background-color: color.scale(colors.$light, $lightness: 50%);
+                    grid-column: node-grid.$whole-row;
+                    align-self: flex-start;
                 }
             }
         }
 
         .footer {
+            @include node-grid.flex-span;
+
             box-sizing: border-box;
 
-            display: flex;
             flex-direction: row;
             justify-content: flex-end;
             align-items: center;
@@ -104,47 +98,16 @@
     }
 
     &.building {
+        @include node-grid.node-subgrid;
+
         box-sizing: border-box;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
         padding: 2px 5px;
         gap: 5px;
+        align-items: center;
 
         border-radius: 5px;
 
         background-color: colors.$light;
-
-        .section.spaced {
-            gap: 10px;
-        }
-
-        .recipe {
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 5px;
-            min-width: 250px;
-
-            // When there's only one recipe for this bulding.
-            &.no-choice {
-                cursor: default;
-            }
-        }
-
-        .section {
-            box-sizing: border-box;
-
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 5px;
-        }
-
     }
 
     .StationConsumption {
@@ -162,6 +125,7 @@
             flex-shrink: 1;
             min-width: 0;
         }
+
         span.current-consumption {
             cursor: text;
         }

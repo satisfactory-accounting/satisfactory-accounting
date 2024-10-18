@@ -3,7 +3,7 @@ use std::mem;
 
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
-use log::{error, warn};
+use log::{error, info, warn};
 use satisfactory_accounting::accounting::Node;
 use satisfactory_accounting::database::Database;
 use uuid::Uuid;
@@ -27,6 +27,7 @@ pub struct Props {
     pub children: Html,
 }
 
+#[derive(Debug)]
 pub enum Msg {
     /// Set a new Root node for the World.
     SetRoot { root: Node },
@@ -360,6 +361,7 @@ impl Component for WorldManager {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
+        info!("Creating WorldManager");
         let (user_settings_dispatcher, _) = ctx
             .link()
             .context::<UserSettingsDispatcher>(Callback::noop())
