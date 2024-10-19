@@ -41,9 +41,11 @@ $whole-row: drag / end;
         grid-column: name;
     }
     .group-name {
-        grid-column: name / span 2;
+        grid-column: name / multiplier;
         justify-self: stretch;
-        min-width: 24em;
+    }
+    .group.collapsed > .group-name {
+        grid-column: name / balance-negative;
     }
     .ItemDisplay,
     .RecipeDisplay {
