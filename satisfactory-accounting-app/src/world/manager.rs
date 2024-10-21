@@ -57,6 +57,10 @@ pub enum Msg {
 
 /// World manager manages the lifecycle of a single world.
 pub struct WorldManager {
+    /// True if the worlds list has been saved with the latest changes. Anything which mutates the
+    /// worlds list needs to clear this flag.
+    is_worlds_list_saved: bool,
+
     /// List of available worlds.
     worlds: WorldList,
 
@@ -87,9 +91,21 @@ impl WorldManager {
         prior_state
     }
 
-    /// Saves the current state of the current world
+    /// Saves the current state of the current world, logging errors.
     fn save_world(&self) {
-        save_world(self.worlds.selected_id(), &self.world);
+        if let Err(e) = LocalStorage::set(self.worlds.selected_id().to_string(), &self.world) {
+            warn!("Unable to save world: {}", e);
+        }
+    }
+
+    /// If the world list never been saved, save it.
+    fn save_worlds_list_if_unsaved(&mut self) {
+        if !self.is_worlds_list_saved {
+            match LocalStorage::set(WORLD_MAP_KEY, &self.worlds) {
+                Ok(()) => self.is_worlds_list_saved = true,
+                Err(e) => warn!("Unable to save WorldList: {}", e),
+            }
+        }
     }
 
     /// Add an undo state, clearing the redo states.
@@ -110,20 +126,22 @@ impl WorldManager {
         self.undo_stack.push_back(state);
     }
 
-    /// Update the metadata for the currently selected world.
+    /// Update the metadata for the currently selected world. Always saves the world list if it is
+    /// in the unsaved state, even if the current world's metadata is unchanged.
     fn update_world_metadata(&mut self) {
         let world_meta = self.world.metadata();
         match self.worlds.selected_entry() {
-            // Do nothing if the entry already exists and has the correct metadata.
+            // If the world is already present with the correct metadata, do nothing.
             WorldEntry::Present(entry) if *entry.meta() == world_meta => {}
             entry => {
                 if !entry.exists() {
                     warn!("World {} was not in the worlds map", entry.id());
                 }
                 entry.insert_or_update_and_select(self.world.metadata());
+                self.is_worlds_list_saved = false;
             }
         }
-        save_worlds_list(&self.worlds);
+        self.save_worlds_list_if_unsaved();
     }
 
     /// Message handler for SetRoot. Returns true if redraw is needed.
@@ -150,6 +168,7 @@ impl WorldManager {
     fn update_node_meta(&mut self, id: Uuid, meta: NodeMeta) -> bool {
         self.world.node_metadata.set_meta(id, meta);
         self.save_world();
+        self.save_worlds_list_if_unsaved();
         true
     }
 
@@ -157,6 +176,7 @@ impl WorldManager {
     fn batch_update_node_meta(&mut self, updates: HashMap<Uuid, NodeMeta>) -> bool {
         self.world.node_metadata.batch_update(updates);
         self.save_world();
+        self.save_worlds_list_if_unsaved();
         true
     }
 
@@ -236,12 +256,17 @@ impl WorldManager {
             WorldEntry::Present(mut entry) => match load_world(world_id) {
                 Ok(world) => {
                     entry.select();
+                    self.is_worlds_list_saved = false;
                     self.set_world_inner(world);
+                    // This will always save the world list if it is unsaved, so since we cleared
+                    // the is_world_list_saved flag above, this saves the world list even if the
+                    // world's metadata hasn't changed.
                     self.update_world_metadata();
                     true
                 }
                 Err(e) => {
                     warn!("Unable to load world {world_id}: {e}");
+                    // load_error isn't persisted, so don't bother saving the world state here.
                     entry.meta_mut().load_error = true;
                     true
                 }
@@ -256,6 +281,7 @@ impl WorldManager {
         let changed_world: bool;
         if self.worlds.selected_id() == world_id {
             changed_world = true;
+            let mut is_world_persisted = false;
             let new_choice = self
                 .worlds
                 .iter_mut()
@@ -266,11 +292,15 @@ impl WorldManager {
                     }
                     match load_world(world_meta.id()) {
                         Ok(world) => {
+                            is_world_persisted = true;
                             world_meta.select();
+                            self.is_worlds_list_saved = false;
                             Some(world)
                         }
                         Err(e) => {
                             warn!("Unable to load world {}: {e}", world_meta.id());
+                            // No need to mark is_worlds_list_saved = false because load_error is
+                            // not persisted.
                             world_meta.load_error = true;
                             None
                         }
@@ -281,14 +311,15 @@ impl WorldManager {
                     // about to delete, so create a new one.
                     let entry = self.worlds.allocate_new_id();
                     let world = World::new();
-                    save_world(entry.id(), &world);
                     entry.insert_and_select(world.metadata());
+                    self.is_worlds_list_saved = false;
                     world
                 });
-            // We have updated the selected world to either an existing or new world.
-            // Save here as a checkpoint.
-            save_worlds_list(&self.worlds);
             self.set_world_inner(new_choice);
+            if !is_world_persisted {
+                self.save_world();
+            }
+            self.save_worlds_list_if_unsaved();
         } else {
             changed_world = false;
         }
@@ -297,11 +328,12 @@ impl WorldManager {
         match self.worlds.remove(world_id) {
             Ok(_) => {
                 removed_world = true;
+                self.is_worlds_list_saved = false;
                 // Delete from local storage second, in case worlds.remove panics, so we don't lose
                 // the world on a panic.
                 LocalStorage::delete(world_id.to_string());
                 // Wait to save the change to the world list in case local storage panics.
-                save_worlds_list(&self.worlds);
+                self.save_worlds_list_if_unsaved();
             }
             Err(e) => {
                 removed_world = false;
@@ -317,10 +349,11 @@ impl WorldManager {
     fn create_world(&mut self) -> bool {
         let entry = self.worlds.allocate_new_id();
         let world = World::new();
-        save_world(entry.id(), &world);
         entry.insert_and_select(world.metadata());
-        save_worlds_list(&self.worlds);
+        self.is_worlds_list_saved = false;
         self.set_world_inner(world);
+        self.save_world();
+        self.save_worlds_list_if_unsaved();
         true
     }
 
@@ -367,19 +400,57 @@ impl Component for WorldManager {
             .context::<UserSettingsDispatcher>(Callback::noop())
             .expect("WorldManager must be nested in the UserSettingsManager");
 
+        enum SaveStatus {
+            /// User has not interacted with the app yet (because there is no persisted data), so we
+            /// should not save yet.
+            ShouldNotSave,
+            /// There was persisted data already, so the user has been here before, so we are
+            /// allowed to save state if the loading process causes new changes.
+            /// If we see this in combination with is_worlds_list_saved = false, then we will save
+            /// the worlds list, but not the world.
+            MaySave,
+            /// There was persisted data already, so the user has been here before. The world has
+            /// changed as well, so we should definitely save it. If we encounter this, we will save
+            /// the world and maybe save the world metadata, if it is unsaved.
+            ShouldSave,
+        }
+
+        // Whether we should save during create. Only true if there is already saved state in local
+        // storage.
+        let mut save_status = SaveStatus::ShouldNotSave;
+        let mut is_worlds_list_saved;
         let (worlds, mut world) = match load_worlds_list() {
             Ok(mut worlds) => {
+                // If the world list was loaded successfully, then it's already persisted, and we
+                // are allowed to save.
+                save_status = SaveStatus::MaySave;
+                // At this point we can mark the world list as laready saved, and will only unmark
+                // it if we make further changes to it.
+                is_worlds_list_saved = true;
                 let world = match load_world(worlds.selected_id()) {
                     Ok(world) => {
-                        // Propagate the global metadat empty balances state.
+                        // Propagate the global metadata empty balances state.
+                        // This will trigger saving user settings, which is fine because we loaded
+                        // this state from local storage, meaning we're already using local storage.
                         #[allow(deprecated)]
                         user_settings_dispatcher
                             .maybe_init_from_world(world.global_metadata.hide_empty_balances);
+                        let world_meta = world.metadata();
+                        // Update the world's metadata on loading, if it is different.
+                        match worlds.selected_entry() {
+                            WorldEntry::Present(entry) if *entry.meta() == world_meta => {}
+                            absent_or_different => {
+                                absent_or_different.insert_or_update_and_select(world_meta);
+                                is_worlds_list_saved = false;
+                            }
+                        }
                         world
                     }
                     Err(e) => {
                         let selected = match worlds.selected_entry() {
                             WorldEntry::Present(mut entry) => {
+                                // load_error isn't persisted, so don't mark the world list as
+                                // not-saved yet here.
                                 entry.meta_mut().load_error = true;
                                 entry.id()
                             }
@@ -388,9 +459,9 @@ impl Component for WorldManager {
                         warn!("Failed to load selected world {selected}: {e}");
                         let entry = worlds.allocate_new_id();
                         let world = World::new();
-                        save_world(entry.id(), &world);
+                        save_status = SaveStatus::ShouldSave;
                         entry.insert_and_select(world.metadata());
-                        save_worlds_list(&worlds);
+                        is_worlds_list_saved = false;
                         world
                     }
                 };
@@ -401,20 +472,36 @@ impl Component for WorldManager {
                     warn!("Failed to load the world list: {}", e);
                 }
                 let id = WorldId::new();
-                let world = v1storage::try_load_v1();
-                // In case we loaded a v1 world, try to init the empty balances state.
-                #[allow(deprecated)]
-                user_settings_dispatcher
-                    .maybe_init_from_world(world.global_metadata.hide_empty_balances);
-                let worlds = WorldList::new(id, world.metadata());
-                save_world(id, &world);
-                save_worlds_list(&worlds);
-                (worlds, world)
+                match v1storage::try_load_v1() {
+                    Some(v1world) => {
+                        // If there is a v1 world, we need to persist it under the v1.2.x world
+                        // storage keys.
+                        save_status = SaveStatus::ShouldSave;
+                        // In case we loaded a v1 world, try to init the empty balances state.
+                        // This will persist user metadata, which is fine because we loaded data
+                        // from storage already.
+                        #[allow(deprecated)]
+                        user_settings_dispatcher
+                            .maybe_init_from_world(v1world.global_metadata.hide_empty_balances);
+                        let worlds = WorldList::new(id, v1world.metadata());
+                        is_worlds_list_saved = false;
+                        (worlds, v1world)
+                    }
+                    None => {
+                        let world = World::new();
+                        let worlds = WorldList::new(id, world.metadata());
+                        is_worlds_list_saved = false;
+                        // If nothing was already in storage, avoid saving unless the user interacts
+                        // with the app.
+                        (worlds, world)
+                    }
+                }
             }
         };
         let database = world.post_load();
 
         let mut manager = Self {
+            is_worlds_list_saved,
             worlds,
             world,
             database,
@@ -422,7 +509,14 @@ impl Component for WorldManager {
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
             link: RefEqRc::new(ctx.link().clone()),
         };
-        manager.update_world_metadata();
+        match save_status {
+            SaveStatus::ShouldNotSave => {}
+            SaveStatus::MaySave => manager.save_worlds_list_if_unsaved(),
+            SaveStatus::ShouldSave => {
+                manager.save_world();
+                manager.save_worlds_list_if_unsaved();
+            }
+        }
         manager
     }
 
@@ -483,13 +577,6 @@ fn load_worlds_list() -> Result<WorldList, StorageError> {
     LocalStorage::get(WORLD_MAP_KEY)
 }
 
-/// Try to save the world list, logging errors.
-fn save_worlds_list(list: &WorldList) {
-    if let Err(e) = LocalStorage::set(WORLD_MAP_KEY, list) {
-        warn!("Unable to save metadata: {}", e);
-    }
-}
-
 /// Load the world with the specified id.
 fn load_world(id: WorldId) -> Result<World, StorageError> {
     let mut world: World = LocalStorage::get(id.to_string())?;
@@ -497,13 +584,6 @@ fn load_world(id: WorldId) -> Result<World, StorageError> {
     // undo/redo history.
     world.node_metadata.prune(&world.root);
     Ok(world)
-}
-
-/// Try to save the world with the given key, ignoring errors.
-fn save_world(id: WorldId, world: &World) {
-    if let Err(e) = LocalStorage::set(id.to_string(), world) {
-        warn!("Unable to save world: {}", e);
-    }
 }
 
 /// Gets the current world list.
