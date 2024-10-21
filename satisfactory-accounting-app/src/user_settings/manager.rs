@@ -138,9 +138,8 @@ impl Component for UserSettingsManager {
                     warn!("Failed to load user settings: {}", e);
                 }
                 let settings = UserSettings::default();
-                // Save the settings immediately. This prevents fallback_to_world_global_metadata
-                // from applying to future runs.
-                save_user_settings(&settings);
+                // Don't save settings during create: this way we don't store any data on the user's
+                // computer until they interact with the app.
                 settings
             }
         });
