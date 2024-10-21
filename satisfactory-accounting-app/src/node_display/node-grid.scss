@@ -32,7 +32,7 @@ $whole-row: drag / end;
         [copy-delete] min-content
         [end];
 
-    align-items: center;
+    align-items: start;
 
     .drag-handle {
         grid-column: drag;
