@@ -2,6 +2,7 @@
 
 use yew::{function_component, hook, html, use_callback, use_context, Html};
 
+use crate::inputs::button::Button;
 use crate::inputs::toggle::{MaterialCheckbox, MaterialRadio};
 use crate::node_display::BalanceSortMode;
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
@@ -43,11 +44,15 @@ pub fn UserSettingsWindow() -> Html {
             settings_dispatcher.set_sort_mode(BalanceSortMode::IOItem);
         });
 
+    let persist = use_callback(settings_dispatcher, |(), settings_dispatcher| {
+        settings_dispatcher.persist_local_storage();
+    });
+
     html! {
         <OverlayWindow title="Settings" class="UserSettingsWindow" on_close={close}>
-            <div class="balances">
+            <div class="settings-section">
                 <h2>{"Balance Display"}</h2>
-                <div class="empty-balances">
+                <div class="settings-subsection">
                     <h3>{"Display of Neutral (0) Balances"}</h3>
                     <p>{"Whether balance entries with a value of 0 should be shown. Hiding neutral \
                     balances lets you filter out fully-consumed intermediate products form higher \
@@ -63,7 +68,7 @@ pub fn UserSettingsWindow() -> Html {
                         </li>
                     </ul>
                 </div>
-                <div class="balance-sort-mode">
+                <div class="settings-subsection">
                     <h3>{"Balance Sort Order"}</h3>
                     <p>{"Whether balances should be sorted purely by the item or grouped into \
                     inputs and outputs, with the inputs and outputs then sorted by item"}</p>
@@ -86,6 +91,28 @@ pub fn UserSettingsWindow() -> Html {
                         </li>
                     </ul>
                 </div>
+            </div>
+            <div class="settings-section">
+                <h2>{"Storage Persistence"}</h2>
+                <p>{"Satisfactory Accounting stores your worlds and user settings in "}
+                    <a target="_blank" href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API">
+                        {"Local Storage"}
+                    </a>
+                    {" which Browsers provide on a Best Effort basis by default. This means that \
+                    the browser can choose to delete your stored data if storage is low. In \
+                    practice this rarely happens, however you can change the storage mode to \
+                    \"Persisted\" which prevents the browser from deleting your data."}</p>
+                <p>{"Changing from \"Best Effort\" to \"Persisted\" can be done by choosing \
+                    \"Persist\" below and granting permission in your browser. The permission can \
+                    be revoked at any time from your browser's permission manager."}</p>
+                <p>{"We don't display the current persistence status because for your privacy, \
+                    many browsers do not accurately report the current persistence status to web \
+                    applications."}</p>
+                <div class="persistence-enable">
+                    <Button title="Enable persistence (requires you to grant permission)" onclick={persist}>
+                        {"Enable Persistence"}
+                    </Button>
+               </div>
             </div>
         </OverlayWindow>
     }

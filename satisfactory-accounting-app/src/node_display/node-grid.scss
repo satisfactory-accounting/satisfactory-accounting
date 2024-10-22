@@ -32,6 +32,8 @@ $whole-row: drag / end;
         [copy-delete] min-content
         [end];
 
+    min-width: max-content;
+
     align-items: start;
 
     .drag-handle {

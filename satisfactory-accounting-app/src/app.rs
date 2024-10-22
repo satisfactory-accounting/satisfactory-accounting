@@ -10,6 +10,7 @@ use yew::{function_component, html, Html};
 use crate::appheader::AppHeader;
 use crate::modal::ModalManager;
 use crate::node_display::NodeTreeDisplay;
+use crate::storagenotice::StorageNotice;
 use crate::user_settings::{UserSettingsManager, UserSettingsWindowManager};
 use crate::world::{DbChooserWindowManager, WorldChooserWindowManager, WorldManager};
 
@@ -30,6 +31,7 @@ pub fn App() -> Html {
                 <NodeTreeDisplay />
             </div>
         </WorldManager>
+        <StorageNotice />
         </UserSettingsManager>
         </ModalManager>
     }

@@ -14,4 +14,19 @@
         list-style-type: none;
         padding: 0 20px;
     }
+
+    .settings-section+.settings-section {
+        margin-top: 20px;
+    }
+
+    .settings-subsection+.settings-subsection {
+        margin-top: 10px;
+    }
+
+    .persistence-status {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
 }

@@ -16,6 +16,7 @@ mod modal;
 mod node_display;
 mod overlay_window;
 mod refeqrc;
+mod storagenotice;
 mod user_settings;
 mod world;
 

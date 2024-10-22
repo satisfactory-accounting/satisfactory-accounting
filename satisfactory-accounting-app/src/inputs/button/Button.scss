@@ -20,7 +20,8 @@
     text-wrap: nowrap;
 
     height: $button-size;
-    min-width: $button-size;
+    min-width: min-content;
+    width: $button-size;
     text-decoration: none;
     cursor: pointer;
     font-size: 1em;

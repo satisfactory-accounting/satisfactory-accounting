@@ -13,7 +13,8 @@ pub mod controller;
 #[derive(Properties, PartialEq)]
 pub struct Props {
     /// Window title, shown in a row with the close button.
-    pub title: AttrValue,
+    #[prop_or_default]
+    pub title: Option<AttrValue>,
     /// Content to render in the window.
     #[prop_or_default]
     pub children: Html,
@@ -69,14 +70,16 @@ fn overlay_contents(
 ) -> Html {
     html! {
         <div class={classes!("OverlayWindow", class.clone())}>
-            <section class="window-title">
-                <h1>{title}</h1>
-                if let Some(on_close) = on_close {
-                    <Button title="Close" class="red" onclick={on_close}>
-                        {material_icon("close")}
-                    </Button>
-                }
-            </section>
+            if title.is_some() || on_close.is_some() {
+                <section class="window-title">
+                    <h1>{title}</h1>
+                    if let Some(on_close) = on_close {
+                        <Button title="Close" class="red" onclick={on_close}>
+                            {material_icon("close")}
+                        </Button>
+                    }
+                </section>
+            }
             <section class="window-content-wrapper">
                 <div class="window-content">
                     {children.clone()}

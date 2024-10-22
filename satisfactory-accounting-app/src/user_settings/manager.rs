@@ -10,6 +10,7 @@ use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Pr
 
 use crate::node_display::BalanceSortMode;
 use crate::refeqrc::RefEqRc;
+use crate::user_settings::storagemanager::persist_local_storage;
 use crate::user_settings::UserSettings;
 
 /// Local storage key used to save user settings.
@@ -48,6 +49,10 @@ pub enum Msg {
     },
     /// Toggles the show deprecated databases setting.
     ToggleShowDeprecated,
+    /// Acknowledges the use of LocalStorage.
+    AckLocalStorage { version: u32 },
+    /// Acknowledges a particular welcome message version.
+    AckWelcomeMessage { version: u32 },
 }
 
 pub struct UserSettingsManager {
@@ -120,6 +125,30 @@ impl UserSettingsManager {
         save_user_settings(user_settings);
         true
     }
+
+    /// Message handler for AckLocalStorage.
+    fn ack_local_storage(&mut self, version: u32) -> bool {
+        // Don't allow backsliding.
+        if self.user_settings.acked_local_storage_notice_version < version {
+            Rc::make_mut(&mut self.user_settings).acked_local_storage_notice_version = version;
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Message handler for AckWelcomeMessage.
+    fn ack_welcome_message(&mut self, version: u32) -> bool {
+        // Don't allow backsliding.
+        if self.user_settings.acked_welcome_message < version {
+            Rc::make_mut(&mut self.user_settings).acked_welcome_message = version;
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -143,6 +172,7 @@ impl Component for UserSettingsManager {
                 settings
             }
         });
+
         let dispatcher = UserSettingsDispatcher::new(ctx.link().clone());
         Self {
             user_settings,
@@ -159,6 +189,8 @@ impl Component for UserSettingsManager {
             Msg::ToggleHideEmptyBalances => self.toggle_hide_empty_balances(),
             Msg::SetBalanceSortMode { sort_mode } => self.set_balance_sort_mode(sort_mode),
             Msg::ToggleShowDeprecated => self.toggle_show_deprecated(),
+            Msg::AckLocalStorage { version } => self.ack_local_storage(version),
+            Msg::AckWelcomeMessage { version } => self.ack_welcome_message(version),
         }
     }
 
@@ -211,6 +243,20 @@ impl UserSettingsDispatcher {
     /// Toggles whether deprecated databases are shown in the database chooser window.
     pub fn toggle_show_deprecated(&self) {
         self.scope.send_message(Msg::ToggleShowDeprecated);
+    }
+
+    /// Ack the given local storage notice version.
+    pub fn ack_local_storage(&self, version: u32) {
+        self.scope.send_message(Msg::AckLocalStorage { version });
+    }
+
+    /// Attempts to make local storage persisted.
+    pub fn persist_local_storage(&self) {
+        wasm_bindgen_futures::spawn_local(async {
+            if let Err(e) = persist_local_storage().await {
+                warn!("Unable to set local storage mode: {e}");
+            }
+        });
     }
 }
 
