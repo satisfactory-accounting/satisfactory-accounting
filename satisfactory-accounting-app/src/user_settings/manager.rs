@@ -52,7 +52,7 @@ pub enum Msg {
     /// Acknowledges the use of LocalStorage.
     AckLocalStorage { version: u32 },
     /// Acknowledges a particular welcome message version.
-    AckWelcomeMessage { version: u32 },
+    AckNotification { version: u32 },
 }
 
 pub struct UserSettingsManager {
@@ -139,10 +139,10 @@ impl UserSettingsManager {
     }
 
     /// Message handler for AckWelcomeMessage.
-    fn ack_welcome_message(&mut self, version: u32) -> bool {
+    fn ack_notification(&mut self, version: u32) -> bool {
         // Don't allow backsliding.
-        if self.user_settings.acked_welcome_message < version {
-            Rc::make_mut(&mut self.user_settings).acked_welcome_message = version;
+        if self.user_settings.acked_notification < version {
+            Rc::make_mut(&mut self.user_settings).acked_notification = version;
             save_user_settings(&self.user_settings);
             true
         } else {
@@ -190,7 +190,7 @@ impl Component for UserSettingsManager {
             Msg::SetBalanceSortMode { sort_mode } => self.set_balance_sort_mode(sort_mode),
             Msg::ToggleShowDeprecated => self.toggle_show_deprecated(),
             Msg::AckLocalStorage { version } => self.ack_local_storage(version),
-            Msg::AckWelcomeMessage { version } => self.ack_welcome_message(version),
+            Msg::AckNotification { version } => self.ack_notification(version),
         }
     }
 
@@ -248,6 +248,11 @@ impl UserSettingsDispatcher {
     /// Ack the given local storage notice version.
     pub fn ack_local_storage(&self, version: u32) {
         self.scope.send_message(Msg::AckLocalStorage { version });
+    }
+
+    /// Ack the given welcome message version.
+    pub fn ack_notification(&self, version: u32) {
+        self.scope.send_message(Msg::AckNotification { version });
     }
 
     /// Attempts to make local storage persisted.

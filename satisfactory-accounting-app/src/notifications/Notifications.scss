@@ -1,0 +1,31 @@
+.Notifications {
+    width: 800px;
+    z-index: 30;
+
+    .window-title {
+        justify-content: center;
+    }
+
+    .dismiss-buttons {
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-content: center;
+        gap: 5px;
+
+        .Button {
+            width: 8em;
+        }
+    }
+
+    .signature {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5em;
+
+        .sig-logo {
+            height: 1lh;
+        }
+    }
+}

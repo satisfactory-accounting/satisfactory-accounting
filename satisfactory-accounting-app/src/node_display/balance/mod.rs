@@ -18,10 +18,10 @@ use crate::world::use_db;
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum BalanceSortMode {
     /// Sort by item, irrespective of whether it's input or output.
-    #[default]
     Item,
     /// Sort by whether the item is an input or output (positive or negative balance) then
     /// by item.
+    #[default]
     IOItem,
 }
 

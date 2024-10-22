@@ -4,6 +4,8 @@
     max-height: calc(100vh - (20px + 70px));
     width: calc(100vw - 140px);
 
+    z-index: 40;
+
     h1 {
         font-size: 1.375rem;
     }

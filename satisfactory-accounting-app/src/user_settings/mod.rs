@@ -36,12 +36,12 @@ pub struct UserSettings {
     /// want to get 0 so they receive the welcome notice, while for returning users we want to start
     /// with 1 if they've used a prior version of satisfactory accounting so they don't get the new
     /// user message.
-    #[serde(default = "welcome_message_serde_default")]
-    pub acked_welcome_message: u32,
+    #[serde(default = "notification_serde_default")]
+    pub acked_notification: u32,
 }
 
 /// Serde default for acked_welcome_notice.
 #[inline]
-const fn welcome_message_serde_default() -> u32 {
+const fn notification_serde_default() -> u32 {
     1
 }

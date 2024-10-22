@@ -139,8 +139,7 @@ impl NodeDisplay {
     /// Get a collapse/expand button for this node.
     fn collapse_button(&self, ctx: &Context<Self>, group: &Group) -> Html {
         if ctx.props().path.is_empty() {
-            // No collapse for root.
-            html! {}
+            material_icon("language")
         } else {
             let set_metadata = ctx.props().set_metadata.clone();
             let update = (

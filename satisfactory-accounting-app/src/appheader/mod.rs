@@ -78,8 +78,11 @@ pub fn AppHeader() -> Html {
         </>
     };
 
+    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
     let right = html! {
         <>
+            <span>{"App Version: "}{VERSION}</span>
             <Button title="Settings" onclick={on_settings}>
                 {material_icon("settings")}
             </Button>
