@@ -1,3 +1,23 @@
+@use "../colors.scss";
+
 .WorldManagerError {
     width: 500px;
+
+    pre {
+        background-color: colors.$gray-dark;
+        color: colors.$bg-primary;
+        box-sizing: border-box;
+        overflow-x: scroll;
+        border: 5px solid colors.$gray-dark;
+        border-bottom: none;
+        padding-bottom: 10px;
+        user-select: all;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+        text-align: left;
+    }
 }

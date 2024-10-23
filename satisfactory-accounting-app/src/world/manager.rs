@@ -11,8 +11,8 @@ use satisfactory_accounting::database::Database;
 use uuid::Uuid;
 use yew::html::Scope;
 use yew::{
-    hook, html, use_context, Callback, Component, Context, ContextHandle, ContextProvider, Html,
-    Properties,
+    hook, html, use_context, AttrValue, Callback, Component, Context, ContextHandle,
+    ContextProvider, Html, Properties,
 };
 
 use crate::modal::{ModalDispatcher, ModalOk};
@@ -59,14 +59,58 @@ pub enum Msg {
     CreateWorld,
 }
 
+/// Wrapper for reporting errors from the world manager.
+#[derive(Debug, Clone)]
+struct WorldManagerErrorReporter {
+    /// Dispatcher used to send modal dialogs.
+    ///
+    /// This is stored in a refcell because it doesn't affect our rendering and is only used from
+    /// create and update, so we don't need to use a message to replace it if it ever changes
+    /// (though it shouldn't actually change).
+    /// It has to be wrapped in Option because we need to construct the Rc before we can create the
+    /// callback to pass to receive context updates, but we won't have a value to store until we get
+    /// the context. It should never be None after create.
+    modal_dispatcher: Rc<RefCell<Option<ModalDispatcher>>>,
+}
+
+impl WorldManagerErrorReporter {
+    /// Report an error through a persisted modal dialog.
+    fn report_error(&self, title: impl Into<AttrValue>, content: Html) {
+        self.modal_dispatcher
+            .borrow()
+            .as_ref()
+            .expect(
+                "ModalDispatcher was not set. This should always be set since it is only Optional \
+                for initialization.",
+            )
+            .builder()
+            .class("WorldManagerError")
+            .kind(ModalOk::close())
+            .title(title)
+            .content(content)
+            .build()
+            .persist()
+    }
+}
+
+// Creates a link with the text "file a bug on GitHub", which points to the github issues page.
+fn file_a_bug() -> Html {
+    html! {
+        <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
+            {"file a bug on GitHub"}
+        </a>
+    }
+}
+
 mod save_tracker {
     use std::ops::{Deref, DerefMut};
 
     use gloo::storage::{LocalStorage, Storage};
     use log::warn;
     use serde::Serialize;
+    use yew::html;
 
-    use crate::world::manager::WORLD_MAP_KEY;
+    use crate::world::manager::{file_a_bug, WorldManagerErrorReporter, WORLD_MAP_KEY};
     use crate::world::{World, WorldId, WorldList};
 
     /// Tracks whether the given value has been saved.
@@ -75,6 +119,8 @@ mod save_tracker {
         value: T,
         /// Local storage key used for this item.
         key: K,
+        /// Error reporter used to report save errors.
+        error_reporter: WorldManagerErrorReporter,
         /// A bool indicating whether the value has been saved yet or not.
         is_saved: bool,
     }
@@ -92,7 +138,24 @@ mod save_tracker {
             if !self.is_saved {
                 match LocalStorage::set(self.key.as_ref(), &self.value) {
                     Ok(()) => self.is_saved = true,
-                    Err(e) => warn!("Unable to save {}: {e}", std::any::type_name::<T>()),
+                    Err(e) => {
+                        let typename = std::any::type_name::<T>();
+                        let title = format!("Unable to save {typename}");
+                        let error_message = html! {
+                            <>
+                            <p>{"We were unable to save the most recent change to your "}{typename}
+                            {". You may be out of Browser Storage quota (there is a standard 10MiB \
+                            limit per website which we have no control over) or this may be a bug. \
+                            If it appears to be a bug, you can "}{file_a_bug()}{". If you file a \
+                            bug, please include this message:"}</p>
+                            <pre>
+                                {"Unable to save "}{typename}{": "}{&e}
+                            </pre>
+                            </>
+                        };
+                        self.error_reporter.report_error(title, error_message);
+                        warn!("Unable to save {typename}: {e}",);
+                    }
                 }
             }
         }
@@ -100,19 +163,21 @@ mod save_tracker {
 
     impl SaveTracker<WorldList, &'static str> {
         /// Create a SaveTracker for an already saved value.
-        pub fn saved(value: WorldList) -> Self {
+        pub fn saved(value: WorldList, error_reporter: WorldManagerErrorReporter) -> Self {
             Self {
                 value,
                 key: WORLD_MAP_KEY,
+                error_reporter,
                 is_saved: true,
             }
         }
 
         /// Create a SaveTracker for an unsaved value.
-        pub fn unsaved(value: WorldList) -> Self {
+        pub fn unsaved(value: WorldList, error_reporter: WorldManagerErrorReporter) -> Self {
             Self {
                 value,
                 key: WORLD_MAP_KEY,
+                error_reporter,
                 is_saved: false,
             }
         }
@@ -120,40 +185,31 @@ mod save_tracker {
 
     impl SaveTracker<World, String> {
         /// Create a SaveTracker for an already saved value.
-        pub fn saved(value: World, id: WorldId) -> Self {
+        pub fn saved(value: World, id: WorldId, error_reporter: WorldManagerErrorReporter) -> Self {
             Self {
                 value,
                 key: id.to_string(),
+                error_reporter,
                 is_saved: true,
             }
         }
 
         /// Create a SaveTracker for an unsaved value.
-        pub fn unsaved(value: World, id: WorldId) -> Self {
+        pub fn unsaved(
+            value: World,
+            id: WorldId,
+            error_reporter: WorldManagerErrorReporter,
+        ) -> Self {
             Self {
                 value,
                 key: id.to_string(),
+                error_reporter,
                 is_saved: false,
             }
         }
     }
 
-    impl<T, K> SaveTracker<T, K>
-    where
-        K: AsRef<str>,
-    {
-        /// Get the storage key for this item.
-        pub fn key(&self) -> &str {
-            self.key.as_ref()
-        }
-    }
-
     impl<T, K> SaveTracker<T, K> {
-        /// Returns true if the value is saved.
-        pub fn is_saved(&self) -> bool {
-            self.is_saved
-        }
-
         /// Get a mutable reference to the value without marking it as in need of saving.
         pub fn mutate_without_marking_dirty(&mut self) -> &mut T {
             &mut self.value
@@ -247,15 +303,11 @@ pub struct WorldManager {
 
     /// Cached rc-wrapped link back to this component, used for the context managers it provides.
     link: RefEqRc<Scope<Self>>,
-    /// Dispatcher used to send modal dialogs.
-    /// This is stored in a refcell because it doesn't affect our rendering and is only used from
-    /// create and update, so we don't need to use a message to replace it if it ever changes
-    /// (though it shouldn't actually change).
-    /// It has to be wrapped in Option because we need to construct the Rc before we can create the
-    /// callback to pass to receive context updates, but we won't have a value to store until we get
-    /// the context. It should never be None after create.
-    modal_dispatcher: Rc<RefCell<Option<ModalDispatcher>>>,
-    /// Handle which ensure we receive updates to the modal dispatcher if it changes.
+
+    /// Utility used to send modal dialogs on errors.
+    error_reporter: WorldManagerErrorReporter,
+    /// Handle which ensure we receive updates to the modal dispatcher used in the error_reporter if
+    /// it changes.
     _modal_dispatcher_handle: ContextHandle<ModalDispatcher>,
 }
 
@@ -405,13 +457,6 @@ impl WorldManager {
     /// Shared helper to set the current world + database + clear the undo/redo stacks. Does not do
     /// any loading or saving.
     fn set_world_inner(&mut self, mut new_world: WorldTracker) {
-        if !self.world.is_saved() {
-            warn!(
-                "Existing world with key {} not saved before switching worlds (this is OK if the \
-                world is being deleted)",
-                self.world.key(),
-            );
-        }
         // Neither the root rebuild nor metadata pruning should trigger marking the world as dirty,
         // as both of those things can be re-done on future loads without affecting anything else.
         self.database = new_world.mutate_without_marking_dirty().post_load();
@@ -442,7 +487,11 @@ impl WorldManager {
                     // Save the existing world before switching, in case it wasn't already saved.
                     self.world.try_save_if_unsaved();
                     // Set the world, marking it as already saved, since w just loaded it.
-                    self.set_world_inner(WorldTracker::saved(world, world_id));
+                    self.set_world_inner(WorldTracker::saved(
+                        world,
+                        world_id,
+                        self.error_reporter.clone(),
+                    ));
                     // This will always save the world list if it is unsaved, so it will persist the
                     // change to which entry is selected.
                     self.update_world_metadata();
@@ -450,6 +499,32 @@ impl WorldManager {
                 }
                 Err(e) => {
                     warn!("Unable to load world {world_id}: {e}");
+                    match e {
+                        StorageError::KeyNotFound(_) => {
+                            let title = "World Data Missing";
+                            let content = html! {
+                                <p>{"The world you selected appears to be missing from your
+                                browser's storage, so we were unable to load it. Sorry about that."}
+                                </p>
+                            };
+                            self.error_reporter.report_error(title, content);
+                        }
+                        e => {
+                            let title = "Error Loading World";
+                            let content = html! {
+                                <>
+                                <p>{"We were unable to load the world you selected. This may be a \
+                                bug. Your world data seems to still be present, so this may be \
+                                recoverable. For help you can "}{file_a_bug()}{". If you file a \
+                                bug, please include this error message:"}</p>
+                                <pre>
+                                    {"Unable to load world "}{world_id}{": "}{e}
+                                </pre>
+                                </>
+                            };
+                            self.error_reporter.report_error(title, content);
+                        }
+                    }
                     // load_error isn't persisted, so don't bother saving the world state here.
                     entry.meta_mut().load_error = true;
                     // Updating load_error is not a saveable change, so don't mark as needing save.
@@ -469,6 +544,8 @@ impl WorldManager {
             changed_world = true;
             let new_choice = self
                 .worlds
+                // Don't worry about avoiding makring as mutated for the iterator, because both
+                // paths result in mutation eventually.
                 .iter_mut()
                 .find_map(|mut world_meta| {
                     // Skip the world we are deleting.
@@ -479,12 +556,14 @@ impl WorldManager {
                         Ok(world) => {
                             world_meta.select();
                             // Just loaded this world, so it is already saved.
-                            Some(WorldTracker::saved(world, world_meta.id()))
+                            Some(WorldTracker::saved(
+                                world,
+                                world_meta.id(),
+                                self.error_reporter.clone(),
+                            ))
                         }
                         Err(e) => {
                             warn!("Unable to load world {}: {e}", world_meta.id());
-                            // No need to mark is_worlds_list_saved = false because load_error is
-                            // not persisted.
                             world_meta.load_error = true;
                             None
                         }
@@ -498,7 +577,7 @@ impl WorldManager {
                     let id = entry.id();
                     entry.insert_and_select(world.metadata());
                     // This is a new world, so it's not saved.
-                    WorldTracker::unsaved(world, id)
+                    WorldTracker::unsaved(world, id, self.error_reporter.clone())
                 });
             // The current world is being deleted, so don't bother proactively saving it before the
             // set_world call.
@@ -541,7 +620,11 @@ impl WorldManager {
         let world = World::new();
         let id = entry.id();
         entry.insert_and_select(world.metadata());
-        self.set_world_inner(WorldTracker::unsaved(world, id));
+        self.set_world_inner(WorldTracker::unsaved(
+            world,
+            id,
+            self.error_reporter.clone(),
+        ));
         self.world.try_save_if_unsaved();
         self.worlds.try_save_if_unsaved();
         true
@@ -598,35 +681,13 @@ impl Component for WorldManager {
             })
             .expect("WorldManager must be nesed in the ModalManager");
         *modal_dispatcher.borrow_mut() = Some(inner_dispatcher);
+        let error_reporter = WorldManagerErrorReporter { modal_dispatcher };
 
-        enum SaveStatus {
-            /// User has not interacted with the app yet (because there is no persisted data), so we
-            /// should not save yet.
-            ShouldNotSave,
-            /// There was persisted data already, so the user has been here before, so we are
-            /// allowed to save state if the loading process causes new changes.
-            /// If we see this in combination with is_worlds_list_saved = false, then we will save
-            /// the worlds list, but not the world.
-            MaySave,
-            /// There was persisted data already, so the user has been here before. The world has
-            /// changed as well, so we should definitely save it. If we encounter this, we will save
-            /// the world and maybe save the world metadata, if it is unsaved.
-            ShouldSave,
-        }
-
-        // Whether we should save during create. Only true if there is already saved state in local
-        // storage.
-        let mut save_status = SaveStatus::ShouldNotSave;
-        let mut is_worlds_list_saved;
         let (worlds, mut world) = match load_worlds_list() {
-            Ok(mut worlds) => {
-                // If the world list was loaded successfully, then it's already persisted, and we
-                // are allowed to save.
-                save_status = SaveStatus::MaySave;
-                // At this point we can mark the world list as laready saved, and will only unmark
-                // it if we make further changes to it.
-                is_worlds_list_saved = true;
-                let world = match load_world(worlds.selected_id()) {
+            Ok(worlds) => {
+                // World list is currently saved.
+                let mut worlds = WorldListTracker::saved(worlds, error_reporter.clone());
+                let mut world = match load_world(worlds.selected_id()) {
                     Ok(world) => {
                         // Propagate the global metadata empty balances state.
                         // This will trigger saving user settings, which is fine because we loaded
@@ -635,125 +696,160 @@ impl Component for WorldManager {
                         user_settings_dispatcher
                             .maybe_init_from_world(world.global_metadata.hide_empty_balances);
                         let world_meta = world.metadata();
+                        let id = worlds.selected_id();
                         // Update the world's metadata on loading, if it is different.
-                        match worlds.selected_entry() {
-                            WorldEntry::Present(entry) if *entry.meta() == world_meta => {}
+                        let mut handle = worlds.maybe_mutate();
+                        match handle.selected_entry() {
+                            WorldEntry::Present(entry) if *entry.meta() == world_meta => {
+                                handle.no_change();
+                            }
                             absent_or_different => {
                                 absent_or_different.insert_or_update_and_select(world_meta);
-                                is_worlds_list_saved = false;
                             }
                         }
-                        world
+                        // This world is currently already saved since we just loaded it.
+                        WorldTracker::saved(world, id, error_reporter.clone())
                     }
                     Err(e) => {
-                        let selected = match worlds.selected_entry() {
+                        // The error indicator isn't persisted, so this step doesn't need to mark
+                        // the world as dirty.
+                        let selected = match worlds.mutate_without_marking_dirty().selected_entry()
+                        {
                             WorldEntry::Present(mut entry) => {
-                                // load_error isn't persisted, so don't mark the world list as
-                                // not-saved yet here.
                                 entry.meta_mut().load_error = true;
                                 entry.id()
                             }
                             WorldEntry::Absent(entry) => entry.id(),
                         };
                         warn!("Failed to load selected world {selected}: {e}");
+                        match e {
+                            StorageError::KeyNotFound(_) => {
+                                let title = "World Data Missing";
+                                let content = html! {
+                                    <>
+                                    <p>{"The world you had selected when you last opened the app \
+                                    appears to be missing from your browser's storage, so we were \
+                                    unable to load it. Sorry about that."}</p>
+                                    <p>{"You have been automatically placed in a new world."}</p>
+                                    </>
+                                };
+                                error_reporter.report_error(title, content);
+                            }
+                            e => {
+                                let title = "Error Loading World";
+                                let content = html! {
+                                    <>
+                                    <p>{"We were unable to load the world that you had selected \
+                                    when you last used the app. This may be a bug. Your world data \
+                                    seems to still be present, so this may be recoverable."}</p>
+                                    <p>{"For now, you have been automatically placed in a new, \
+                                    empty world. You can continue with this new world or you can "}
+                                    {file_a_bug()}{". If you file a bug, please include this error \
+                                    message:"}</p>
+                                    <pre>
+                                        {"Failed to load selected world "}{selected}{": "}{e}
+                                    </pre>
+                                    </>
+                                };
+                                error_reporter.report_error(title, content);
+                            }
+                        }
                         let entry = worlds.allocate_new_id();
                         let world = World::new();
-                        save_status = SaveStatus::ShouldSave;
+                        let id = entry.id();
                         entry.insert_and_select(world.metadata());
-                        is_worlds_list_saved = false;
-                        world
+                        // The newly created world isn't saved yet.
+                        WorldTracker::unsaved(world, id, error_reporter.clone())
                     }
                 };
+                // The worlds list already existed on the system, so we can save if there are any
+                // changes or a new world.
+                world.try_save_if_unsaved();
+                worlds.try_save_if_unsaved();
                 (worlds, world)
             }
-            Err(e) => {
-                if !matches!(e, StorageError::KeyNotFound(_)) {
-                    modal_dispatcher
-                        .borrow()
-                        .as_ref()
-                        .unwrap()
-                        .builder()
-                        .class("WorldManagerError")
-                        .title("Error loading world list")
-                        .content(html! {
-                            <>
-                                <p>{"A world list was found in your browser's local storage, but \
-                                it could not be loaded. Any worlds you had may still exist, and \
-                                your world list may still be recoverable, however if you make any \
-                                changes in the app, your previous world list will be overwritten \
-                                (though previously existing worlds will still exist if they are \
-                                still in storage)."}</p>
-                                <p>{"You can either continue using the app, which will just give \
-                                you a new, empty world list and overwrite the existing broken one, \
-                                or you can "}
-                                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
-                                    {"file a bug on GitHub"}
-                                </a>{". If you file a bug, please include any messages from your \
-                                browser's error console, if you know how to do that."}
-                                </p>
-                            </>
-                        })
-                        .kind(ModalOk::close())
-                        .build();
-                    warn!("Failed to load the world list: {}", e);
-                    // If a world list exists and just failed to parse, don't try to load a v1
-                    // world, just fall back to an empty world and don't mark as needing a save.
-                    let id = WorldId::new();
-                    let world = World::new();
-                    let worlds = WorldList::new(id, world.metadata());
-                    is_worlds_list_saved = false;
-                    (worlds, world)
-                } else {
-                    let id = WorldId::new();
-                    match v1storage::try_load_v1() {
-                        Some(v1world) => {
-                            // If there is a v1 world, we need to persist it under the v1.2.x world
-                            // storage keys.
-                            save_status = SaveStatus::ShouldSave;
-                            // In case we loaded a v1 world, try to init the empty balances state.
-                            // This will persist user metadata, which is fine because we loaded data
-                            // from storage already.
-                            #[allow(deprecated)]
-                            user_settings_dispatcher
-                                .maybe_init_from_world(v1world.global_metadata.hide_empty_balances);
-                            let worlds = WorldList::new(id, v1world.metadata());
-                            is_worlds_list_saved = false;
-                            (worlds, v1world)
-                        }
-                        None => {
-                            let world = World::new();
-                            let worlds = WorldList::new(id, world.metadata());
-                            is_worlds_list_saved = false;
-                            // If nothing was already in storage, avoid saving unless the user
-                            // interacts with the app.
-                            (worlds, world)
-                        }
+            Err(StorageError::KeyNotFound(_)) => {
+                // If the world manager was not found, try to load from a v1 world or just start
+                // from scratch.
+                let id = WorldId::new();
+                match v1storage::try_load_v1() {
+                    Some(v1world) => {
+                        // If there is a v1 world, we need to persist it under the v1.2.x world
+                        // storage keys.
+                        // In case we loaded a v1 world, try to init the empty balances state.
+                        // This will persist user metadata, which is fine because we loaded data
+                        // from storage already.
+                        #[allow(deprecated)]
+                        user_settings_dispatcher
+                            .maybe_init_from_world(v1world.global_metadata.hide_empty_balances);
+                        let mut world = WorldTracker::unsaved(v1world, id, error_reporter.clone());
+                        let mut worlds = WorldListTracker::unsaved(
+                            WorldList::new(id, world.metadata()),
+                            error_reporter.clone(),
+                        );
+                        // Since there was already a v1 world in the browser, we can persist
+                        // immediately.
+                        world.try_save_if_unsaved();
+                        worlds.try_save_if_unsaved();
+                        (worlds, world)
+                    }
+                    None => {
+                        let world = World::new();
+                        let worlds = WorldList::new(id, world.metadata());
+                        // If nothing was already in storage, avoid saving unless the user
+                        // interacts with the app.
+                        (
+                            WorldListTracker::unsaved(worlds, error_reporter.clone()),
+                            WorldTracker::unsaved(world, id, error_reporter.clone()),
+                        )
                     }
                 }
             }
+            Err(e) => {
+                let error_message = html! {
+                    <>
+                        <p>{"A world list was found in your browser's local storage, but it could \
+                        not be loaded. Any worlds you had may still exist, and your world list may \
+                        still be recoverable, however if you make any changes in the app, your \
+                        previous world list will be overwritten. Any existing worlds will not be \
+                        overwritten, though they cannot be retrieved from in the app."}</p>
+                        <p>{"You can either continue using the app, which will just give you a \
+                        new, empty world list and overwrite the existing broken one, or you can "}
+                        {file_a_bug()}{". If you file a bug, please include this message:"}</p>
+                        <pre>
+                            {"Failed to load the world list: "}{&e}
+                        </pre>
+                    </>
+                };
+                error_reporter.report_error("Error loading world list", error_message);
+                warn!("Failed to load the world list: {}", e);
+                // If a world list exists and just failed to parse, don't try to load a v1
+                // world, just fall back to an empty world and don't mark as needing a save.
+                let id = WorldId::new();
+                let world = World::new();
+                let worlds = WorldList::new(id, world.metadata());
+                // Don't save yet to avoid overwriting what was already in storage. These will both
+                // be saved if either is modified.
+                (
+                    WorldListTracker::unsaved(worlds, error_reporter.clone()),
+                    WorldTracker::unsaved(world, id, error_reporter.clone()),
+                )
+            }
         };
-        let database = world.post_load();
+        // The post-load operations should not create a new save, since they can be repeated on
+        // every load.
+        let database = world.mutate_without_marking_dirty().post_load();
 
-        let mut manager = Self {
-            is_worlds_list_saved,
+        Self {
             worlds,
             world,
             database,
             undo_stack: VecDeque::with_capacity(MAX_UNDO),
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
             link: RefEqRc::new(ctx.link().clone()),
-            modal_dispatcher,
+            error_reporter,
             _modal_dispatcher_handle: modal_dispatcher_handle,
-        };
-        match save_status {
-            SaveStatus::ShouldNotSave => {}
-            SaveStatus::MaySave => manager.save_worlds_list_if_unsaved(),
-            SaveStatus::ShouldSave => {
-                manager.save_world();
-                manager.save_worlds_list_if_unsaved();
-            }
         }
-        manager
     }
 
     /// Update the WorldManager.
