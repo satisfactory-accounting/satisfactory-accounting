@@ -1,5 +1,6 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, VecDeque};
+use std::marker::PhantomData;
 use std::mem;
 use std::rc::Rc;
 
@@ -8,6 +9,7 @@ use gloo::storage::{LocalStorage, Storage as _};
 use log::{error, info, warn};
 use satisfactory_accounting::accounting::Node;
 use satisfactory_accounting::database::Database;
+use thiserror::Error;
 use uuid::Uuid;
 use yew::html::Scope;
 use yew::{
@@ -20,7 +22,7 @@ use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettingsDispatcher;
 use crate::world::list::WorldEntry;
 use crate::world::{
-    v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMeta, NodeMetas, WorldId,
+    v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMeta, NodeMetas, SaveFile, WorldId,
 };
 use crate::world::{World, WorldList};
 
@@ -303,6 +305,8 @@ pub struct WorldManager {
 
     /// Cached rc-wrapped link back to this component, used for the context managers it provides.
     link: RefEqRc<Scope<Self>>,
+    /// World reader which tracks the current world.
+    world_reader: WorldReader,
 
     /// Utility used to send modal dialogs on errors.
     error_reporter: WorldManagerErrorReporter,
@@ -839,6 +843,7 @@ impl Component for WorldManager {
         // The post-load operations should not create a new save, since they can be repeated on
         // every load.
         let database = world.mutate_without_marking_dirty().post_load();
+        let world_reader = WorldReader::new(worlds.selected_id(), world.clone());
 
         Self {
             worlds,
@@ -847,6 +852,7 @@ impl Component for WorldManager {
             undo_stack: VecDeque::with_capacity(MAX_UNDO),
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
             link: RefEqRc::new(ctx.link().clone()),
+            world_reader,
             error_reporter,
             _modal_dispatcher_handle: modal_dispatcher_handle,
         }
@@ -854,7 +860,7 @@ impl Component for WorldManager {
 
     /// Update the WorldManager.
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
+        let redraw = match msg {
             Msg::SetRoot { root } => self.set_root(root),
             Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
             Msg::BatchUpdateNodeMeta(updates) => self.batch_update_node_meta(updates),
@@ -864,13 +870,24 @@ impl Component for WorldManager {
             Msg::SetWorld(world_id) => self.set_world(world_id),
             Msg::DeleteWorld(world_id) => self.delete_world(world_id),
             Msg::CreateWorld => self.create_world(),
-        }
+        };
+        // This should be relatively cheap because all the content of the world is Rc'd.
+        // This being held here does prevent the Rcs from ever successfully doing a Rc::make_mut,
+        // but Yew holds Rcs for all these things anyway, so those make_mut calls don't work
+        // already.
+        //
+        // Replacing the old world does cause it to be dropped, but its contents would be dropped
+        // elsewhere regardless if this replacement call causes them to be dropped.
+        self.world_reader
+            .set(self.worlds.selected_id(), self.world.clone());
+        redraw
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
             <ContextProvider<WorldList> context={self.worlds.clone()}>
             <ContextProvider<Database> context={self.database.clone()}>
+            <ContextProvider<WorldReader> context={self.world_reader.clone()}>
             <ContextProvider<WorldRoot> context={WorldRoot(self.world.root.clone())}>
             <ContextProvider<NodeMetas> context={self.world.node_metadata.clone()}>
             <ContextProvider<WorldListDispatcher> context={self.world_list_dispatcher()}>
@@ -884,6 +901,7 @@ impl Component for WorldManager {
             </ContextProvider<WorldListDispatcher>>
             </ContextProvider<NodeMetas>>
             </ContextProvider<WorldRoot>>
+            </ContextProvider<WorldReader>>
             </ContextProvider<Database>>
             </ContextProvider<WorldList>>
         }
@@ -1104,4 +1122,102 @@ impl UndoDispatcher {
 pub fn use_undo_controller() -> UndoController {
     use_context::<UndoController>()
         .expect("use_undo_controller can only be used from within a child of the WorldManager")
+}
+
+/// This context type contains the current World and WorldId, but does not trigger context updates
+/// when the world changes. This is useful for things which need to read the world on-demand but
+/// don't need to re-render every time the world changes.
+#[derive(Debug, Clone, PartialEq)]
+struct WorldReader {
+    inner: RefEqRc<RefCell<WorldReaderInner>>,
+}
+
+impl WorldReader {
+    /// Create a new world reader.
+    fn new(id: WorldId, world: World) -> Self {
+        Self {
+            inner: RefEqRc::new(RefCell::new(WorldReaderInner { id, world })),
+        }
+    }
+
+    /// Borrow the current world.
+    fn borrow(&self) -> WorldRef {
+        WorldRef {
+            inner: self.inner.borrow(),
+        }
+    }
+
+    /// Updates the world. This does not trigger context changes but does mean that future reads
+    /// will get the new value.
+    fn set(&self, id: WorldId, world: World) {
+        let mut inner = self.inner.borrow_mut();
+        inner.id = id;
+        inner.world = world;
+    }
+}
+
+#[derive(Debug)]
+struct WorldReaderInner {
+    /// Id of the current world.
+    id: WorldId,
+    world: World,
+}
+
+/// Borrow of the WorldFetch. Holding this prevents the world from being updated.
+struct WorldRef<'a> {
+    inner: Ref<'a, WorldReaderInner>,
+}
+
+impl<'a> WorldRef<'a> {
+    /// Gets the ID of the current world.
+    fn id(&self) -> WorldId {
+        self.inner.id
+    }
+
+    /// Gets the current worl.
+    fn world(&self) -> &World {
+        &self.inner.world
+    }
+}
+
+/// Errors which can occur when fetching
+#[derive(Error, Debug)]
+pub enum FetchSaveFileError {
+    #[error("Error loading the specified world from storage: {0}")]
+    StorageError(#[from] StorageError),
+}
+
+/// Utility for fetching save files for particular worlds.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SaveFileFetcher {
+    reader: WorldReader,
+}
+
+impl SaveFileFetcher {
+    /// Get the save file for the given world.
+    pub fn get_save_file(&self, id: WorldId) -> Result<SaveFile, FetchSaveFileError> {
+        {
+            let current = self.reader.borrow();
+            // Retrieving the current world this way ensures that the download button still works even
+            // if the current world hasn't been saved yet. That can only happen if the user is new and
+            // hasn't made any edits yet or if the world list was corrupted and we just dropped into a
+            // new world, but we don't want the download buttons to break in those cases.
+            if current.id() == id {
+                return Ok(SaveFile::Version1Minor2(current.world().clone()));
+            }
+        }
+        // Note: this currently does not optimize for the case where the requested world is
+        // currently loaded, though we do have the option to do so in the future if desired, since
+        // we force caller to get this type through a hook.
+        let world = load_world(id)?;
+        Ok(SaveFile::Version1Minor2(world))
+    }
+}
+
+/// Gets the SaveFileFetcher.
+#[hook]
+pub fn use_save_file_fetcher() -> SaveFileFetcher {
+    let reader = use_context::<WorldReader>()
+        .expect("use_save_file_fetcher can only be used from within a child of the WorldManager");
+    SaveFileFetcher { reader }
 }

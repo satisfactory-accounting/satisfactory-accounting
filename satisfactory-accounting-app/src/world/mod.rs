@@ -14,11 +14,13 @@ pub use self::id::{ParseWorldIdError, WorldId};
 pub use self::list::{WorldList, WorldMetadata};
 #[allow(unused_imports)]
 pub use self::manager::{
-    use_db, use_db_controller, use_undo_controller, use_world_dispatcher, use_world_list,
-    use_world_list_dispatcher, use_world_root, DbController, UndoController, UndoDispatcher,
-    WorldDispatcher, WorldListDispatcher, WorldManager,
+    use_db, use_db_controller, use_save_file_fetcher, use_undo_controller, use_world_dispatcher,
+    use_world_list, use_world_list_dispatcher, use_world_root, DbController, FetchSaveFileError,
+    SaveFileFetcher, UndoController, UndoDispatcher, WorldDispatcher, WorldListDispatcher,
+    WorldManager,
 };
 pub use self::meta::{NodeMeta, NodeMetas};
+pub use self::savefile::SaveFile;
 #[allow(unused_imports)]
 pub use self::worldwindow::{
     use_world_chooser_window, WorldChooserWindow, WorldChooserWindowManager,
@@ -30,12 +32,13 @@ mod id;
 pub mod list;
 mod manager;
 mod meta;
+mod savefile;
 mod v1storage;
 mod worldwindow;
 
 /// A single world with a particular database and structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct World {
+pub struct World {
     /// Which database is used for this world.
     database: DatabaseChoice,
     /// Root node for this world.

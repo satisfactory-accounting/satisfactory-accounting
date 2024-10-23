@@ -41,6 +41,7 @@
             [name] minmax(15em, 25em)
             [version] minmax(min-content, auto)
             [open] minmax(min-content, 1fr)
+            [download] min-content
             [delete] min-content
             [end];
 
@@ -58,9 +59,14 @@
         }
     }
 
-    .create-button {
+    .create-upload {
+        display: flex;
+        flex-direction: row;
+        justify-content: right;
+        align-items: center;
+        gap: 5px;
+
         grid-column: open / end;
-        justify-self: right;
     }
 }
 
@@ -74,6 +80,10 @@
     .switch-to-world {
         justify-self: right;
         grid-column: open;
+    }
+
+    .download-world {
+        grid-column: download;
     }
 
     .delete-world {
