@@ -5,6 +5,7 @@ use yew::{function_component, html, use_callback, Html};
 use menubar::MenuBar;
 use titlebar::TitleBar;
 
+use crate::bugreport::ISSUES_PAGE;
 use crate::inputs::button::{Button, LinkButton};
 use crate::material::material_icon;
 use crate::user_settings::{
@@ -86,8 +87,7 @@ pub fn AppHeader() -> Html {
             <Button title="Settings" onclick={on_settings}>
                 {material_icon("settings")}
             </Button>
-            <LinkButton title="Bug Report" target="_blank"
-                href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
+            <LinkButton title="Bug Report" target="_blank" href={ISSUES_PAGE}>
                 {material_icon("bug_report")}
             </LinkButton>
         </>

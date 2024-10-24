@@ -7,6 +7,7 @@ use yew::{
     Properties,
 };
 
+use crate::bugreport::file_a_bug;
 use crate::inputs::button::Button;
 use crate::material::material_icon;
 use crate::modal::{use_modal_dispatcher, CancelDelete, ModalHandle, ModalOk};
@@ -118,14 +119,34 @@ fn WorldListRow(
                         .title("World content not found")
                         .content(html! {
                             <>
-                                <p>{"The content for world "}{name}{" was not found in your \
-                                browser, so we are unable to download it. Sorry about that."}</p>
+                                <p>{"The content for world \""}{name}{"\" was not found in your \
+                                browser's storage, so we are unable to download it. Sorry about
+                                that."}</p>
                             </>
                         })
                         .build()
                         .persist();
                 }
-                _ => todo!(),
+                Err(FetchSaveFileError::StorageError(e)) => {
+                    return modals
+                        .builder()
+                        .class("world-download-error")
+                        .kind(ModalOk::close())
+                        .title("World could not be loaded")
+                        .content(html! {
+                            <>
+                                <p>{"We were unable to load the content for world \""}{name}{"\". \
+                                Your world data seems to still be present, so this may be \
+                                recoverable. For help you can "}{file_a_bug()}{". If you file a \
+                                bug, please include this error message:"}</p>
+                                <pre>
+                                    {"Unable to load world "}{id}{": "}{e}
+                                </pre>
+                            </>
+                        })
+                        .build()
+                        .persist();
+                }
             };
         },
     );

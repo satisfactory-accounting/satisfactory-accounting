@@ -1,6 +1,5 @@
 use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, VecDeque};
-use std::marker::PhantomData;
 use std::mem;
 use std::rc::Rc;
 
@@ -17,6 +16,7 @@ use yew::{
     ContextProvider, Html, Properties,
 };
 
+use crate::bugreport::file_a_bug;
 use crate::modal::{ModalDispatcher, ModalOk};
 use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettingsDispatcher;
@@ -95,14 +95,7 @@ impl WorldManagerErrorReporter {
     }
 }
 
-// Creates a link with the text "file a bug on GitHub", which points to the github issues page.
-fn file_a_bug() -> Html {
-    html! {
-        <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
-            {"file a bug on GitHub"}
-        </a>
-    }
-}
+
 
 mod save_tracker {
     use std::ops::{Deref, DerefMut};
@@ -112,7 +105,8 @@ mod save_tracker {
     use serde::Serialize;
     use yew::html;
 
-    use crate::world::manager::{file_a_bug, WorldManagerErrorReporter, WORLD_MAP_KEY};
+    use crate::bugreport::file_a_bug;
+    use crate::world::manager::{WorldManagerErrorReporter, WORLD_MAP_KEY};
     use crate::world::{World, WorldId, WorldList};
 
     /// Tracks whether the given value has been saved.
