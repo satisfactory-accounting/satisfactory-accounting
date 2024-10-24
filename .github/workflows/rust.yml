@@ -15,19 +15,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Check Formatting
       run: cargo fmt --all -- --check
     - name: Install wasm
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: wasm32-unknown-unknown
+        targets: wasm32-unknown-unknown
     - name: Install Trunk
-      uses: actions-rs/install@v0.1
-      with:
-        crate: trunk
-        version: "0.17.5"
+      run: cargo install --version 0.21.1
     - name: Build
       run: trunk build
       working-directory: ./satisfactory-accounting-app
