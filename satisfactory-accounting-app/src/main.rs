@@ -9,13 +9,13 @@ use crate::app::App;
 
 mod app;
 mod appheader;
+mod bugreport;
 mod collections;
 mod inputs;
 mod material;
 mod modal;
 mod node_display;
 mod notifications;
-mod bugreport;
 mod overlay_window;
 mod refeqrc;
 mod storagenotice;

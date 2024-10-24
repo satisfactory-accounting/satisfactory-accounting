@@ -89,3 +89,37 @@ pub fn LinkButton(
         </a>
     }
 }
+
+#[derive(Debug, PartialEq, Properties)]
+pub struct UploadProps {
+    /// Contents of the button.
+    #[prop_or_default]
+    pub children: Html,
+
+    /// Extra classes to apply to the button.
+    #[prop_or_default]
+    pub class: Classes,
+
+    /// Title to set on the button element.
+    #[prop_or_default]
+    pub title: Option<AttrValue>,
+}
+
+/// A button that accepts a file upload.
+#[function_component]
+pub fn UploadButton(
+    UploadProps {
+        children,
+        class,
+        title,
+    }: &UploadProps,
+) -> Html {
+    let class = classes!("Button", class.clone());
+
+    html! {
+        <label {class} {title}>
+            <input type="file" accept="application/json" />
+            {children.clone()}
+        </label>
+    }
+}

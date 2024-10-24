@@ -12,7 +12,7 @@ use yew::{
 };
 
 use crate::bugreport::file_a_bug;
-use crate::inputs::button::Button;
+use crate::inputs::button::{Button, UploadButton};
 use crate::material::material_icon;
 use crate::modal::{use_modal_dispatcher, CancelDelete, ModalHandle, ModalOk};
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
@@ -66,10 +66,10 @@ pub fn WorldChooserWindow() -> Html {
                     <span class="world-name">{"World Name"}</span>
                     <span class="world-version">{"World Version"}</span>
                     <span class="create-upload">
-                        <Button class="green" title="Upload">
+                        <UploadButton class="green" title="Upload">
                             {material_icon("upload")}
                             <span>{"Upload World"}</span>
-                        </Button>
+                        </UploadButton>
                         <Button class="green" onclick={create_world} title="Create">
                             {material_icon("add")}
                             <span>{"Create New World"}</span>
@@ -158,7 +158,7 @@ fn WorldListRow(
                         .persist();
                 }
             };
-            let json = match  serde_json::to_string(&save_file) {
+            let json = match serde_json::to_string(&save_file) {
                 Ok(json) => json,
                 Err(e) => {
                     return modals

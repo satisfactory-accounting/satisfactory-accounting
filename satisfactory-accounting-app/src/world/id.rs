@@ -3,12 +3,11 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use uuid::Uuid;
 use uuid::fmt::Simple;
+use uuid::Uuid;
 
 /// Formatter type which formats a WorldId without any prefix, just the raw UUID.
 pub type Unprefixed = Simple;
-
 
 /// Unique ID of a world.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
