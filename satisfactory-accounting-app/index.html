@@ -8,7 +8,9 @@
      rel="stylesheet" />
 
     <title>Satisfactory Accounting</title>
-    <link data-trunk rel="rust" />
+    <!-- We have to disable wasm-opt for now because Rust recently started using table.fill and wasm
+    opt requires a flag to support that, and trunk gives us no way to pass that flag. -->
+    <link data-trunk rel="rust" data-wasm-opt="0" />
     <link data-trunk rel="scss" href="src/main.scss" />
     <link data-trunk rel="scss" href="src/fonts.scss" />
 
