@@ -1,7 +1,6 @@
 FROM rust:latest as builder
 RUN rustup target add wasm32-unknown-unknown
-# Trunk 0.18.0 breaks static JS with bad minification.
-RUN cargo install --locked trunk@0.17.5
+RUN cargo install --locked trunk@0.21.1
 WORKDIR /usr/src/satisfactory-accounting
 COPY . .
 RUN cd satisfactory-accounting-app && trunk build --release
