@@ -4,6 +4,11 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+use uuid::fmt::Simple;
+
+/// Formatter type which formats a WorldId without any prefix, just the raw UUID.
+pub type Unprefixed = Simple;
+
 
 /// Unique ID of a world.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
@@ -13,6 +18,11 @@ impl WorldId {
     /// Creates a new random world ID.
     pub fn new() -> Self {
         Self(Uuid::new_v4())
+    }
+
+    /// Get a formatter that formats the underlying UUID without the path prefix.
+    pub fn as_unprefixed(&self) -> &Unprefixed {
+        self.0.as_simple()
     }
 }
 

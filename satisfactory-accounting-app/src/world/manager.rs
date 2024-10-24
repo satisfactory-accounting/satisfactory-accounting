@@ -1,6 +1,7 @@
 use std::cell::{Ref, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::mem;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use gloo::storage::errors::StorageError;
@@ -59,6 +60,8 @@ pub enum Msg {
     DeleteWorld(WorldId),
     /// Create a new world and switch to it.
     CreateWorld,
+    /// Mark an error on the given world id.
+    MarkError(WorldId),
 }
 
 /// Wrapper for reporting errors from the world manager.
@@ -94,8 +97,6 @@ impl WorldManagerErrorReporter {
             .persist()
     }
 }
-
-
 
 mod save_tracker {
     use std::ops::{Deref, DerefMut};
@@ -298,7 +299,7 @@ pub struct WorldManager {
     redo_stack: VecDeque<UnReDoState>,
 
     /// Cached rc-wrapped link back to this component, used for the context managers it provides.
-    link: RefEqRc<Scope<Self>>,
+    link: Link,
     /// World reader which tracks the current world.
     world_reader: WorldReader,
 
@@ -628,17 +629,16 @@ impl WorldManager {
         true
     }
 
-    /// Creates the [`WorldListDispatcher`] for this [`WorldManager`].
-    fn world_list_dispatcher(&self) -> WorldListDispatcher {
-        WorldListDispatcher {
-            link: self.link.clone(),
-        }
-    }
-
-    /// Creates the [`WorldDispatcher`] for this [`WorldManager`].
-    fn world_dispatcher(&self) -> WorldDispatcher {
-        WorldDispatcher {
-            link: self.link.clone(),
+    /// Message handler for MarkError. Adds an error marker to the given world.
+    fn mark_error(&mut self, id: WorldId) -> bool {
+        // The error indicator is not saved, so we don't need to mark dirty on this change.
+        match self.worlds.mutate_without_marking_dirty().get_mut(id) {
+            Some(mut world_meta) if !world_meta.load_error => {
+                world_meta.load_error = true;
+                true
+            }
+            // World not found or already marked with an error, so no change to redraw.
+            _ => false,
         }
     }
 
@@ -845,7 +845,7 @@ impl Component for WorldManager {
             database,
             undo_stack: VecDeque::with_capacity(MAX_UNDO),
             redo_stack: VecDeque::with_capacity(MAX_UNDO),
-            link: RefEqRc::new(ctx.link().clone()),
+            link: Link::new(ctx.link().clone()),
             world_reader,
             error_reporter,
             _modal_dispatcher_handle: modal_dispatcher_handle,
@@ -864,6 +864,7 @@ impl Component for WorldManager {
             Msg::SetWorld(world_id) => self.set_world(world_id),
             Msg::DeleteWorld(world_id) => self.delete_world(world_id),
             Msg::CreateWorld => self.create_world(),
+            Msg::MarkError(id) => self.mark_error(id),
         };
         // This should be relatively cheap because all the content of the world is Rc'd.
         // This being held here does prevent the Rcs from ever successfully doing a Rc::make_mut,
@@ -884,15 +885,13 @@ impl Component for WorldManager {
             <ContextProvider<WorldReader> context={self.world_reader.clone()}>
             <ContextProvider<WorldRoot> context={WorldRoot(self.world.root.clone())}>
             <ContextProvider<NodeMetas> context={self.world.node_metadata.clone()}>
-            <ContextProvider<WorldListDispatcher> context={self.world_list_dispatcher()}>
-            <ContextProvider<WorldDispatcher> context={self.world_dispatcher()}>
+            <ContextProvider<Link> context={self.link.clone()}>
             <ContextProvider<UndoController> context={self.undo_controller()}>
             <ContextProvider<DbController> context={self.db_controller()}>
                 {ctx.props().children.clone()}
             </ContextProvider<DbController>>
             </ContextProvider<UndoController>>
-            </ContextProvider<WorldDispatcher>>
-            </ContextProvider<WorldListDispatcher>>
+            </ContextProvider<Link>>
             </ContextProvider<NodeMetas>>
             </ContextProvider<WorldRoot>>
             </ContextProvider<WorldReader>>
@@ -930,6 +929,28 @@ fn load_world(id: WorldId) -> Result<World, StorageError> {
     Ok(world)
 }
 
+/// Wrapper for the link to the world manager which makes its context package private.
+#[derive(Debug, PartialEq, Clone)]
+#[repr(transparent)]
+struct Link(RefEqRc<Scope<WorldManager>>);
+
+impl Link {
+    /// Creates a new link.
+    #[inline]
+    fn new(link: Scope<WorldManager>) -> Self {
+        Self(RefEqRc::new(link))
+    }
+}
+
+impl Deref for Link {
+    type Target = Scope<WorldManager>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &*self.0
+    }
+}
+
 /// Gets the current world list.
 #[hook]
 pub fn use_world_list() -> WorldList {
@@ -941,7 +962,7 @@ pub fn use_world_list() -> WorldList {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorldListDispatcher {
     /// Link used to send messages back to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl WorldListDispatcher {
@@ -964,8 +985,9 @@ impl WorldListDispatcher {
 /// Gets the dispatcher used to manage the world list.
 #[hook]
 pub fn use_world_list_dispatcher() -> WorldListDispatcher {
-    use_context::<WorldListDispatcher>()
-        .expect("use_world_list_dispatcher can only be used from within a child of WorldManager")
+    let link = use_context::<Link>()
+        .expect("use_world_list_dispatcher can only be used from within a child of WorldManager");
+    WorldListDispatcher { link }
 }
 
 /// Context wrapper for the root node of the current world.
@@ -985,7 +1007,7 @@ pub fn use_world_root() -> Node {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorldDispatcher {
     /// Link used to send messages back to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl WorldDispatcher {
@@ -1008,8 +1030,9 @@ impl WorldDispatcher {
 /// Gets the world dispatcher.
 #[hook]
 pub fn use_world_dispatcher() -> WorldDispatcher {
-    use_context::<WorldDispatcher>()
-        .expect("use_world_dispatcher can only be used from within a child of WorldManager")
+    let link = use_context::<Link>()
+        .expect("use_world_dispatcher can only be used from within a child of WorldManager");
+    WorldDispatcher { link }
 }
 
 /// Get the database from context.
@@ -1024,7 +1047,7 @@ pub struct DbController {
     /// Current database, if the current database is not custom.
     current: Option<DatabaseVersionSelector>,
     /// Link used to send messages to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl DbController {
@@ -1046,7 +1069,7 @@ impl DbController {
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbDispatcher {
     /// Link used to send messages to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl DbDispatcher {
@@ -1071,7 +1094,7 @@ pub struct UndoController {
     /// Whether there was any state available to redo.
     has_redo: bool,
     /// Link used to send messages to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl UndoController {
@@ -1096,7 +1119,7 @@ impl UndoController {
 #[derive(Debug, Clone, PartialEq)]
 pub struct UndoDispatcher {
     /// Link used to send messages to the WorldManager.
-    link: RefEqRc<Scope<WorldManager>>,
+    link: Link,
 }
 
 impl UndoDispatcher {
@@ -1185,6 +1208,7 @@ pub enum FetchSaveFileError {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SaveFileFetcher {
     reader: WorldReader,
+    link: Link,
 }
 
 impl SaveFileFetcher {
@@ -1203,7 +1227,7 @@ impl SaveFileFetcher {
         // Note: this currently does not optimize for the case where the requested world is
         // currently loaded, though we do have the option to do so in the future if desired, since
         // we force caller to get this type through a hook.
-        let world = load_world(id)?;
+        let world = load_world(id).inspect_err(|_| self.link.send_message(Msg::MarkError(id)))?;
         Ok(SaveFile::Version1Minor2(world))
     }
 }
@@ -1213,5 +1237,7 @@ impl SaveFileFetcher {
 pub fn use_save_file_fetcher() -> SaveFileFetcher {
     let reader = use_context::<WorldReader>()
         .expect("use_save_file_fetcher can only be used from within a child of the WorldManager");
-    SaveFileFetcher { reader }
+    let link = use_context::<Link>()
+        .expect("use_save_file_fetcher can only be used from within a child of the WorldManager");
+    SaveFileFetcher { reader, link }
 }

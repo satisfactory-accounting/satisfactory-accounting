@@ -1,7 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gloo::file::{Blob, ObjectUrl};
 use gloo::storage::errors::StorageError;
+use log::error;
+use wasm_bindgen::JsCast;
+use web_sys::HtmlAnchorElement;
 use yew::{
     classes, function_component, hook, html, use_callback, use_context, use_mut_ref, Html,
     Properties,
@@ -105,10 +109,16 @@ fn WorldListRow(
     let modal_handle: Rc<RefCell<Option<ModalHandle>>> = use_mut_ref(Default::default);
     let modals = use_modal_dispatcher();
 
+    // This just keeps the download url alive as long as this world list row isn't disposed, and
+    // ensures it gets cleaned up when the world chooser is closed.
+    let download_url_retainer: Rc<RefCell<Option<ObjectUrl>>> = use_mut_ref(|| None);
+
     let save_file_fetcher = use_save_file_fetcher();
     let download = use_callback(
         (id, meta.name.clone(), modals.clone(), save_file_fetcher),
-        |(), (id, name, modals, fetcher)| {
+        // We need move here to move download_url_retainer, as that is shared but not treated as a
+        // dependency, since we only need it to exist to dump the object url into so it stays alive.
+        move |(), (id, name, modals, fetcher)| {
             let save_file = match fetcher.get_save_file(*id) {
                 Ok(save_file) => save_file,
                 Err(FetchSaveFileError::StorageError(StorageError::KeyNotFound(_))) => {
@@ -148,6 +158,57 @@ fn WorldListRow(
                         .persist();
                 }
             };
+            let json = match  serde_json::to_string(&save_file) {
+                Ok(json) => json,
+                Err(e) => {
+                    return modals
+                        .builder()
+                        .class("world-download-error")
+                        .kind(ModalOk::close())
+                        .title("World could not be serialized")
+                        .content(html! {
+                            <>
+                                <p>{"We successfully loaded your world but couldn't serialize it \
+                                to create the download file for some reason. This is probably a \
+                                bug, and you can "}{file_a_bug()}{". If you file a bug, please \
+                                include this error message:"}</p>
+                                <pre>
+                                    {"Unable serialize world: "}{e}
+                                </pre>
+                            </>
+                        })
+                        .build()
+                        .persist();
+                }
+            };
+            let blob = Blob::new_with_options(json.as_str(), Some("application/json"));
+            let url = ObjectUrl::from(blob);
+
+            // To trigger the download, we create an anchor tag that isn't attached to the document
+            // and click it.
+            let a = match gloo::utils::document().create_element("a") {
+                Ok(a) => match a.dyn_into::<HtmlAnchorElement>() {
+                    Ok(a) => a,
+                    Err(elem) => {
+                        error!("Unable to cast element {elem:?} to HtmlAnchorElement");
+                        return;
+                    }
+                },
+                Err(e) => {
+                    error!("Unable to create an 'a' element to download with: {e:?}");
+                    return;
+                }
+            };
+            a.set_href(&url);
+            let filename = if name.is_empty() {
+                format!("SatisfactoryAccounting-{}.json", id.as_unprefixed())
+            } else {
+                format!("{name}-{}.json", id.as_unprefixed())
+            };
+            a.set_download(&filename);
+            a.click();
+
+            *download_url_retainer.borrow_mut() = Some(url.clone());
         },
     );
 
@@ -191,7 +252,7 @@ fn WorldListRow(
                     }
                 </Button>
             }
-            <Button key="download" class="download-world" title="Download World">
+            <Button key="download" class="download-world" title="Download World" onclick={download}>
                 if meta.load_error {
                     {material_icon("warning")}
                 } else {
