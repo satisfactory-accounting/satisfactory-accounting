@@ -23,7 +23,7 @@ jobs:
       with:
         targets: wasm32-unknown-unknown
     - name: Install Trunk
-      run: cargo install --version 0.21.1
+      run: cargo install trunk --version 0.21.1
     - name: Build
       run: trunk build
       working-directory: ./satisfactory-accounting-app
