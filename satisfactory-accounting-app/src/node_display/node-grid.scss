@@ -34,7 +34,7 @@ $whole-row: drag / end;
 
     min-width: max-content;
 
-    align-items: start;
+    align-content: start;
 
     .drag-handle {
         grid-column: drag;

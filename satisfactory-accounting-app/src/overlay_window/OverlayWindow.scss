@@ -24,6 +24,7 @@
     left: 50%;
     transform: translate(-50%);
     max-width: calc(100vw - 140px);
+    min-width: min-content;
     transform-box: border-box;
 
     background-color: colors.$light;
@@ -46,10 +47,11 @@
         display: flex;
         flex-direction: row;
         align-items: stretch;
-        justify-items: stretch;
+        justify-content: stretch;
 
         flex: 1 1;
         min-height: 0;
+        min-width: min-content;
     }
 
     .window-content {
@@ -62,6 +64,8 @@
 
         min-height: 0;
         flex-grow: 1;
+
+        min-width: min-content;
     }
 
     h1,

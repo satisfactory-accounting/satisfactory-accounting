@@ -38,7 +38,7 @@
     .world-rows {
         display: grid;
         grid-template-columns:
-            [name] minmax(min-content, auto)
+            [name] minmax(15em, 25em)
             [version] minmax(min-content, auto)
             [open] minmax(min-content, 1fr)
             [delete] min-content
@@ -46,6 +46,7 @@
 
         row-gap: 5px;
         column-gap: 5px;
+        min-width: max-content;
     }
 
     .create-button-row {

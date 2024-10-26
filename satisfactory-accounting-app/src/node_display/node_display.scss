@@ -85,6 +85,7 @@ $bg-hov: color.scale($background, $lightness: -10%);
             .children-display {
                 box-sizing: border-box;
                 flex-grow: 1;
+                align-self: stretch;
                 gap: 5px;
 
                 .drag-insert-point {

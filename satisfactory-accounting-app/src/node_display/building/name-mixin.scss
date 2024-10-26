@@ -16,6 +16,7 @@ $gap: 4px;
     cursor: text;
     min-width: min-content;
     text-wrap: nowrap;
+    white-space: nowrap;
     flex: 1 0 $size;
     width: $size;
 
