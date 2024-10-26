@@ -51,7 +51,16 @@
     // Default button is primary colored (satisfactory colors).
     @include color-button(colors.$bg-primary);
 
+    input[type="file"] {
+        position: absolute;
+        min-width: 0;
+        width: 0;
+        overflow: hidden;
+        opacity: 0;
+    }
+
     color: colors.$gray-dark;
+
     &:disabled {
         color: colors.$gray;
     }
