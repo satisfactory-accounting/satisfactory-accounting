@@ -3,18 +3,18 @@ use std::rc::Rc;
 
 use gloo::file::{Blob, ObjectUrl};
 use gloo::storage::errors::StorageError;
-use log::error;
+use log::{error, info};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlAnchorElement;
 use yew::{
-    classes, function_component, hook, html, use_callback, use_context, use_mut_ref, Html,
-    Properties,
+    classes, function_component, hook, html, use_callback, use_context, use_mut_ref, AttrValue,
+    Callback, Html, Properties,
 };
 
 use crate::bugreport::file_a_bug;
-use crate::inputs::button::{Button, UploadButton};
+use crate::inputs::button::{Button, UploadButton, UploadedFile};
 use crate::material::material_icon;
-use crate::modal::{use_modal_dispatcher, CancelDelete, ModalHandle, ModalOk};
+use crate::modal::{use_modal_dispatcher, CancelDelete, ModalDispatcher, ModalHandle, ModalOk};
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
 use crate::world::{
@@ -44,6 +44,17 @@ pub fn WorldChooserWindow() -> Html {
     let world_list = use_world_list();
     let world_list_dispatcher = use_world_list_dispatcher();
 
+    let upload_world = use_callback(
+        world_list_dispatcher.clone(),
+        |file: UploadedFile, world_list_dispatcher| {
+            info!(
+                "Received file: {} with {} bytes of content",
+                file.name,
+                file.data.len()
+            );
+        },
+    );
+
     let create_world = use_callback(world_list_dispatcher, |(), world_list_dispatcher| {
         world_list_dispatcher.create_world();
     });
@@ -66,7 +77,7 @@ pub fn WorldChooserWindow() -> Html {
                     <span class="world-name">{"World Name"}</span>
                     <span class="world-version">{"World Version"}</span>
                     <span class="create-upload">
-                        <UploadButton class="green" title="Upload">
+                        <UploadButton class="green" title="Upload" onupload={upload_world}>
                             {material_icon("upload")}
                             <span>{"Upload World"}</span>
                         </UploadButton>
@@ -109,13 +120,71 @@ fn WorldListRow(
     let modal_handle: Rc<RefCell<Option<ModalHandle>>> = use_mut_ref(Default::default);
     let modals = use_modal_dispatcher();
 
-    // This just keeps the download url alive as long as this world list row isn't disposed, and
+    let delete_forever = use_callback((id, dispatcher), |(), (id, dispatcher)| {
+        dispatcher.delete_world(*id);
+    });
+
+    let download = use_download_callback(id, meta.name.clone(), modals.clone());
+
+    let delete_world = use_callback(
+        (modals, delete_forever, meta.name.clone()),
+        move |(), (modals, delete_forever, name)| {
+            let modal = modals
+                .builder()
+                .title("Confirm Delete")
+                .content(html! {
+                   <div class="delete-content">
+                       <p>{"Are you sure you want to delete the world "}{name}{"?"}</p>
+                       <h2>{"This CANNOT be undone!"}</h2>
+                   </div>
+                })
+                .class("modal-delete-forever")
+                .kind(CancelDelete::delete(delete_forever.clone()))
+                .build();
+            *modal_handle.borrow_mut() = Some(modal);
+        },
+    );
+
+    let classes = classes!("WorldListRow", selected.then_some("selected"));
+
+    html! {
+        <div class={classes}>
+            <span class="world-name">{&meta.name}</span>
+            <span class="world-version">
+                {meta.database.map(DatabaseVersionSelector::name)}
+            </span>
+            if !selected {
+                <Button key="switch" class="green switch-to-world" title="Switch to this World" onclick={select_world}>
+                    if meta.load_error {
+                        {material_icon("warning")}
+                    } else {
+                        {material_icon("open_in_browser")}
+                    }
+                </Button>
+            }
+            <Button key="download" class="download-world" title="Download World" onclick={download}>
+                if meta.load_error {
+                    {material_icon("warning")}
+                } else {
+                    {material_icon("download")}
+                }
+            </Button>
+            <Button key="delete" class="red delete-world" title="Delete World" onclick={delete_world}>
+                {material_icon("delete")}
+            </Button>
+        </div>
+    }
+}
+
+#[hook]
+fn use_download_callback(id: WorldId, name: AttrValue, modals: ModalDispatcher) -> Callback<()> {
+    // This just keeps the download url alive as long as the world list row isn't disposed, and
     // ensures it gets cleaned up when the world chooser is closed.
     let download_url_retainer: Rc<RefCell<Option<ObjectUrl>>> = use_mut_ref(|| None);
-
     let save_file_fetcher = use_save_file_fetcher();
-    let download = use_callback(
-        (id, meta.name.clone(), modals.clone(), save_file_fetcher),
+
+    use_callback(
+        (id, name, modals, save_file_fetcher),
         // We need move here to move download_url_retainer, as that is shared but not treated as a
         // dependency, since we only need it to exist to dump the object url into so it stays alive.
         move |(), (id, name, modals, fetcher)| {
@@ -210,58 +279,5 @@ fn WorldListRow(
 
             *download_url_retainer.borrow_mut() = Some(url.clone());
         },
-    );
-
-    let delete_forever = use_callback((id, dispatcher), |(), (id, dispatcher)| {
-        dispatcher.delete_world(*id);
-    });
-
-    let delete_world = use_callback(
-        (modals, delete_forever, meta.name.clone()),
-        move |(), (modals, delete_forever, name)| {
-            let modal = modals
-                .builder()
-                .title("Confirm Delete")
-                .content(html! {
-                   <div class="delete-content">
-                       <p>{"Are you sure you want to delete the world "}{name}{"?"}</p>
-                       <h2>{"This CANNOT be undone!"}</h2>
-                   </div>
-                })
-                .class("modal-delete-forever")
-                .kind(CancelDelete::delete(delete_forever.clone()))
-                .build();
-            *modal_handle.borrow_mut() = Some(modal);
-        },
-    );
-
-    let classes = classes!("WorldListRow", selected.then_some("selected"));
-
-    html! {
-        <div class={classes}>
-            <span class="world-name">{&meta.name}</span>
-            <span class="world-version">
-                {meta.database.map(DatabaseVersionSelector::name)}
-            </span>
-            if !selected {
-                <Button key="switch" class="green switch-to-world" title="Switch to this World" onclick={select_world}>
-                    if meta.load_error {
-                        {material_icon("warning")}
-                    } else {
-                        {material_icon("open_in_browser")}
-                    }
-                </Button>
-            }
-            <Button key="download" class="download-world" title="Download World" onclick={download}>
-                if meta.load_error {
-                    {material_icon("warning")}
-                } else {
-                    {material_icon("download")}
-                }
-            </Button>
-            <Button key="delete" class="red delete-world" title="Delete World" onclick={delete_world}>
-                {material_icon("delete")}
-            </Button>
-        </div>
-    }
+    )
 }

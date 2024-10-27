@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 console_log = "1"
 fuzzy-matcher = "0.3"
-gloo = "0.11"
+gloo = { version = "0.11", features = ["futures"] }
 implicit-clone = "0.4"
 # Not direclty used but `now` doesn't link properly if we don't set the wasm-bindgen
 # feature, and that's needed when actually using Serde or Serde-Json, and breaks the whole
@@ -34,6 +34,8 @@ features = [
     "Element",
     "Event",
     "EventTarget",
+    "File",
+    "FileList",
     "FocusEvent",
     "HtmlAnchorElement",
     "HtmlCollection",
