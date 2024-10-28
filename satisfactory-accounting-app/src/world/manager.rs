@@ -7,7 +7,7 @@ use std::rc::Rc;
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
 use log::{error, info, warn};
-use satisfactory_accounting::accounting::Node;
+use satisfactory_accounting::accounting::{Group, Node, NodeKind};
 use satisfactory_accounting::database::Database;
 use thiserror::Error;
 use uuid::Uuid;
@@ -62,6 +62,13 @@ pub enum Msg {
     CreateWorld,
     /// Mark an error on the given world id.
     MarkError(WorldId),
+    /// Create a world from an uploaded file.
+    UploadWorld {
+        /// Name of the file that was uploaded.
+        file_name: String,
+        /// Data from the file that was uploaded.
+        data: Vec<u8>,
+    },
 }
 
 /// Wrapper for reporting errors from the world manager.
@@ -642,6 +649,99 @@ impl WorldManager {
         }
     }
 
+    /// Message handler for UploadWorld. Parses the world and uploads it.
+    fn upload_world(&mut self, mut file_name: String, data: Vec<u8>) -> bool {
+        let mut world = match serde_json::from_slice::<SaveFile>(&data) {
+            Ok(SaveFile::Version1Minor2(world)) => world,
+            Ok(SaveFile::Unknown {
+                model_version: None,
+            }) => {
+                let title = "World file missing Version";
+                let content = html! {
+                    <>
+                    <p>{"The file you uploaded was missing the 'model_version' tag, so we were \
+                    unable to tell which version of the internal Satisfactory Accounting app it \
+                    was created with."}</p>
+                    <p>{"Note: if you're tech savy and manually created this file by copying a \
+                    world out of your browser's local storage using developer tools, then it won't
+                    have the 'model_version' tag, and you'll need to add it. Currently the only
+                    valid version tag is \"v1.2.*\"."}</p>
+                    </>
+                };
+                self.error_reporter.report_error(title, content);
+                return false;
+            }
+            Ok(SaveFile::Unknown {
+                model_version: Some(model_version),
+            }) => {
+                let title = "World file missing Version";
+                let content = html! {
+                    <p>{"The file you uploaded has an unrecognized 'model_version' tag, so we were \
+                    unable to tell how to parse it. The tag was \""}{model_version}{"\", but \
+                    currently the only supported value is \"v1.2.*\"."}</p>
+                };
+                self.error_reporter.report_error(title, content);
+                return false;
+            }
+            Err(e) => {
+                warn!("Unable to parse save file: {e}");
+                let title = "Could not parse World";
+                let content = html! {
+                    <>
+                    <p>{"We were unable to parse the world file you uploaded. It does not appear \
+                    to be in the correct format. If you believe this is incorrect you can "}
+                    {file_a_bug()}{". If you do file a bug, please include this error message:"}</p>
+                    <pre>
+                        {"Unable to parse save file: "}{e}
+                    </pre>
+                    </>
+                };
+                self.error_reporter.report_error(title, content);
+                return false;
+            }
+        };
+
+        let mut root = match world.root.kind() {
+            NodeKind::Building(_) => {
+                let title = "World root is not a Group";
+                let content = html! {
+                    <p>{"The world you uploaded appears to have a building as its root instead of \
+                    a group. The world root must always be a group, so we will wrap the single \
+                    building in a group."}</p>
+                };
+                self.error_reporter.report_error(title, content);
+                let mut group = Group::empty();
+                group.children.push(world.root.clone());
+                group
+            }
+            NodeKind::Group(group) => group.clone(),
+        };
+
+        if !root.name.is_empty() {
+            file_name.clear();
+            file_name.push_str(&world.name());
+        }
+        file_name.push_str(" (Uploaded)");
+        root.name = file_name.into();
+        world.root = root.into();
+
+        // Save the current world before proceeding.
+        self.world.try_save_if_unsaved();
+
+        let entry = self.worlds.allocate_new_id();
+        let id = entry.id();
+        entry.insert_and_select(world.metadata());
+        self.set_world_inner(WorldTracker::unsaved(
+            world,
+            id,
+            self.error_reporter.clone(),
+        ));
+        self.world.try_save_if_unsaved();
+        self.worlds.try_save_if_unsaved();
+
+        true
+    }
+
     /// Creates the [`DbController`] for the current db.
     fn db_controller(&self) -> DbController {
         DbController {
@@ -865,6 +965,7 @@ impl Component for WorldManager {
             Msg::DeleteWorld(world_id) => self.delete_world(world_id),
             Msg::CreateWorld => self.create_world(),
             Msg::MarkError(id) => self.mark_error(id),
+            Msg::UploadWorld { file_name, data } => self.upload_world(file_name, data),
         };
         // This should be relatively cheap because all the content of the world is Rc'd.
         // This being held here does prevent the Rcs from ever successfully doing a Rc::make_mut,
@@ -979,6 +1080,11 @@ impl WorldListDispatcher {
     /// Creates a new empty world and switches to it.
     pub fn create_world(&self) {
         self.link.send_message(Msg::CreateWorld);
+    }
+
+    /// Create a new world from an uploaded file.
+    pub fn upload_world(&self, file_name: String, data: Vec<u8>) {
+        self.link.send_message(Msg::UploadWorld { file_name, data });
     }
 }
 

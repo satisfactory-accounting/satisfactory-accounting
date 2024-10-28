@@ -47,11 +47,7 @@ pub fn WorldChooserWindow() -> Html {
     let upload_world = use_callback(
         world_list_dispatcher.clone(),
         |file: UploadedFile, world_list_dispatcher| {
-            info!(
-                "Received file: {} with {} bytes of content",
-                file.name,
-                file.data.len()
-            );
+            world_list_dispatcher.upload_world(file.name, file.data);
         },
     );
 
