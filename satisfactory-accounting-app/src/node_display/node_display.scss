@@ -1,5 +1,6 @@
 @use "sass:color";
 @use "../colors.scss";
+@use "../icon-mixin.scss";
 
 @use "balance/NodeBalance.scss";
 @use "building/building.scss";
@@ -35,12 +36,13 @@ $bg-hov: color.scale($background, $lightness: -10%);
         }
     }
 
+    $min-header-height: calc(icon-mixin.$icon-size + 12px);
+
     &.group {
         @include node-grid.node-subgrid;
 
         box-sizing: border-box;
         justify-content: flex-start;
-        align-items: center;
 
         border-radius: 5px;
 
@@ -48,6 +50,7 @@ $bg-hov: color.scale($background, $lightness: -10%);
 
         &.collapsed {
             padding: 2px 5px;
+            min-height: $min-header-height;
             &:hover {
                 background-color: $bg-hov;
             }
@@ -57,7 +60,7 @@ $bg-hov: color.scale($background, $lightness: -10%);
             @include node-grid.node-subgrid;
 
             box-sizing: border-box;
-            align-items: center;
+            min-height: $min-header-height;
 
             padding: 2px 5px;
             gap: 5px;
@@ -109,7 +112,6 @@ $bg-hov: color.scale($background, $lightness: -10%);
             padding: 5px;
             gap: 5px;
         }
-
     }
 
     &.building {
@@ -118,7 +120,7 @@ $bg-hov: color.scale($background, $lightness: -10%);
         box-sizing: border-box;
         padding: 2px 5px;
         gap: 5px;
-        align-items: center;
+        min-height: $min-header-height;
 
         border-radius: 5px;
 

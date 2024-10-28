@@ -23,13 +23,14 @@
         box-sizing: border-box;
         padding: $input-pad;
         text-align: inherit;
-        margin: -$input-pad;
+        // margin: -$input-pad;
     }
 
     .input-size {
         text-wrap: nowrap;
         white-space: nowrap;
-        height: 1em; // NB: using content-box not border-box.
+        padding: $input-pad;
+        box-sizing: border-box;
         width: min-content;
     }
 

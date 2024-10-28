@@ -232,6 +232,9 @@ impl<I: PartialEq + Copy + Clone + 'static> Component for ChooseFromList<I> {
                     ref={&self.input_ref} />
                 <div class="input-size">
                     {space_to_nbsp(&self.input)}
+                    if self.input.is_empty() {
+                        {"\u{00a0}"}
+                    }
                 </div>
                 <div class="available">
                     { for self.filtered.iter().enumerate().map(|(i, (_, item))| {

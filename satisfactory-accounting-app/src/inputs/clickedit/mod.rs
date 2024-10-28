@@ -157,7 +157,12 @@ impl Component for ClickEdit {
                     <div class="value">
                         <input class="value-input" type="text" value={&value}
                             {oninput} {onblur} {onkeyup} ref={&self.input} />
-                        <div class="value-display">{space_to_nbsp(&value)}</div>
+                        <div class="value-display">
+                            {space_to_nbsp(&value)}
+                            if value.is_empty() {
+                                {"\u{00a0}"}
+                            }
+                        </div>
                     </div>
                     { suffix.clone() }
                 </form>
@@ -168,7 +173,12 @@ impl Component for ClickEdit {
                 <div {class} {title} {onclick}>
                     { prefix.clone() }
                     <div class="value">
-                        <div class="value-display">{value}</div>
+                        <div class="value-display">
+                            {value}
+                            if value.is_empty() {
+                                {"\u{00a0}"}
+                            }
+                        </div>
                     </div>
                     { suffix.clone() }
                 </div>

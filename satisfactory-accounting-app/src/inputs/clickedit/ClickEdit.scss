@@ -35,9 +35,9 @@
 
     .value-display {
         min-width: 0;
+        box-sizing: border-box;
         padding: $input-pad;
         text-wrap: nowrap;
         white-space: nowrap;
-        height: 1em; // NB: using content-box not border-box.
     }
 }
