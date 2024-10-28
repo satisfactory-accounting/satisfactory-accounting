@@ -38,6 +38,6 @@
         padding: $input-pad;
         text-wrap: nowrap;
         white-space: nowrap;
-        height: 1lh; // NB: using content-box not border-box.
+        height: 1em; // NB: using content-box not border-box.
     }
 }

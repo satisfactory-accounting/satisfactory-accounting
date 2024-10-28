@@ -129,6 +129,20 @@ fn get_existing_user_notification() -> Notification {
                     you might notice."
                 }</p>
                 <ul>
+                    <li><p><b>{"Download and Upload."}</b>
+                        {" You can now download your worlds as a JSON file from the World Manager, \
+                        and upload saved JSON files as new worlds. This lets you save worlds for \
+                        backup purposes or transfer them to a different computer, or share with a \
+                        friend."}</p>
+                        <p>{"Quick note for those of you who figured out how to copy out the world \
+                        JSON before this update: I've added a 'model_version' tag to the \
+                        downloaded JSON file format so that I can ensure that future versions of \
+                        Satisfactory Accounting remain compatible with older save files, even if I \
+                        make changes to the world format. If you created world JSON files without \
+                        using the download button, you'll probably need to add the 'model_version' \
+                        tag to them. For everyone else, the download button adds this tag itself \
+                        so you don't have to worry about this!"}</p>
+                    </li>
                     <li>
                         <b>{"\"Latest\" mode for factory versions."}</b>
                         {" With this addition, you no longer need to manually change the factory \
@@ -137,18 +151,18 @@ fn get_existing_user_notification() -> Notification {
                         to have things change on you."}
                     </li>
                     <li>
-                        <b>{"Grid alignment."}</b>
+                        <p><b>{"Grid alignment."}</b>
                         {" A whole bunch of things have now been laid out in a grid format instead \
                         of just flexible layouts they were previously. In particular, you'll \
                         notice that all buildings and sub-groups in a group have their clock \
                         speeds and most of their balances aligned now. Plus when you have balances \
                         sorted by inputs vs outputs (which is now the default sorting mode), all \
                         inputs and outputs at the same group level will be aligned to a grid, \
-                        which I think makes it easer to read. One downside of this is that it \
-                        makes the app take up more width, so you may find you need to scroll \
-                        horizontally more often. Sorry about that. I hope you find the improved \
-                        organization more helpful than the extra width is inconvenient; let me \
-                        know if not."}
+                        which I think makes it easer to read."}</p>
+                        <p>{"One downside of this is that it  makes the app take up more width, so \
+                        you may find you need to scroll horizontally more often. Sorry about that. \
+                        I hope you find the improved organization more helpful than the extra \
+                        width is inconvenient; let me know if not."}</p>
                     </li>
                     <li>
                         <b>{"Group collapse button."}</b>
@@ -178,14 +192,6 @@ fn get_existing_user_notification() -> Notification {
                 make any promises about when or if these things will actually come, but I'll let \
                 you know when and if I get to them."}</p>
                 <ul>
-                    <li>
-                        <b>{"Download Button."}</b>
-                        {" I'm planning on adding a download button to the world manager, so you \
-                        can back up you worlds, transfer them to other browsers, or share them \
-                        with friends. And of course the corresponding upload button. This is \
-                        pretty likely to come in the next couple weeks, as its the next thing I \
-                        plan to work on."}
-                    </li>
                     <li>
                         <b>{"Backdrive Mode."}</b>
                         {" This is "}

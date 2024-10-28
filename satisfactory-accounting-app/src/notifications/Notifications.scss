@@ -25,7 +25,14 @@
         gap: 0.5em;
 
         .sig-logo {
-            height: 1lh;
+            height: 1em;
+        }
+    }
+
+    li {
+        margin-bottom: 0.5em;
+        &:last-child {
+            margin-bottom: 0;
         }
     }
 }

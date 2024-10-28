@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use gloo::file::{Blob, ObjectUrl};
 use gloo::storage::errors::StorageError;
-use log::{error, info};
+use log::error;
 use wasm_bindgen::JsCast;
 use web_sys::HtmlAnchorElement;
 use yew::{
