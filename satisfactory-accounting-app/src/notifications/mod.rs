@@ -140,7 +140,8 @@ fn get_existing_user_notification() -> Notification {
                         Satisfactory Accounting remain compatible with older save files, even if I \
                         make changes to the world format. If you created world JSON files without \
                         using the download button, you'll probably need to add the 'model_version' \
-                        tag to them. For everyone else, the download button adds this tag itself \
+                        tag to them. The current version tag is \"v1.2.*\"."}</p>
+                        <p>{"For everyone else, the download button adds this tag itself \
                         so you don't have to worry about this!"}</p>
                     </li>
                     <li>
