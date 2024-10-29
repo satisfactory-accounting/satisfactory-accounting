@@ -15,13 +15,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-pub use self::balance::Balance;
+pub use crate::v1m2::balance::Balance;
 use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
     Manufacturer, Miner, Pump, RecipeId, Station,
 };
-
-mod balance;
 
 /// Trait for types which can visit groups when creating copies.
 pub trait GroupCopyVisitor {
@@ -539,36 +537,37 @@ impl BuildingSettings {
         }
     }
 
-    /// Get replacment settings for changing a building, by copying the settings a much as
-    /// possible.
-    pub fn build_new_settings(&self, new_kind: &BuildingKind) -> Self {
-        match (self, new_kind) {
-            (BuildingSettings::Manufacturer(ms), BuildingKind::Manufacturer(m)) => {
-                BuildingSettings::Manufacturer(ms.copy_settings(m))
-            }
-            (BuildingSettings::Miner(ms), BuildingKind::Miner(m)) => {
-                BuildingSettings::Miner(ms.copy_settings(m))
-            }
-            (BuildingSettings::Generator(gs), BuildingKind::Generator(g)) => {
-                BuildingSettings::Generator(gs.copy_settings(g))
-            }
-            (BuildingSettings::Pump(ps), BuildingKind::Pump(p)) => {
-                BuildingSettings::Pump(ps.copy_settings(p))
-            }
-            (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(_)) => {
-                BuildingSettings::Geothermal(gs.clone())
-            }
-            (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
-                BuildingSettings::Station(ss.copy_settings(s))
-            }
-            _ => {
-                // For mismatched types, just copy the clock speed.
-                let mut new_settings = new_kind.get_default_settings();
-                new_settings.set_clock_speed(self.clock_speed());
-                new_settings
-            }
-        }
-    }
+    // TO BE REMOVED
+    // /// Get replacment settings for changing a building, by copying the settings a much as
+    // /// possible.
+    // pub fn build_new_settings(&self, new_kind: &BuildingKind) -> Self {
+    //     match (self, new_kind) {
+    //         (BuildingSettings::Manufacturer(ms), BuildingKind::Manufacturer(m)) => {
+    //             BuildingSettings::Manufacturer(ms.copy_settings(m))
+    //         }
+    //         (BuildingSettings::Miner(ms), BuildingKind::Miner(m)) => {
+    //             BuildingSettings::Miner(ms.copy_settings(m))
+    //         }
+    //         (BuildingSettings::Generator(gs), BuildingKind::Generator(g)) => {
+    //             BuildingSettings::Generator(gs.copy_settings(g))
+    //         }
+    //         (BuildingSettings::Pump(ps), BuildingKind::Pump(p)) => {
+    //             BuildingSettings::Pump(ps.copy_settings(p))
+    //         }
+    //         (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(_)) => {
+    //             BuildingSettings::Geothermal(gs.clone())
+    //         }
+    //         (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
+    //             BuildingSettings::Station(ss.copy_settings(s))
+    //         }
+    //         _ => {
+    //             // For mismatched types, just copy the clock speed.
+    //             let mut new_settings = new_kind.get_default_settings();
+    //             new_settings.set_clock_speed(self.clock_speed());
+    //             new_settings
+    //         }
+    //     }
+    // }
 }
 
 macro_rules! settings_from_inner {

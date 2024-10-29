@@ -16,11 +16,6 @@ use std::rc::{Rc, Weak};
 use internment::Intern;
 use serde::{Deserialize, Serialize};
 
-use crate::accounting::{
-    BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings, PumpSettings,
-    StationSettings,
-};
-
 /// Enum which identifies versions of the database.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(tag = "major", content = "minor")]
@@ -554,10 +549,11 @@ pub struct BuildingType {
 }
 
 impl BuildingType {
-    /// Gets the settings
-    pub fn get_default_settings(&self) -> BuildingSettings {
-        self.kind.get_default_settings()
-    }
+    // TO BE REMOVED
+    // /// Gets the settings
+    // pub fn get_default_settings(&self) -> BuildingSettings {
+    //     self.kind.get_default_settings()
+    // }
 
     /// Return true if this type of building can be overclocked.
     pub fn overclockable(&self) -> bool {
@@ -609,48 +605,49 @@ impl BuildingKind {
         }
     }
 
-    /// Gets the settings for a new building of this kind.
-    pub fn get_default_settings(&self) -> BuildingSettings {
-        match self {
-            BuildingKind::Manufacturer(m) => {
-                let mut settings = ManufacturerSettings::default();
-                if m.available_recipes.len() == 1 {
-                    settings.recipe = m.available_recipes.first().copied();
-                }
-                BuildingSettings::Manufacturer(settings)
-            }
-            BuildingKind::Miner(m) => {
-                let mut settings = MinerSettings::default();
-                if m.allowed_resources.len() == 1 {
-                    settings.resource = m.allowed_resources.first().copied();
-                }
-                BuildingSettings::Miner(settings)
-            }
-            BuildingKind::Generator(g) => {
-                let mut settings = GeneratorSettings::default();
-                if g.allowed_fuel.len() == 1 {
-                    settings.fuel = g.allowed_fuel.first().copied();
-                }
-                BuildingSettings::Generator(settings)
-            }
-            BuildingKind::Pump(p) => {
-                let mut settings = PumpSettings::default();
-                if p.allowed_resources.len() == 1 {
-                    settings.resource = p.allowed_resources.first().copied();
-                }
-                BuildingSettings::Pump(settings)
-            }
-            BuildingKind::Geothermal(_) => BuildingSettings::Geothermal(Default::default()),
-            BuildingKind::PowerConsumer(_) => BuildingSettings::PowerConsumer,
-            BuildingKind::Station(s) => {
-                let mut settings = StationSettings::default();
-                if s.allowed_fuel.len() == 1 {
-                    settings.fuel = s.allowed_fuel.first().copied();
-                }
-                BuildingSettings::Station(settings)
-            }
-        }
-    }
+    // TO BE REMOVED
+    // /// Gets the settings for a new building of this kind.
+    // pub fn get_default_settings(&self) -> BuildingSettings {
+    //     match self {
+    //         BuildingKind::Manufacturer(m) => {
+    //             let mut settings = ManufacturerSettings::default();
+    //             if m.available_recipes.len() == 1 {
+    //                 settings.recipe = m.available_recipes.first().copied();
+    //             }
+    //             BuildingSettings::Manufacturer(settings)
+    //         }
+    //         BuildingKind::Miner(m) => {
+    //             let mut settings = MinerSettings::default();
+    //             if m.allowed_resources.len() == 1 {
+    //                 settings.resource = m.allowed_resources.first().copied();
+    //             }
+    //             BuildingSettings::Miner(settings)
+    //         }
+    //         BuildingKind::Generator(g) => {
+    //             let mut settings = GeneratorSettings::default();
+    //             if g.allowed_fuel.len() == 1 {
+    //                 settings.fuel = g.allowed_fuel.first().copied();
+    //             }
+    //             BuildingSettings::Generator(settings)
+    //         }
+    //         BuildingKind::Pump(p) => {
+    //             let mut settings = PumpSettings::default();
+    //             if p.allowed_resources.len() == 1 {
+    //                 settings.resource = p.allowed_resources.first().copied();
+    //             }
+    //             BuildingSettings::Pump(settings)
+    //         }
+    //         BuildingKind::Geothermal(_) => BuildingSettings::Geothermal(Default::default()),
+    //         BuildingKind::PowerConsumer(_) => BuildingSettings::PowerConsumer,
+    //         BuildingKind::Station(s) => {
+    //             let mut settings = StationSettings::default();
+    //             if s.allowed_fuel.len() == 1 {
+    //                 settings.fuel = s.allowed_fuel.first().copied();
+    //             }
+    //             BuildingSettings::Station(settings)
+    //         }
+    //     }
+    // }
 }
 
 /// Name of a BuildingKind. Used to identify both [`BuildingKind`] and [`BuildingSettings`], essentially the same as BuildingKind but with no data.
