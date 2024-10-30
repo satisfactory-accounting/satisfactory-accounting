@@ -27,6 +27,7 @@
     cursor: pointer;
     font-size: 1em;
     font-weight: bold;
+    font-family: inherit;
 
     @mixin color-button($base-color,
         $hover-color: color.scale($base-color, $lightness: -10%),
