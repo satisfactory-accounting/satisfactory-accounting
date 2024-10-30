@@ -15,11 +15,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-pub use crate::v1m2::balance::Balance;
 use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
     Manufacturer, Miner, Pump, RecipeId, Station,
 };
+pub use crate::v1m2::balance::Balance;
 
 /// Trait for types which can visit groups when creating copies.
 pub trait GroupCopyVisitor {

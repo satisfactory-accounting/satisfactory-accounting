@@ -1,4 +1,4 @@
 //! Accounting model used up through v1.2.*
 
-mod accounting;
-mod balance;
+pub mod accounting;
+pub mod balance;

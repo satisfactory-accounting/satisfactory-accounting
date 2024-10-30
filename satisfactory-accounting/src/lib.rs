@@ -6,5 +6,6 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 pub mod database;
+pub mod fract;
 pub mod v1m2;
 pub mod v1m3;
