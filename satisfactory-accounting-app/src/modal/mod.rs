@@ -29,11 +29,12 @@ struct Modal {
 /// Enum of supported modal kinds.
 #[derive(Debug)]
 pub enum ModalKind {
-    /// A modal with a single "Ok" button which just closes the modal.
+    /// A modal with a single "Ok" button.
     Ok(ModalOk),
-    /// A modal with "Cancel" and "Delete" buttons. Cancel closes the modal without taking any
-    /// action, while delete closes the modal and calls the specified callback.
+    /// A modal with "Cancel" and "Delete" buttons.
     CancelDelete(CancelDelete),
+    /// A modal with arbitrary binary choice buttons.
+    BinaryChoice(BinaryChoice),
 }
 
 impl Default for ModalKind {
@@ -51,6 +52,12 @@ impl From<ModalOk> for ModalKind {
 impl From<CancelDelete> for ModalKind {
     fn from(value: CancelDelete) -> Self {
         Self::CancelDelete(value)
+    }
+}
+
+impl From<BinaryChoice> for ModalKind {
+    fn from(value: BinaryChoice) -> Self {
+        Self::BinaryChoice(value)
     }
 }
 
@@ -88,6 +95,65 @@ impl CancelDelete {
             on_delete,
             ..Default::default()
         }
+    }
+}
+
+/// Modal buttons for an arbitrary binary choice.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BinaryChoice {
+    /// Label for the left hand choice on the modal.
+    lhs: Html,
+    /// Optional title to apply to the left hand choice.
+    lhs_title: Option<AttrValue>,
+    /// Callback for the left hand choice on the modal, in addition to closing the modal.
+    on_lhs: Callback<()>,
+    /// Label for the right hand choice on the modal.
+    rhs: Html,
+    /// Optional title to apply to the right hand choice.
+    rhs_title: Option<AttrValue>,
+    /// Callback for the right hand choice on the modal, in addition to closing the modal.
+    on_rhs: Callback<()>,
+}
+
+impl ImplicitClone for BinaryChoice {}
+
+impl BinaryChoice {
+    /// Create a new binary choice.
+    pub fn new(lhs: Html, rhs: Html) -> Self {
+        BinaryChoice {
+            lhs,
+            lhs_title: None,
+            on_lhs: Callback::noop(),
+            rhs,
+            rhs_title: None,
+            on_rhs: Callback::noop(),
+        }
+    }
+
+    /// Sets the title for the left hand option.
+    pub fn lhs_title(mut self, lhs_title: impl Into<AttrValue>) -> Self {
+        self.lhs_title = Some(lhs_title.into());
+        self
+    }
+
+    /// Adds a callback for when the user clicks the left hand side choice. The callback runs in
+    /// addition to closing the modal.
+    pub fn on_lhs(mut self, on_lhs: Callback<()>) -> Self {
+        self.on_lhs = on_lhs;
+        self
+    }
+
+    /// Sets the title for the right hand option.
+    pub fn rhs_title(mut self, rhs_title: impl Into<AttrValue>) -> Self {
+        self.rhs_title = Some(rhs_title.into());
+        self
+    }
+
+    /// Adds a callback for when the user clicks the right hand side choice. The callback runs in
+    /// addition to closing the modal.
+    pub fn on_rhs(mut self, on_rhs: Callback<()>) -> Self {
+        self.on_rhs = on_rhs;
+        self
     }
 }
 
@@ -226,7 +292,10 @@ fn ModalWindow(ModalWindowProps { modal }: &ModalWindowProps) -> Html {
             <ModalOkDisplay {modal_ok} {close_window} />
         },
         ModalKind::CancelDelete(cancel_delete) => html! {
-            <CancelDeleteDisplay {cancel_delete} {close_window}/>
+            <CancelDeleteDisplay {cancel_delete} {close_window} />
+        },
+        ModalKind::BinaryChoice(binary_choice) => html! {
+            <BinaryChoiceDisplay {binary_choice} {close_window} />
         },
     };
     html! {
@@ -301,6 +370,48 @@ fn CancelDeleteDisplay(props: &CancelDeleteProps) -> Html {
             <Button class="red modal-button" title="Ok" onclick={delete}>
                 {material_icon("delete_forever")}
                 <span>{"Delete"}</span>
+            </Button>
+        </>
+    }
+}
+
+
+#[derive(PartialEq, Properties)]
+pub struct BinaryChoiceProps {
+    close_window: Callback<()>,
+    binary_choice: BinaryChoice,
+}
+
+/// Display for CancelDelete.
+#[function_component]
+fn BinaryChoiceDisplay(props: &BinaryChoiceProps) -> Html {
+    let on_lhs = use_callback(
+        (
+            props.close_window.clone(),
+            props.binary_choice.on_lhs.clone(),
+        ),
+        |(), (close_window, on_lhs)| {
+            close_window.emit(());
+            on_lhs.emit(());
+        },
+    );
+    let on_rhs = use_callback(
+        (
+            props.close_window.clone(),
+            props.binary_choice.on_rhs.clone(),
+        ),
+        |(), (close_window, on_rhs)| {
+            close_window.emit(());
+            on_rhs.emit(());
+        },
+    );
+    html! {
+        <>
+            <Button class="modal-button" title={&props.binary_choice.lhs_title} onclick={on_lhs}>
+                {props.binary_choice.lhs.clone()}
+            </Button>
+            <Button class="modal-button" title={&props.binary_choice.rhs_title} onclick={on_rhs}>
+                {props.binary_choice.rhs.clone()}
             </Button>
         </>
     }

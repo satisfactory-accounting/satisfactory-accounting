@@ -102,7 +102,7 @@ impl WorldList {
             let new_id = WorldId::new();
             if inner.worlds.contains_key(&new_id) {
                 warn!(
-                    "Tried to allocate id {new_id} which is already occupied. (Attempt {attempt})"
+                    "Tried to allocate id {new_id:?} which is already occupied. (Attempt {attempt})",
                 );
             } else {
                 chosen_id = Some(new_id);
@@ -113,8 +113,8 @@ impl WorldList {
             None => panic!("Failed to allocate a new WorldId {MAX_ATTEMPTS} times in a row!"),
             Some(chosen_id) => match inner.worlds.entry(chosen_id) {
                 Entry::Occupied(_) => panic!(
-                    "Entry for {chosen_id} was occupied even though we just checked that the \
-                        map did not contain that key"
+                    "Entry for {chosen_id:?} was occupied even though we just checked that the \
+                    map did not contain that key",
                 ),
                 Entry::Vacant(entry) => AbsentWorld {
                     selected: &mut inner.selected,

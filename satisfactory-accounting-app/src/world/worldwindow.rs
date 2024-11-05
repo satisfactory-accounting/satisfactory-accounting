@@ -14,9 +14,12 @@ use yew::{
 use crate::bugreport::file_a_bug;
 use crate::inputs::button::{Button, UploadButton, UploadedFile};
 use crate::material::material_icon;
-use crate::modal::{use_modal_dispatcher, CancelDelete, ModalDispatcher, ModalHandle, ModalOk};
+use crate::modal::{
+    use_modal_dispatcher, BinaryChoice, CancelDelete, ModalDispatcher, ModalHandle, ModalOk,
+};
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
+use crate::world::manager::PendingUpload;
 use crate::world::{
     use_save_file_fetcher, use_world_list, use_world_list_dispatcher, DatabaseVersionSelector,
     FetchSaveFileError, WorldId, WorldMetadata,
@@ -44,10 +47,55 @@ pub fn WorldChooserWindow() -> Html {
     let world_list = use_world_list();
     let world_list_dispatcher = use_world_list_dispatcher();
 
+    let modal_dispatcher = use_modal_dispatcher();
+    let upload_modal_handle = use_mut_ref(|| None::<ModalHandle>);
+    let on_matches_existing = use_callback(
+        (modal_dispatcher, world_list_dispatcher.clone()),
+        |matches_existing: PendingUpload, (modal_dispatcher, world_list_dispatcher)| {
+            let lhs = html! { <span>{"Upload as new World"}</span> };
+            let rhs = html! { <span>{"Replace existing World"}</span> };
+            let title = "Upload or Replace?";
+            let content = html! { <>
+                <p>{"The world you uploaded, named \""}{matches_existing.world.name()}{"\", \
+                appears to match the ID of a world you already have, named \""}
+                {&matches_existing.existing_world_name}{"\"."}</p>
+                <p>{"Would you like to upload the world as a new world, or replace the existing \
+                one? If you replace the existing world, its state from before the upload will be \
+                placed in the undo history, so you can undo this action."}</p>
+            </> };
+            let matches_existing = Rc::new(RefCell::new(Some(matches_existing)));
+            let on_lhs = {
+                let world_list_dispatcher = world_list_dispatcher.clone();
+                let matches_existing = matches_existing.clone();
+                Callback::from(move |()| {
+                })
+            };
+            let on_rhs = {
+                let world_list_dispatcher = world_list_dispatcher.clone();
+                Callback::from(move |()| {
+                })
+            };
+
+
+            let handle = modal_dispatcher
+                .builder()
+                .title(title)
+                .content(content)
+                .kind(
+                    BinaryChoice::new(lhs, rhs)
+                        .lhs_title("Upload the world a new world with a new ID")
+                        .rhs_title("Upload the world over the existing world the the same ID")
+                        .on_lhs(on_lhs)
+                        .on_rhs(todo!()),
+                )
+                .build();
+        },
+    );
+
     let upload_world = use_callback(
-        world_list_dispatcher.clone(),
-        |file: UploadedFile, world_list_dispatcher| {
-            world_list_dispatcher.upload_world(file.name, file.data);
+        (world_list_dispatcher.clone(), on_matches_existing),
+        |file: UploadedFile, (world_list_dispatcher, on_matches_existing)| {
+            world_list_dispatcher.upload_world(file.name, file.data, on_matches_existing.clone());
         },
     );
 
@@ -215,7 +263,7 @@ fn use_download_callback(id: WorldId, name: AttrValue, modals: ModalDispatcher) 
                                 recoverable. For help you can "}{file_a_bug()}{". If you file a \
                                 bug, please include this error message:"}</p>
                                 <pre>
-                                    {"Unable to load world "}{id}{": "}{e}
+                                    {format!("Unable to load world {id:?}: {e}")}
                                 </pre>
                             </>
                         })

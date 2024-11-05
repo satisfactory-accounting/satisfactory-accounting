@@ -22,6 +22,7 @@ use crate::modal::{ModalDispatcher, ModalOk};
 use crate::refeqrc::RefEqRc;
 use crate::user_settings::UserSettingsDispatcher;
 use crate::world::list::WorldEntry;
+use crate::world::savefile::VersionedWorldModel;
 use crate::world::{
     v1storage, DatabaseChoice, DatabaseVersionSelector, NodeMeta, NodeMetas, SaveFile, WorldId,
 };
@@ -68,12 +69,80 @@ pub enum Msg {
         file_name: String,
         /// Data from the file that was uploaded.
         data: Vec<u8>,
+        /// Callback to use if the uploaded world matches an existing world id.
+        on_matches_existing: Callback<PendingUpload>,
     },
+    FinishUploadAsNew {
+        /// The uploaded world.
+        uploaded_world: World,
+    },
+    FinishUploadReplacingExisting {
+        /// ID of the world to replace.
+        world_id: WorldId,
+        /// The world that was uploaded.
+        uploaded_world: World,
+    },
+}
+
+/// Helper for when a world matches an existing world.
+#[derive(Debug)]
+pub struct PendingUpload {
+    /// ID of the existing/uploaded world.
+    world_id: WorldId,
+    /// The uploaded world.
+    world: World,
+    /// File name of the uploaded world.
+    file_name: String,
+    /// Name of the existing world.
+    existing_world_name: AttrValue,
+    /// Link back to the world manager to use to finish the pending upload.
+    link: Scope<WorldManager>,
+}
+
+impl PendingUpload {
+    /// Get the name of the uploaded world.
+    pub fn uploaded_name(&self) -> AttrValue {
+        self.world.name()
+    }
+
+    /// Get the name of the existing world that was matched.
+    pub fn existing_name(&self) -> AttrValue {
+        self.existing_world_name.clone()
+    }
+
+    /// Consumes the pending upload and finishes the upload by uploading under a new world id.
+    pub fn finish_as_new(self) {
+        let mut world = self.world;
+        let name = world.name();
+        let mut new_name = self.file_name;
+        if !name.is_empty() {
+            new_name.clear();
+            new_name.push_str(&name);
+        }
+        if new_name == self.existing_world_name {
+            new_name.push_str(" (Uploaded)");
+        }
+        // This should always succeed, because the initial upload ensures that the root is a group.
+        let mut root = world.root.group().expect("World root is not a Group").clone();
+        root.name = new_name.into();
+        world.root = root.into();
+        self.link.send_message(Msg::FinishUploadAsNew {
+            uploaded_world: world,
+        });
+    }
+
+    /// Consumes the pending upload and finishes the upload by replacing the existing world.
+    pub fn finish_replacing_existing(self) {
+        self.link.send_message(Msg::FinishUploadReplacingExisting {
+            world_id: self.world_id,
+            uploaded_world: self.world,
+        });
+    }
 }
 
 /// Wrapper for reporting errors from the world manager.
 #[derive(Debug, Clone)]
-struct WorldManagerErrorReporter {
+struct WorldManagerModalWrapper {
     /// Dispatcher used to send modal dialogs.
     ///
     /// This is stored in a refcell because it doesn't affect our rendering and is only used from
@@ -85,7 +154,7 @@ struct WorldManagerErrorReporter {
     modal_dispatcher: Rc<RefCell<Option<ModalDispatcher>>>,
 }
 
-impl WorldManagerErrorReporter {
+impl WorldManagerModalWrapper {
     /// Report an error through a persisted modal dialog.
     fn report_error(&self, title: impl Into<AttrValue>, content: Html) {
         self.modal_dispatcher
@@ -114,7 +183,7 @@ mod save_tracker {
     use yew::html;
 
     use crate::bugreport::file_a_bug;
-    use crate::world::manager::{WorldManagerErrorReporter, WORLD_MAP_KEY};
+    use crate::world::manager::{WorldManagerModalWrapper, WORLD_MAP_KEY};
     use crate::world::{World, WorldId, WorldList};
 
     /// Tracks whether the given value has been saved.
@@ -124,7 +193,7 @@ mod save_tracker {
         /// Local storage key used for this item.
         key: K,
         /// Error reporter used to report save errors.
-        error_reporter: WorldManagerErrorReporter,
+        error_reporter: WorldManagerModalWrapper,
         /// A bool indicating whether the value has been saved yet or not.
         is_saved: bool,
     }
@@ -167,7 +236,7 @@ mod save_tracker {
 
     impl SaveTracker<WorldList, &'static str> {
         /// Create a SaveTracker for an already saved value.
-        pub fn saved(value: WorldList, error_reporter: WorldManagerErrorReporter) -> Self {
+        pub fn saved(value: WorldList, error_reporter: WorldManagerModalWrapper) -> Self {
             Self {
                 value,
                 key: WORLD_MAP_KEY,
@@ -177,7 +246,7 @@ mod save_tracker {
         }
 
         /// Create a SaveTracker for an unsaved value.
-        pub fn unsaved(value: WorldList, error_reporter: WorldManagerErrorReporter) -> Self {
+        pub fn unsaved(value: WorldList, error_reporter: WorldManagerModalWrapper) -> Self {
             Self {
                 value,
                 key: WORLD_MAP_KEY,
@@ -189,10 +258,10 @@ mod save_tracker {
 
     impl SaveTracker<World, String> {
         /// Create a SaveTracker for an already saved value.
-        pub fn saved(value: World, id: WorldId, error_reporter: WorldManagerErrorReporter) -> Self {
+        pub fn saved(value: World, id: WorldId, error_reporter: WorldManagerModalWrapper) -> Self {
             Self {
                 value,
-                key: id.to_string(),
+                key: id.as_legacy_dotted().to_string(),
                 error_reporter,
                 is_saved: true,
             }
@@ -202,11 +271,11 @@ mod save_tracker {
         pub fn unsaved(
             value: World,
             id: WorldId,
-            error_reporter: WorldManagerErrorReporter,
+            error_reporter: WorldManagerModalWrapper,
         ) -> Self {
             Self {
                 value,
-                key: id.to_string(),
+                key: id.as_legacy_dotted().to_string(),
                 error_reporter,
                 is_saved: false,
             }
@@ -311,7 +380,7 @@ pub struct WorldManager {
     world_reader: WorldReader,
 
     /// Utility used to send modal dialogs on errors.
-    error_reporter: WorldManagerErrorReporter,
+    error_reporter: WorldManagerModalWrapper,
     /// Handle which ensure we receive updates to the modal dispatcher used in the error_reporter if
     /// it changes.
     _modal_dispatcher_handle: ContextHandle<ModalDispatcher>,
@@ -360,7 +429,7 @@ impl WorldManager {
                 WorldEntry::Present(entry) if *entry.meta() == world_meta => handle.no_change(),
                 entry => {
                     if !entry.exists() {
-                        warn!("World {} was not in the worlds map", entry.id());
+                        warn!("World {:?} was not in the worlds map", entry.id());
                     }
                     entry.insert_or_update_and_select(self.world.metadata());
                 }
@@ -477,7 +546,7 @@ impl WorldManager {
         let mut handle = self.worlds.maybe_mutate();
         match handle.entry(world_id) {
             WorldEntry::Absent(_) => {
-                warn!("Unknown world {world_id}");
+                warn!("Unknown world {world_id:?}");
                 handle.no_change();
                 false
             }
@@ -504,7 +573,7 @@ impl WorldManager {
                     true
                 }
                 Err(e) => {
-                    warn!("Unable to load world {world_id}: {e}");
+                    warn!("Unable to load world {world_id:?}: {e}");
                     match e {
                         StorageError::KeyNotFound(_) => {
                             let title = "World Data Missing";
@@ -524,7 +593,7 @@ impl WorldManager {
                                 recoverable. For help you can "}{file_a_bug()}{". If you file a \
                                 bug, please include this error message:"}</p>
                                 <pre>
-                                    {"Unable to load world "}{world_id}{": "}{e}
+                                    {format!("Unable to load world {world_id:?}: {e}")}
                                 </pre>
                                 </>
                             };
@@ -569,7 +638,7 @@ impl WorldManager {
                             ))
                         }
                         Err(e) => {
-                            warn!("Unable to load world {}: {e}", world_meta.id());
+                            warn!("Unable to load world {:?}: {e}", world_meta.id());
                             world_meta.load_error = true;
                             None
                         }
@@ -599,13 +668,13 @@ impl WorldManager {
                 Ok(_) => {
                     removed_world = true;
                     // Delete from local storage before persisting the world list.
-                    LocalStorage::delete(world_id.to_string());
+                    LocalStorage::delete(world_id.as_legacy_dotted().to_string());
                 }
                 Err(e) => {
                     removed_world = false;
                     // Don't mark the worlds list as changed if remove failed.
                     handle.no_change();
-                    warn!("Unable to remove world {world_id}: {e}");
+                    warn!("Unable to remove world {world_id:?}: {e}");
                 }
             }
         }
@@ -650,39 +719,15 @@ impl WorldManager {
     }
 
     /// Message handler for UploadWorld. Parses the world and uploads it.
-    fn upload_world(&mut self, mut file_name: String, data: Vec<u8>) -> bool {
-        let mut world = match serde_json::from_slice::<SaveFile>(&data) {
-            Ok(SaveFile::Version1Minor2(world)) => world,
-            Ok(SaveFile::Unknown {
-                model_version: None,
-            }) => {
-                let title = "World file missing Version";
-                let content = html! {
-                    <>
-                    <p>{"The file you uploaded was missing the 'model_version' tag, so we were \
-                    unable to tell which version of the internal Satisfactory Accounting app it \
-                    was created with."}</p>
-                    <p>{"Note: if you're tech savy and manually created this file by copying a \
-                    world out of your browser's local storage using developer tools, then it won't
-                    have the 'model_version' tag, and you'll need to add it. Currently the only
-                    valid version tag is \"v1.2.*\"."}</p>
-                    </>
-                };
-                self.error_reporter.report_error(title, content);
-                return false;
-            }
-            Ok(SaveFile::Unknown {
-                model_version: Some(model_version),
-            }) => {
-                let title = "World file missing Version";
-                let content = html! {
-                    <p>{"The file you uploaded has an unrecognized 'model_version' tag, so we were \
-                    unable to tell how to parse it. The tag was \""}{model_version}{"\", but \
-                    currently the only supported value is \"v1.2.*\"."}</p>
-                };
-                self.error_reporter.report_error(title, content);
-                return false;
-            }
+    fn upload_world(
+        &mut self,
+        link: &Scope<WorldManager>,
+        file_name: String,
+        data: Vec<u8>,
+        on_matches_existing: Callback<PendingUpload>,
+    ) -> bool {
+        let save_file = match serde_json::from_slice::<SaveFile>(&data) {
+            Ok(save_file) => save_file,
             Err(e) => {
                 warn!("Unable to parse save file: {e}");
                 let title = "Could not parse World";
@@ -701,34 +746,75 @@ impl WorldManager {
             }
         };
 
-        let mut root = match world.root.kind() {
-            NodeKind::Building(_) => {
-                let title = "World root is not a Group";
+        let world_id = save_file.id();
+        let mut world = match save_file.into_versioned_model() {
+            VersionedWorldModel::Version1Minor2(world) => world,
+            VersionedWorldModel::Unknown {
+                model_version: None,
+            } => {
+                let title = "World file missing Version";
                 let content = html! {
-                    <p>{"The world you uploaded appears to have a building as its root instead of \
-                    a group. The world root must always be a group, so we will wrap the single \
-                    building in a group."}</p>
+                    <>
+                    <p>{"The file you uploaded was missing the 'model_version' tag, so we were \
+                    unable to tell which version of the internal Satisfactory Accounting app it \
+                    was created with."}</p>
+                    <p>{"Note: if you're tech savy and manually created this file by copying a \
+                    world out of your browser's local storage using developer tools, then it won't
+                    have the 'model_version' tag, and you'll need to add it. Currently the only
+                    valid version tag is \"v1.2.*\"."}</p>
+                    </>
                 };
                 self.error_reporter.report_error(title, content);
+                return false;
+            }
+            VersionedWorldModel::Unknown {
+                model_version: Some(model_version),
+            } => {
+                let title = "World file missing Version";
+                let content = html! {
+                    <p>{"The file you uploaded has an unrecognized 'model_version' tag, so we were \
+                    unable to tell how to parse it. The tag was \""}{model_version}{"\", but \
+                    currently the only supported value is \"v1.2.*\"."}</p>
+                };
+                self.error_reporter.report_error(title, content);
+                return false;
+            }
+        };
+
+        let root = match world.root.kind() {
+            NodeKind::Building(_) => {
+                warn!("World root was not a group, wrapping in a new group.");
                 let mut group = Group::empty();
                 group.children.push(world.root.clone());
                 group
             }
             NodeKind::Group(group) => group.clone(),
         };
-
-        if !root.name.is_empty() {
-            file_name.clear();
-            file_name.push_str(&world.name());
-        }
-        file_name.push_str(" (Uploaded)");
-        root.name = file_name.into();
         world.root = root.into();
+
+        let entry = match world_id {
+            Some(world_id) => match self.worlds.entry(world_id) {
+                WorldEntry::Present(existing) => {
+                    on_matches_existing.emit(PendingUpload {
+                        world_id,
+                        world,
+                        file_name,
+                        existing_world_name: existing.meta().name.clone(),
+                        link: link.clone(),
+                    });
+                    return false;
+                }
+                WorldEntry::Absent(absent_world) => absent_world,
+            },
+            None => self.worlds.allocate_new_id(),
+        };
+
+        // In this path, the world didn't match an existing world or or didn't have an id in the
+        // file at all. In that case, we just upload as a new world without tagging.
 
         // Save the current world before proceeding.
         self.world.try_save_if_unsaved();
 
-        let entry = self.worlds.allocate_new_id();
         let id = entry.id();
         entry.insert_and_select(world.metadata());
         self.set_world_inner(WorldTracker::unsaved(
@@ -779,7 +865,7 @@ impl Component for WorldManager {
             })
             .expect("WorldManager must be nesed in the ModalManager");
         *modal_dispatcher.borrow_mut() = Some(inner_dispatcher);
-        let error_reporter = WorldManagerErrorReporter { modal_dispatcher };
+        let error_reporter = WorldManagerModalWrapper { modal_dispatcher };
 
         let (worlds, mut world) = match load_worlds_list() {
             Ok(worlds) => {
@@ -819,7 +905,7 @@ impl Component for WorldManager {
                             }
                             WorldEntry::Absent(entry) => entry.id(),
                         };
-                        warn!("Failed to load selected world {selected}: {e}");
+                        warn!("Failed to load selected world {selected:?}: {e}");
                         match e {
                             StorageError::KeyNotFound(_) => {
                                 let title = "World Data Missing";
@@ -845,7 +931,7 @@ impl Component for WorldManager {
                                     {file_a_bug()}{". If you file a bug, please include this error \
                                     message:"}</p>
                                     <pre>
-                                        {"Failed to load selected world "}{selected}{": "}{e}
+                                        {format!("Failed to load selected world {selected:?}: {e}")}
                                     </pre>
                                     </>
                                 };
@@ -953,7 +1039,7 @@ impl Component for WorldManager {
     }
 
     /// Update the WorldManager.
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         let redraw = match msg {
             Msg::SetRoot { root } => self.set_root(root),
             Msg::UpdateNodeMeta { id, meta } => self.update_node_meta(id, meta),
@@ -965,7 +1051,11 @@ impl Component for WorldManager {
             Msg::DeleteWorld(world_id) => self.delete_world(world_id),
             Msg::CreateWorld => self.create_world(),
             Msg::MarkError(id) => self.mark_error(id),
-            Msg::UploadWorld { file_name, data } => self.upload_world(file_name, data),
+            Msg::UploadWorld {
+                file_name,
+                data,
+                on_matches_existing,
+            } => self.upload_world(ctx.link(), file_name, data, on_matches_existing),
         };
         // This should be relatively cheap because all the content of the world is Rc'd.
         // This being held here does prevent the Rcs from ever successfully doing a Rc::make_mut,
@@ -1023,7 +1113,7 @@ fn load_worlds_list() -> Result<WorldList, StorageError> {
 
 /// Load the world with the specified id.
 fn load_world(id: WorldId) -> Result<World, StorageError> {
-    let mut world: World = LocalStorage::get(id.to_string())?;
+    let mut world: World = LocalStorage::get(id.as_legacy_dotted().to_string())?;
     // Remove metadata from deleted groups that are definitely no longer in the
     // undo/redo history.
     world.node_metadata.prune(&world.root);
@@ -1083,8 +1173,17 @@ impl WorldListDispatcher {
     }
 
     /// Create a new world from an uploaded file.
-    pub fn upload_world(&self, file_name: String, data: Vec<u8>) {
-        self.link.send_message(Msg::UploadWorld { file_name, data });
+    pub fn upload_world(
+        &self,
+        file_name: String,
+        data: Vec<u8>,
+        on_matches_existing: Callback<PendingUpload>,
+    ) {
+        self.link.send_message(Msg::UploadWorld {
+            file_name,
+            data,
+            on_matches_existing,
+        });
     }
 }
 
@@ -1322,19 +1421,20 @@ impl SaveFileFetcher {
     pub fn get_save_file(&self, id: WorldId) -> Result<SaveFile, FetchSaveFileError> {
         {
             let current = self.reader.borrow();
-            // Retrieving the current world this way ensures that the download button still works even
-            // if the current world hasn't been saved yet. That can only happen if the user is new and
-            // hasn't made any edits yet or if the world list was corrupted and we just dropped into a
-            // new world, but we don't want the download buttons to break in those cases.
+            // Retrieving the current world this way ensures that the download button still works
+            // even if the current world hasn't been saved yet. That can only happen if the user is
+            // new and hasn't made any edits yet or if the world list was corrupted and we just
+            // dropped into a new world, but we don't want the download buttons to break in those
+            // cases.
             if current.id() == id {
-                return Ok(SaveFile::Version1Minor2(current.world().clone()));
+                return Ok(SaveFile::new(id, current.world().clone()));
             }
         }
         // Note: this currently does not optimize for the case where the requested world is
         // currently loaded, though we do have the option to do so in the future if desired, since
         // we force caller to get this type through a hook.
         let world = load_world(id).inspect_err(|_| self.link.send_message(Msg::MarkError(id)))?;
-        Ok(SaveFile::Version1Minor2(world))
+        Ok(SaveFile::new(id, world))
     }
 }
 
