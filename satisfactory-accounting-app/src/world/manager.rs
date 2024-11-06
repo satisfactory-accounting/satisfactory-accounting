@@ -123,7 +123,11 @@ impl PendingUpload {
             new_name.push_str(" (Uploaded)");
         }
         // This should always succeed, because the initial upload ensures that the root is a group.
-        let mut root = world.root.group().expect("World root is not a Group").clone();
+        let mut root = world
+            .root
+            .group()
+            .expect("World root is not a Group")
+            .clone();
         root.name = new_name.into();
         world.root = root.into();
         self.link.send_message(Msg::FinishUploadAsNew {
@@ -360,6 +364,13 @@ mod save_tracker {
 
 use save_tracker::{WorldListTracker, WorldTracker};
 
+enum SwitchWorldError {
+    /// The world ID was not recognized.
+    UnknownWorld,
+    /// There was a storage error wile loading the world.
+    StorageError(StorageError),
+}
+
 /// World manager manages the lifecycle of a single world.
 pub struct WorldManager {
     /// List of available worlds.
@@ -540,19 +551,19 @@ impl WorldManager {
         self.redo_stack.clear();
     }
 
-    /// Message handler for SetWorld. Switches to the specified world. Returns true if redraw is
-    /// needed.
-    fn set_world(&mut self, world_id: WorldId) -> bool {
+    /// Tries to swtich to the given world. If switching succeeds, returns true. If the world was
+    /// already selected, retruns false. If the world could not be changed, returns an error
+    /// indicating why.
+    fn try_switch_world(&mut self, world_id: WorldId) -> Result<bool, SwitchWorldError> {
         let mut handle = self.worlds.maybe_mutate();
         match handle.entry(world_id) {
             WorldEntry::Absent(_) => {
-                warn!("Unknown world {world_id:?}");
                 handle.no_change();
-                false
+                Err(SwitchWorldError::UnknownWorld)
             }
             WorldEntry::Present(entry) if entry.is_selected() => {
                 handle.no_change();
-                false
+                Ok(false)
             }
             WorldEntry::Present(mut entry) => match load_world(world_id) {
                 Ok(world) => {
@@ -561,7 +572,7 @@ impl WorldManager {
                     drop(handle);
                     // Save the existing world before switching, in case it wasn't already saved.
                     self.world.try_save_if_unsaved();
-                    // Set the world, marking it as already saved, since w just loaded it.
+                    // Set the world, marking it as already saved, since we just loaded it.
                     self.set_world_inner(WorldTracker::saved(
                         world,
                         world_id,
@@ -570,43 +581,60 @@ impl WorldManager {
                     // This will always save the world list if it is unsaved, so it will persist the
                     // change to which entry is selected.
                     self.update_world_metadata();
-                    true
+                    Ok(true)
                 }
                 Err(e) => {
-                    warn!("Unable to load world {world_id:?}: {e}");
-                    match e {
-                        StorageError::KeyNotFound(_) => {
-                            let title = "World Data Missing";
-                            let content = html! {
-                                <p>{"The world you selected appears to be missing from your
-                                browser's storage, so we were unable to load it. Sorry about that."}
-                                </p>
-                            };
-                            self.error_reporter.report_error(title, content);
-                        }
-                        e => {
-                            let title = "Error Loading World";
-                            let content = html! {
-                                <>
-                                <p>{"We were unable to load the world you selected. This may be a \
-                                bug. Your world data seems to still be present, so this may be \
-                                recoverable. For help you can "}{file_a_bug()}{". If you file a \
-                                bug, please include this error message:"}</p>
-                                <pre>
-                                    {format!("Unable to load world {world_id:?}: {e}")}
-                                </pre>
-                                </>
-                            };
-                            self.error_reporter.report_error(title, content);
-                        }
-                    }
                     // load_error isn't persisted, so don't bother saving the world state here.
                     entry.meta_mut().load_error = true;
                     // Updating load_error is not a saveable change, so don't mark as needing save.
                     handle.no_change();
-                    true
+                    Err(SwitchWorldError::StorageError(e))
                 }
             },
+        }
+    }
+
+    /// Message handler for SetWorld. Switches to the specified world. Returns true if redraw is
+    /// needed.
+    fn set_world(&mut self, world_id: WorldId) -> bool {
+        match self.try_switch_world(world_id) {
+            // If the world was already selected, no need to redraw.
+            Ok(did_switch) => did_switch,
+            Err(SwitchWorldError::UnknownWorld) => {
+                warn!("Cannot switch to world {world_id:?} because it is not in the worlds list");
+                false
+            }
+            Err(SwitchWorldError::StorageError(e)) => {
+                warn!("Unable to load world {world_id:?}: {e}");
+                match e {
+                    StorageError::KeyNotFound(_) => {
+                        let title = "World Data Missing";
+                        let content = html! {
+                            <p>{"The world you selected appears to be missing from your
+                            browser's storage, so we were unable to load it. Sorry about that."}
+                            </p>
+                        };
+                        self.error_reporter.report_error(title, content);
+                    }
+                    e => {
+                        let title = "Error Loading World";
+                        let content = html! {
+                            <>
+                            <p>{"We were unable to load the world you selected. This may be a \
+                            bug. Your world data seems to still be present, so this may be \
+                            recoverable. For help you can "}{file_a_bug()}{". If you file a \
+                            bug, please include this error message:"}</p>
+                            <pre>
+                                {format!("Unable to load world {world_id:?}: {e}")}
+                            </pre>
+                            </>
+                        };
+                        self.error_reporter.report_error(title, content);
+                    }
+                }
+
+                true
+            }
         }
     }
 
@@ -826,6 +854,105 @@ impl WorldManager {
         self.worlds.try_save_if_unsaved();
 
         true
+    }
+
+    /// Message handler for FinishUploadAsNew.
+    fn finish_upload_as_new(&mut self, uploaded_world: World) -> bool {
+        // If the current world has unsaved state, save it before creating a new world.
+        self.world.try_save_if_unsaved();
+
+        let entry = self.worlds.allocate_new_id();
+        let id = entry.id();
+        entry.insert_and_select(uploaded_world.metadata());
+        self.set_world_inner(WorldTracker::unsaved(
+            uploaded_world,
+            id,
+            self.error_reporter.clone(),
+        ));
+        self.world.try_save_if_unsaved();
+        self.worlds.try_save_if_unsaved();
+        true
+    }
+
+    /// Message handler for FinishUploadReplaceExisting.
+    fn finish_upload_replace_existing(&mut self, world_id: WorldId, uploaded_world: World) -> bool {
+        /// Helper for when the current world is missing from the world manager or from storage.
+        /// This re-inserts the world using the given ID, clobbering any existing world manager
+        /// entry and saved world state without creating an undo state.
+        ///
+        /// This should only be used when we already know that the world is missing or failed to
+        /// load.
+        fn upload_without_undo(this: &mut WorldManager, world_id: WorldId, uploaded_world: World) {
+            // Save the current world before proceeding.
+            this.world.try_save_if_unsaved();
+
+            let entry = this.worlds.entry(world_id);
+            info!(
+                "While re-inserting, the entry for world {world_id:?} was{}found in the world \
+                list.",
+                entry.exists().then_some(" ").unwrap_or(" not ")
+            );
+            entry.insert_or_update_and_select(uploaded_world.metadata());
+            this.set_world_inner(WorldTracker::unsaved(
+                uploaded_world,
+                world_id,
+                this.error_reporter.clone(),
+            ));
+
+            this.world.try_save_if_unsaved();
+            this.worlds.try_save_if_unsaved();
+        }
+
+        match self.try_switch_world(world_id) {
+            Ok(_) => {
+                let old_world = mem::replace(self.world.mutate_and_mark_dirty(), uploaded_world);
+                self.add_undo_state(UnReDoState {
+                    root: old_world.root,
+                    database: old_world.database,
+                });
+                self.world.try_save_if_unsaved();
+                self.update_world_metadata();
+                true
+            }
+            Err(SwitchWorldError::UnknownWorld) => {
+                // This is odd because the world must have existed when we got to UploadWorld.
+                error!(
+                    "Uploaded world {world_id:?} was not found in the world list when we tried to \
+                    complete the upload. Re-inserting it."
+                );
+                upload_without_undo(self, world_id, uploaded_world);
+                true
+            }
+            Err(SwitchWorldError::StorageError(StorageError::KeyNotFound(_))) => {
+                warn!(
+                    "Uploaded world {world_id:?} didn't have an entry in storage, so no undo will \
+                    be available"
+                );
+                upload_without_undo(self, world_id, uploaded_world);
+                true
+            }
+            Err(SwitchWorldError::StorageError(e)) => {
+                warn!("Unable to load world {world_id:?}: {e}");
+                let title = "Not overwriting existing data";
+                let content = html! {
+                    <>
+                    <p>{"We were unable to load the existing world that the uploaded world \
+                    matched. The existing world data appears to be present though, so we don't \
+                    want to overwrite it if we can't create an Undo state. This might be a bug. \
+                    For help you can "}{file_a_bug()}{". If you file a bug, please include this \
+                    error message:"}</p>
+                    <pre>
+                        {format!("Unable to load world {world_id:?}: {e}")}
+                    </pre>
+                    <p>{"If you just want to replace the world and don't care about preserving \
+                    existing data, you can either choose to upload the world file as a new world \
+                    or delete the existing world first."}</p>
+                    </>
+                };
+                self.error_reporter.report_error(title, content);
+                true
+            }
+        }
     }
 
     /// Creates the [`DbController`] for the current db.
@@ -1056,6 +1183,11 @@ impl Component for WorldManager {
                 data,
                 on_matches_existing,
             } => self.upload_world(ctx.link(), file_name, data, on_matches_existing),
+            Msg::FinishUploadAsNew { uploaded_world } => self.finish_upload_as_new(uploaded_world),
+            Msg::FinishUploadReplacingExisting {
+                world_id,
+                uploaded_world,
+            } => self.finish_upload_replace_existing(world_id, uploaded_world),
         };
         // This should be relatively cheap because all the content of the world is Rc'd.
         // This being held here does prevent the Rcs from ever successfully doing a Rc::make_mut,

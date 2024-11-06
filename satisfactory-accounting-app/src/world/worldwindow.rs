@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use gloo::file::{Blob, ObjectUrl};
 use gloo::storage::errors::StorageError;
-use log::error;
+use log::{error, warn};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlAnchorElement;
 use yew::{
@@ -48,34 +48,42 @@ pub fn WorldChooserWindow() -> Html {
     let world_list_dispatcher = use_world_list_dispatcher();
 
     let modal_dispatcher = use_modal_dispatcher();
+    // This is used to keep the modal alive until the world window is closed.
     let upload_modal_handle = use_mut_ref(|| None::<ModalHandle>);
     let on_matches_existing = use_callback(
-        (modal_dispatcher, world_list_dispatcher.clone()),
-        |matches_existing: PendingUpload, (modal_dispatcher, world_list_dispatcher)| {
+        modal_dispatcher,
+        move |pending: PendingUpload, modal_dispatcher| {
             let lhs = html! { <span>{"Upload as new World"}</span> };
             let rhs = html! { <span>{"Replace existing World"}</span> };
             let title = "Upload or Replace?";
             let content = html! { <>
-                <p>{"The world you uploaded, named \""}{matches_existing.world.name()}{"\", \
+                <p>{"The world you uploaded, named \""}{pending.uploaded_name()}{"\", \
                 appears to match the ID of a world you already have, named \""}
-                {&matches_existing.existing_world_name}{"\"."}</p>
+                {pending.existing_name()}{"\"."}</p>
                 <p>{"Would you like to upload the world as a new world, or replace the existing \
                 one? If you replace the existing world, its state from before the upload will be \
                 placed in the undo history, so you can undo this action."}</p>
             </> };
-            let matches_existing = Rc::new(RefCell::new(Some(matches_existing)));
+            let pending = Rc::new(RefCell::new(Some(pending)));
             let on_lhs = {
-                let world_list_dispatcher = world_list_dispatcher.clone();
-                let matches_existing = matches_existing.clone();
+                let pending = pending.clone();
                 Callback::from(move |()| {
+                    if let Some(pending) = pending.take() {
+                        pending.finish_as_new();
+                    } else {
+                        warn!("Pending upload already finished");
+                    }
                 })
             };
             let on_rhs = {
-                let world_list_dispatcher = world_list_dispatcher.clone();
                 Callback::from(move |()| {
+                    if let Some(pending) = pending.take() {
+                        pending.finish_replacing_existing();
+                    } else {
+                        warn!("Pending upload already finished");
+                    }
                 })
             };
-
 
             let handle = modal_dispatcher
                 .builder()
@@ -86,9 +94,10 @@ pub fn WorldChooserWindow() -> Html {
                         .lhs_title("Upload the world a new world with a new ID")
                         .rhs_title("Upload the world over the existing world the the same ID")
                         .on_lhs(on_lhs)
-                        .on_rhs(todo!()),
+                        .on_rhs(on_rhs),
                 )
                 .build();
+            *upload_modal_handle.borrow_mut() = Some(handle);
         },
     );
 
