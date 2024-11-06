@@ -375,7 +375,6 @@ fn CancelDeleteDisplay(props: &CancelDeleteProps) -> Html {
     }
 }
 
-
 #[derive(PartialEq, Properties)]
 pub struct BinaryChoiceProps {
     close_window: Callback<()>,

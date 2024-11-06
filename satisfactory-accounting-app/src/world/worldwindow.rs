@@ -58,8 +58,8 @@ pub fn WorldChooserWindow() -> Html {
             let title = "Upload or Replace?";
             let content = html! { <>
                 <p>{"The world you uploaded, named \""}{pending.uploaded_name()}{"\", \
-                appears to match the ID of a world you already have, named \""}
-                {pending.existing_name()}{"\"."}</p>
+                appears to match the ID ("}{pending.id().as_base64()}{") of a world you already \
+                have, named \""}{pending.existing_name()}{"\"."}</p>
                 <p>{"Would you like to upload the world as a new world, or replace the existing \
                 one? If you replace the existing world, its state from before the upload will be \
                 placed in the undo history, so you can undo this action."}</p>
@@ -89,6 +89,7 @@ pub fn WorldChooserWindow() -> Html {
                 .builder()
                 .title(title)
                 .content(content)
+                .class("upload-world-replace-choice")
                 .kind(
                     BinaryChoice::new(lhs, rhs)
                         .lhs_title("Upload the world a new world with a new ID")
@@ -129,6 +130,7 @@ pub fn WorldChooserWindow() -> Html {
                 <div class="create-button-row">
                     <span class="world-name">{"World Name"}</span>
                     <span class="world-version">{"World Version"}</span>
+                    <span class="world-id">{"World Id"}</span>
                     <span class="create-upload">
                         <UploadButton class="green" title="Upload" onupload={upload_world}>
                             {material_icon("upload")}
@@ -206,6 +208,7 @@ fn WorldListRow(
             <span class="world-version">
                 {meta.database.map(DatabaseVersionSelector::name)}
             </span>
+            <span class="world-id">{id.as_base64().to_string()}</span>
             if !selected {
                 <Button key="switch" class="green switch-to-world" title="Switch to this World" onclick={select_world}>
                     if meta.load_error {
@@ -323,9 +326,9 @@ fn use_download_callback(id: WorldId, name: AttrValue, modals: ModalDispatcher) 
             };
             a.set_href(&url);
             let filename = if name.is_empty() {
-                format!("SatisfactoryAccounting-{}.json", id.as_unprefixed())
+                format!("SatisfactoryAccounting-{}.json", id.as_base64())
             } else {
-                format!("{name}-{}.json", id.as_unprefixed())
+                format!("{name}-{}.json", id.as_base64())
             };
             a.set_download(&filename);
             a.click();

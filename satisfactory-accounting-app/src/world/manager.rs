@@ -100,6 +100,11 @@ pub struct PendingUpload {
 }
 
 impl PendingUpload {
+    /// Get the id of the uploaded world.
+    pub fn id(&self) -> &WorldId {
+        &self.world_id
+    }
+
     /// Get the name of the uploaded world.
     pub fn uploaded_name(&self) -> AttrValue {
         self.world.name()
@@ -906,6 +911,7 @@ impl WorldManager {
         match self.try_switch_world(world_id) {
             Ok(_) => {
                 let old_world = mem::replace(self.world.mutate_and_mark_dirty(), uploaded_world);
+                self.database = self.world.mutate_and_mark_dirty().post_load();
                 self.add_undo_state(UnReDoState {
                     root: old_world.root,
                     database: old_world.database,
@@ -946,7 +952,7 @@ impl WorldManager {
                     </pre>
                     <p>{"If you just want to replace the world and don't care about preserving \
                     existing data, you can either choose to upload the world file as a new world \
-                    or delete the existing world first."}</p>
+                    or delete the existing world with id "}{world_id.as_base64()}{" first."}</p>
                     </>
                 };
                 self.error_reporter.report_error(title, content);

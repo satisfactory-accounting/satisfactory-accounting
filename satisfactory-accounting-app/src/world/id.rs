@@ -36,6 +36,11 @@ impl WorldId {
     pub fn as_resource_id(&self) -> AsResourceId {
         AsResourceId { id: self }
     }
+
+    /// Get a formatter that formats the world ID as a plain base64 uuid.
+    pub fn as_base64(&self) -> AsBase64 {
+        AsBase64 { id: self }
+    }
 }
 
 /// Error from parsing a [`WorldId`].
@@ -144,6 +149,22 @@ impl<'a> fmt::Display for AsLegacyDotted<'a> {
     }
 }
 
+/// Formats the WorldId as a plain base64 uuid.
+#[repr(transparent)]
+pub struct AsBase64<'a> {
+    id: &'a WorldId,
+}
+
+impl<'a> fmt::Display for AsBase64<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use base64::display::Base64Display;
+        fmt::Display::fmt(
+            &Base64Display::new(self.id.0.as_bytes(), &URL_SAFE_NO_PAD),
+            f,
+        )
+    }
+}
+
 /// Formats the WorldId as a base64 resource ID.
 #[repr(transparent)]
 pub struct AsResourceId<'a> {
@@ -152,8 +173,7 @@ pub struct AsResourceId<'a> {
 
 impl<'a> fmt::Display for AsResourceId<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use base64::display::Base64Display;
-        let id = Base64Display::new(self.id.0.as_bytes(), &URL_SAFE_NO_PAD);
-        write!(f, "{RESOURCE_ID_PREFIX}{id}")
+        let b64id = self.id.as_base64();
+        write!(f, "{RESOURCE_ID_PREFIX}{b64id}")
     }
 }

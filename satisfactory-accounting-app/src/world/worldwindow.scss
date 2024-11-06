@@ -26,6 +26,13 @@
         // Add a little more space on top of the column gap.
         padding-right: 5px;
     }
+
+    .world-id {
+        grid-column: id;
+        box-sizing: border-box;
+        // Add a little more space on top of the column gap.
+        padding-right: 5px;
+    }
 }
 
 .WorldChooserWindow {
@@ -40,6 +47,7 @@
         grid-template-columns:
             [name] minmax(min-content, auto)
             [version] minmax(min-content, auto)
+            [id] minmax(min-content, auto)
             [open] minmax(min-content, 1fr)
             [download] min-content
             [delete] min-content
@@ -54,7 +62,8 @@
         @include world-row;
 
         .world-name,
-        .world-version {
+        .world-version,
+        .world-id {
             font-weight: bold;
         }
     }
@@ -105,4 +114,8 @@
     .delete-content {
         margin-bottom: 15px;
     }
+}
+
+.upload-world-replace-choice {
+    width: 600px;
 }
