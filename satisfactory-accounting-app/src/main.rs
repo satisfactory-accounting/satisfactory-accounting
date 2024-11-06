@@ -12,6 +12,7 @@ mod appheader;
 mod bugreport;
 mod collections;
 mod inputs;
+mod locale;
 mod material;
 mod modal;
 mod node_display;

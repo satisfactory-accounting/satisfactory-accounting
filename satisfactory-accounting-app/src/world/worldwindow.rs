@@ -4,6 +4,7 @@ use std::rc::Rc;
 use gloo::file::{Blob, ObjectUrl};
 use gloo::storage::errors::StorageError;
 use log::{error, warn};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsCast;
 use web_sys::HtmlAnchorElement;
 use yew::{
@@ -19,11 +20,31 @@ use crate::modal::{
 };
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
+use crate::user_settings::{self, use_user_settings, use_user_settings_dispatcher};
 use crate::world::manager::PendingUpload;
 use crate::world::{
     use_save_file_fetcher, use_world_list, use_world_list_dispatcher, DatabaseVersionSelector,
     FetchSaveFileError, WorldId, WorldMetadata,
 };
+
+/// Sort order to use for worlds in the world window.
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorldSortMode {
+    /// Sort by the user world name (then by version, then by id).
+    #[default]
+    Name,
+    /// Sort by the world version (then by name, then by id).
+    Version,
+    /// Sort by the world ID.
+    WorldId,
+}
+
+impl WorldSortMode {
+    /// Returns true if the current value is the default.
+    pub fn is_default(&self) -> bool {
+        *self == Default::default()
+    }
+}
 
 pub type WorldChooserWindowManager = WindowManager<WorldChooserWindow>;
 pub type WorldChooserWindowDispatcher = ShowWindowDispatcher<WorldChooserWindow>;
@@ -112,6 +133,16 @@ pub fn WorldChooserWindow() -> Html {
     let create_world = use_callback(world_list_dispatcher, |(), world_list_dispatcher| {
         world_list_dispatcher.create_world();
     });
+
+    let user_settings = use_user_settings();
+    let user_settings_dispatcher = use_user_settings_dispatcher();
+
+    let mut sorted_world_list = world_list.iter().collect::<Vec<_>>();
+    match user_settings.world_sort_mode {
+        WorldSortMode::Name => todo!(),
+        WorldSortMode::Version => todo!(),
+        WorldSortMode::WorldId => todo!(),
+    }
 
     let world_rows = world_list.iter().map(|meta_ref| {
         html! {

@@ -23,7 +23,7 @@ pub use self::meta::{NodeMeta, NodeMetas};
 pub use self::savefile::SaveFile;
 #[allow(unused_imports)]
 pub use self::worldwindow::{
-    use_world_chooser_window, WorldChooserWindow, WorldChooserWindowManager,
+    use_world_chooser_window, WorldChooserWindow, WorldChooserWindowManager, WorldSortMode,
 };
 
 mod dbchoice;
