@@ -1,4 +1,5 @@
 @use "../../colors.scss";
+@use "../../focus.scss";
 
 .MaterialToggle {
     input[type="checkbox"],
@@ -10,10 +11,16 @@
             color: colors.$bg-primary;
         }
 
-        &:focus+.hidden-input-display {
+        &:focus-visible+.hidden-input-display {
             color: colors.$bg-primary;
-            filter: drop-shadow(0 0 5px);
+            @include focus.focus-outline;
         }
+    }
+    input[type="radio"]+.hidden-input-display {
+        border-radius: 0.75em;
+    }
+    input[type="checkbox"]+.hidden-input-display {
+        border-radius: 5px;
     }
 
     display: flex;

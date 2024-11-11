@@ -21,20 +21,48 @@ use crate::modal::{
 };
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
-use crate::user_settings::{self, use_user_settings, use_user_settings_dispatcher};
+use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 use crate::world::manager::PendingUpload;
 use crate::world::{
     use_save_file_fetcher, use_world_list, use_world_list_dispatcher, DatabaseVersionSelector,
     FetchSaveFileError, WorldId, WorldMetadata,
 };
 
+/// Message to control WorlSortSettings.
+pub enum WorldSortSettingsMsg {
+    /// Switch to this column if not selected, or toggle the sort direction of that column if
+    /// selected.
+    #[allow(private_interfaces)] // Can intentionally only be created from this module.
+    ToggleColumn { column: SortColumn },
+}
+
 /// Sorting settings to apply to the world list.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorldSortSettings {
     /// Which column to sort the world list by.
-    sort_column: SortColumn,
+    column: SortColumn,
     /// Direction to sort the world list.
     direction: SortDirection,
+}
+
+impl WorldSortSettings {
+    /// Toggles the specified column, either switching to it or swaping the sort direction of it.
+    fn toggle_column(&mut self, column: SortColumn) -> bool {
+        if self.column == column {
+            self.direction.invert();
+        } else {
+            self.column = column;
+            self.direction = SortDirection::Ascending;
+        }
+        true
+    }
+
+    /// Applies a sort settings message.
+    pub fn update(&mut self, msg: WorldSortSettingsMsg) -> bool {
+        match msg {
+            WorldSortSettingsMsg::ToggleColumn { column } => self.toggle_column(column),
+        }
+    }
 }
 
 /// Sort order to use for worlds in the world window.
@@ -60,6 +88,16 @@ enum SortDirection {
 }
 
 impl SortDirection {
+    /// Inverts this sort order in place.
+    fn invert(&mut self) {
+        *self = match *self {
+            Self::Ascending => Self::Descending,
+            Self::Descending => Self::Ascending,
+        };
+    }
+
+    /// Apply this ordering to a comparison result. Assumes that Ascending matches the forward
+    /// ordering and descending matches the revers ordering.
     fn apply(self, ordering: Ordering) -> Ordering {
         match self {
             Self::Ascending => ordering,
@@ -159,37 +197,74 @@ pub fn WorldChooserWindow() -> Html {
     let user_settings = use_user_settings();
     let user_settings_dispatcher = use_user_settings_dispatcher();
 
+    let toggle_sort_name = use_callback(
+        user_settings_dispatcher.clone(),
+        |_, user_settings_dispatcher| {
+            user_settings_dispatcher.update_world_sort_settings(
+                WorldSortSettingsMsg::ToggleColumn {
+                    column: SortColumn::Name,
+                },
+            )
+        },
+    );
+    let toggle_sort_version = use_callback(
+        user_settings_dispatcher.clone(),
+        |_, user_settings_dispatcher| {
+            user_settings_dispatcher.update_world_sort_settings(
+                WorldSortSettingsMsg::ToggleColumn {
+                    column: SortColumn::Version,
+                },
+            )
+        },
+    );
+    let toggle_sort_id = use_callback(user_settings_dispatcher, |_, user_settings_dispatcher| {
+        user_settings_dispatcher.update_world_sort_settings(WorldSortSettingsMsg::ToggleColumn {
+            column: SortColumn::WorldId,
+        })
+    });
+
     let sort_direction = user_settings.world_sort_settings.direction;
     let mut sorted_world_list = world_list.iter().collect::<Vec<_>>();
     let collator = crate::locale::get_collator();
-    match user_settings.world_sort_settings.sort_column {
+    match user_settings.world_sort_settings.column {
         SortColumn::Name => sorted_world_list.sort_by(|lhs, rhs| {
-            // Only apply sort direction to the name column, the sub-sort of database names is
-            // always latest-first, even when sort direction is reversed.
-            sort_direction
-                .apply(collator.compare(&lhs.name, &rhs.name))
-                // Invert ascending and descending for database versions so more recent versions
-                // are first when sorting by name.
-                .then_with(|| lhs.database.cmp(&rhs.database).reverse())
+            // When sorting by name, we sort by version descending so later versions show on top.
+            sort_direction.apply(
+                collator
+                    .compare(&lhs.name, &rhs.name)
+                    .then_with(|| lhs.database.cmp(&rhs.database).reverse())
+                    .then_with(|| lhs.id().cmp(&rhs.id())),
+            )
         }),
         SortColumn::Version => sorted_world_list.sort_by(|lhs, rhs| {
-            //lhs.database.cmp(&rhs.database).then_with(||
+            sort_direction.apply(
+                lhs.database
+                    .cmp(&rhs.database)
+                    .then_with(|| collator.compare(&lhs.name, &rhs.name))
+                    .then_with(|| lhs.id().cmp(&rhs.id())),
+            )
         }),
         SortColumn::WorldId => {
             // sorted_world_list is already sorted by world_id since world_list is a BTreeMap of
-            // world_ids.
+            // world_ids, and we can never have duplicate IDs so we never need to do a sub-sort by
+            // name.
             if sort_direction == SortDirection::Descending {
                 sorted_world_list.reverse();
             }
         }
     }
 
-    let world_rows = world_list.iter().map(|meta_ref| {
+    let world_rows = sorted_world_list.into_iter().map(|meta_ref| {
         html! {
             <WorldListRow id={meta_ref.id()} selected={meta_ref.is_selected()}
                 meta={meta_ref.meta().clone()} />
         }
     });
+
+    let sort_dir = match user_settings.world_sort_settings.direction {
+        SortDirection::Ascending => "\u{25B4}",
+        SortDirection::Descending => "\u{25BE}",
+    };
 
     html! {
         <OverlayWindow title="Choose World" class="WorldChooserWindow" on_close={close}>
@@ -199,9 +274,24 @@ pub fn WorldChooserWindow() -> Html {
             </div>
             <div class="world-rows">
                 <div class="create-button-row">
-                    <span class="world-name">{"World Name"}</span>
-                    <span class="world-version">{"World Version"}</span>
-                    <span class="world-id">{"World Id"}</span>
+                    <a href="javascript:void(0)" onclick={toggle_sort_name} class="world-name">
+                        if user_settings.world_sort_settings.column == SortColumn::Name {
+                            {sort_dir}
+                        }
+                        <span>{"World Name"}</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick={toggle_sort_version} class="world-version">
+                        if user_settings.world_sort_settings.column == SortColumn::Version {
+                            {sort_dir}
+                        }
+                        <span>{"World Version"}</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick={toggle_sort_id} class="world-id">
+                        if user_settings.world_sort_settings.column == SortColumn::WorldId {
+                            {sort_dir}
+                        }
+                        <span>{"World Id"}</span>
+                    </a>
                     <span class="create-upload">
                         <UploadButton class="green" title="Upload" onupload={upload_world}>
                             {material_icon("upload")}

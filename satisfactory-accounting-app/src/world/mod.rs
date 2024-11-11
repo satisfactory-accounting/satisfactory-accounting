@@ -24,6 +24,7 @@ pub use self::savefile::SaveFile;
 #[allow(unused_imports)]
 pub use self::worldwindow::{
     use_world_chooser_window, WorldChooserWindow, WorldChooserWindowManager, WorldSortSettings,
+    WorldSortSettingsMsg,
 };
 
 mod dbchoice;

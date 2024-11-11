@@ -1,5 +1,6 @@
 @use "sass:color";
 @use "../../colors.scss";
+@use "../../focus.scss";
 @use "../../icon-mixin.scss";
 
 .Button {
@@ -52,12 +53,8 @@
     // Default button is primary colored (satisfactory colors).
     @include color-button(colors.$bg-primary);
 
-    input[type="file"] {
-        position: absolute;
-        min-width: 0;
-        width: 0;
-        overflow: hidden;
-        opacity: 0;
+    &:focus-visible {
+        @include focus.focus-outline;
     }
 
     color: colors.$gray-dark;
@@ -72,5 +69,19 @@
 
     &.red {
         @include color-button(colors.$red);
+    }
+}
+
+.file-button-wrapper {
+    input[type="file"] {
+        position: absolute;
+        min-width: 0;
+        width: 0;
+        overflow: hidden;
+        opacity: 0;
+    }
+
+    input[type="file"]:focus-visible+.Button {
+        @include focus.focus-outline;
     }
 }

@@ -1,5 +1,6 @@
 @use "sass:color";
 @use "../colors.scss";
+@use "../focus.scss";
 
 @mixin world-row {
     display: grid;
@@ -65,6 +66,15 @@
         .world-version,
         .world-id {
             font-weight: bold;
+            text-decoration: none;
+            color: inherit;
+            padding: 2px;
+            border-radius: 5px;
+
+            &:focus-visible {
+                @include focus.focus-outline;
+                background-color: inherit;
+            }
         }
     }
 

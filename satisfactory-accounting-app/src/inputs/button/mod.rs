@@ -178,9 +178,11 @@ pub fn UploadButton(
     });
 
     html! {
-        <label {class} {title}>
+        <label class="file-button-wrapper" {title}>
             <input type="file" accept="application/json" {onchange} />
-            {children.clone()}
+            <div {class}>
+                {children.clone()}
+            </div>
         </label>
     }
 }

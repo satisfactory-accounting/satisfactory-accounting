@@ -41,7 +41,7 @@ pub fn get_locale() -> &'static DataLocale {
             Some(lang) => match lang.parse() {
                 Ok(locale) => return locale,
                 Err(e) => {
-                    warn!("Unable to parse local {lang} from the navigator.language");
+                    warn!("Unable to parse local {lang} from the navigator.language: {e}");
                 }
             },
             None => {

@@ -1,0 +1,6 @@
+@use "colors.scss";
+
+@mixin focus-outline {
+    outline: 2px solid colors.$blue;
+    filter: drop-shadow(0 0 5px);
+}
