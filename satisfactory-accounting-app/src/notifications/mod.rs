@@ -1,11 +1,18 @@
 use yew::{function_component, html, use_callback, use_state_eq, Html};
 
+use crate::bugreport::file_a_bug;
 use crate::inputs::button::Button;
 use crate::overlay_window::OverlayWindow;
 use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 
-/// Curent version to ack up to when the user dismisses notifications.
-const CURRENT_NOTIFICATION_VERSION: u32 = 2;
+/// Versions of the notification message used in ack numbers..
+mod versions {
+    pub(super) const V1M2P9: u32 = 2;
+    pub(super) const V1M2P10: u32 = 3;
+
+    pub(super) const PREVIOUS: u32 = V1M2P9;
+    pub(super) const CURRENT: u32 = V1M2P10;
+}
 
 struct Notification {
     title: &'static str,
@@ -24,7 +31,7 @@ pub fn Notifications() -> Html {
     });
 
     let ack_notifications = use_callback(user_settings_dispatcher, |(), dispatcher| {
-        dispatcher.ack_notification(CURRENT_NOTIFICATION_VERSION);
+        dispatcher.ack_notification(versions::CURRENT);
     });
 
     html! {
@@ -49,8 +56,8 @@ pub fn Notifications() -> Html {
 fn get_notification(acked_version: u32) -> Option<Notification> {
     if acked_version == 0 {
         Some(get_new_user_welcome())
-    } else if acked_version < CURRENT_NOTIFICATION_VERSION {
-        Some(get_existing_user_notification())
+    } else if acked_version < versions::CURRENT {
+        Some(get_existing_user_notification(acked_version))
     } else {
         None
     }
@@ -104,137 +111,139 @@ fn get_new_user_welcome() -> Notification {
     }
 }
 
-fn get_existing_user_notification() -> Notification {
+fn get_existing_user_notification(acked_version: u32) -> Notification {
     Notification {
-        title: "Satisfactory Accounting v1.2.9",
+        title: "Satisfactory Accounting v1.2.10",
         content: html! {
             <>
                 <h2>{"Welcome back, Pioneer."}</h2>
-                <p>{
-                    "You know how sometimes you decide you want to expand a factory, but the way \
-                    it's set up makes that a pain, and you realize you really should have arranged \
-                    everything "}<em>{"this way"}</em>{" instead of "}<em>{"that way"}</em>{"? \
-                    And then you tear down half the factory to rebuild it from scratch but better?"
-                }</p>
-                <p>{
-                    "There are a few features I've wanted to add to Satisfactory Accounting, but \
-                    instead of just hanging those new features off the end on a floating \
-                    foundation like we all sometimes do when we care more about getting that part \
-                    than being pretty, I did the thing and rebuilt a substantial portion of the \
-                    app first."
-                }</p>
+                <p>{"This is a minor update to the download/upload functionality I added in v1.2.9 \
+                which is intended to make download/upload a bit more useful to those of you \
+                sharing save files with friends."}</p>
                 <h3>{"What's in this version"}</h3>
-                <p>{
-                    "Although this version doesn't change all that much, there are a few changes \
-                    you might notice."
-                }</p>
-                <ul>
-                    <li><p><b>{"Download and Upload."}</b>
-                        {" You can now download your worlds as a JSON file from the World Manager, \
-                        and upload saved JSON files as new worlds. This lets you save worlds for \
-                        backup purposes or transfer them to a different computer, or share with a \
-                        friend."}</p>
-                        <p>{"Quick note for those of you who figured out how to copy out the world \
-                        JSON before this update: I've added a 'model_version' tag to the \
-                        downloaded JSON file format so that I can ensure that future versions of \
-                        Satisfactory Accounting remain compatible with older save files, even if I \
-                        make changes to the world format. If you created world JSON files without \
-                        using the download button, you'll probably need to add the 'model_version' \
-                        tag to them. The current version tag is \"v1.2.*\"."}</p>
-                        <p>{"For everyone else, the download button adds this tag itself \
-                        so you don't have to worry about this!"}</p>
-                    </li>
-                    <li>
-                        <b>{"\"Latest\" mode for factory versions."}</b>
-                        {" With this addition, you no longer need to manually change the factory \
-                        database version every time I fix a missing or incorrect recipe. You still \
-                        have the option to pin you world at a particular version if you prefer not \
-                        to have things change on you."}
-                    </li>
-                    <li>
-                        <p><b>{"Grid alignment."}</b>
-                        {" A whole bunch of things have now been laid out in a grid format instead \
-                        of just flexible layouts they were previously. In particular, you'll \
-                        notice that all buildings and sub-groups in a group have their clock \
-                        speeds and most of their balances aligned now. Plus when you have balances \
-                        sorted by inputs vs outputs (which is now the default sorting mode), all \
-                        inputs and outputs at the same group level will be aligned to a grid, \
-                        which I think makes it easer to read."}</p>
-                        <p>{"One downside of this is that it  makes the app take up more width, so \
-                        you may find you need to scroll horizontally more often. Sorry about that. \
-                        I hope you find the improved organization more helpful than the extra \
-                        width is inconvenient; let me know if not."}</p>
-                    </li>
-                    <li>
-                        <b>{"Group collapse button."}</b>
-                        {" The group collapse button is now on the left. This means that groups and
-                        buildings now have the same number of buttons on the right, so their
-                        multipliers and balances all line up neatly."}
-                    </li>
-                    <li>
-                        <b>{"Storage Persistence."}</b>
-                        {" I hadn't realized this before, but apparently browser local-storage can \
-                        just get randomly deleted by the browser unless you request that it be \
-                        persisted. Fortunately that is rare, and I hope none of you lost you \
-                        factory sheets to this mistake, but fortunately now you have the option to \
-                        enabled proper persisted storage to make sure that can't happen."}
-                    </li>
-                    <li>
-                        <b>{"Notifications."}</b>
-                        {" I didn't used to have a way to let you know when things changed, other \
-                        than putting that little \"update available\" tag in the database version \
-                        selector. Now I do! Hi!"}
-                    </li>
-                </ul>
-                <h3>{"What might be coming (no promises)"}</h3>
-                <p>{"Here are some things that I'm planning on doing in upcoming versions of \
-                Satisfactory Accounting. I do have limited time to work on it, and I also would \
-                like to actually, you know, "}<em>{"play the game"}</em>{" sometimes, so I can't \
-                make any promises about when or if these things will actually come, but I'll let \
-                you know when and if I get to them."}</p>
                 <ul>
                     <li>
-                        <b>{"Backdrive Mode."}</b>
-                        {" This is "}
-                        <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/12">
-                            {"the most requested feature"}
-                        </a>
-                        {" by GitHub issue \u{1f44d}. I'd like to implement it, though I might \
-                        end up rewriting a bunch more stuff along the way. Or I'll do a floating \
-                        foundation version first and fix it later, we'll see. The main issue is if \
-                        the number of items you request isn't a multiple of the recipe \u{2013} \
-                        you'd probably rather have 5 machines at 100% speed + 1 machine at 25% \
-                        speed than 6 machines at 87.5% speed, but I don't have a great way to \
-                        represent that currently, so we'll see."}
+                        <p><b>{"Upload-replace."}</b>{" Save files downloaded from the App now \
+                        include a unique ID which identifies which world they are. When you upload \
+                        a world file, the App now checks if the ID matches an existing world, and \
+                        if it does, it will now give you an option to replace the existing world \
+                        or upload the file as a new world. To avoid confusion, I've now made world \
+                        IDs visible in the world list."}</p>
+                        <p>{"Older world files from before this change won't contain unique IDs, \
+                        so if you upload an older file, it will always upload as a new world. But \
+                        all files you download after this should have IDs. If you know what you're
+                        doing, you can also add the world ID to existing files, or change world \
+                        IDs in the JSON files to control what world a file will upload as. That's \
+                        not an option in the UI because I thought it would be simpler if \
+                        upload-replace was automatic in the common case."}</p>
+                        <p>{"If you've already shared world files a bunch, you may have multiple \
+                        copies of a world with diverging IDs. To get them to match, you'll just \
+                        have to pick one version to upload everywhere so every computer/person \
+                        sharing the file has a version with the same ID, and then after that you \
+                        should all get the option to upload-and-replace."}</p>
                     </li>
                     <li>
-                        <b>{"Co-op Mode. (But probably not)"}</b>
-                        {" I would kind of like to add a co-op mode/ability to share worlds online \
-                        live, so you can collaborate with friends. But that's its own entire \
-                        massive project, so like don't get your hopes up! It might be helpful to \
-                        guage interest though \u{2013} if you want this, please "}
-                        <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/36">
-                            {"add a \u{1f44d} on GitHub"}
-                        </a>
-                        {"if you have a GitHub account."}
+                        <p><b>{"World List Sorting."}</b>{" Until now, the world list was always \
+                        sorted by world ID. Since world IDs are random, that means the order of \
+                        worlds in the list was pretty random. Now the list is sorted by name by \
+                        default and you can click the headings to change which column it sorts by."}
+                        </p>
                     </li>
                 </ul>
+                <h3>{"What's coming next"}</h3>
+                <p>{"v1.2.11 will contain a basic backdrive mode. That is the highly requested \
+                feature of "}
+                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/12">
+                    {"\"let me directly type the number of items\""}
+                </a>{". I can tell you now that there will be some limitations on how much this \
+                feature can do. The version coming in 1.2.11 will always use a uniform clock speed \
+                across all buildings, even if its a lot of buildings, so you'll get results like \
+                10\u{00d7} buildings with 95% clock speed instead of 9\u{00d7} with 100% + \
+                1\u{00d7} with 50%. That's a limitation in how I represent buildings today, which \
+                I'm hoping to address with a more substantial change in v1.3.x."}</p>
+                if acked_version < versions::PREVIOUS {
+                    <h3>{"Additionally, you may have missed these updates from previous releases:"}</h3>
+                    if acked_version < versions::V1M2P9 {
+                        <h4>{"Version 1.2.9"}</h4>
+                        <ul>
+                            <li><p><b>{"Download and Upload."}</b>
+                                {" You can now download your worlds as a JSON file from the World Manager, \
+                                and upload saved JSON files as new worlds. This lets you save worlds for \
+                                backup purposes or transfer them to a different computer, or share with a \
+                                friend."}</p>
+                                <p>{"Quick note for those of you who figured out how to copy out the world \
+                                JSON before this update: I've added a 'model_version' tag to the \
+                                downloaded JSON file format so that I can ensure that future versions of \
+                                Satisfactory Accounting remain compatible with older save files, even if I \
+                                make changes to the world format. If you created world JSON files without \
+                                using the download button, you'll probably need to add the 'model_version' \
+                                tag to them. The current version tag is \"v1.2.*\"."}</p>
+                                <p>{"For everyone else, the download button adds this tag itself \
+                                so you don't have to worry about this!"}</p>
+                            </li>
+                            <li>
+                                <b>{"\"Latest\" mode for factory versions."}</b>
+                                {" With this addition, you no longer need to manually change the factory \
+                                database version every time I fix a missing or incorrect recipe. You still \
+                                have the option to pin you world at a particular version if you prefer not \
+                                to have things change on you."}
+                            </li>
+                            <li>
+                                <p><b>{"Grid alignment."}</b>
+                                {" A whole bunch of things have now been laid out in a grid format instead \
+                                of just flexible layouts they were previously. In particular, you'll \
+                                notice that all buildings and sub-groups in a group have their clock \
+                                speeds and most of their balances aligned now. Plus when you have balances \
+                                sorted by inputs vs outputs (which is now the default sorting mode), all \
+                                inputs and outputs at the same group level will be aligned to a grid, \
+                                which I think makes it easer to read."}</p>
+                                <p>{"One downside of this is that it  makes the app take up more width, so \
+                                you may find you need to scroll horizontally more often. Sorry about that. \
+                                I hope you find the improved organization more helpful than the extra \
+                                width is inconvenient; let me know if not."}</p>
+                            </li>
+                            <li>
+                                <b>{"Group collapse button."}</b>
+                                {" The group collapse button is now on the left. This means that groups and
+                                buildings now have the same number of buttons on the right, so their
+                                multipliers and balances all line up neatly."}
+                            </li>
+                            <li>
+                                <b>{"Storage Persistence."}</b>
+                                {" I hadn't realized this before, but apparently browser local-storage can \
+                                just get randomly deleted by the browser unless you request that it be \
+                                persisted. Fortunately that is rare, and I hope none of you lost you \
+                                factory sheets to this mistake, but fortunately now you have the option to \
+                                enabled proper persisted storage to make sure that can't happen."}
+                            </li>
+                            <li>
+                                <b>{"Notifications."}</b>
+                                {" I didn't used to have a way to let you know when things changed, other \
+                                than putting that little \"update available\" tag in the database version \
+                                selector. Now I do! Hi!"}
+                            </li>
+                        </ul>
+                    }
+                }
                 <h3>{"In case of issues"}</h3>
-                <p>{"You know how you sometimes do one of those big rebuilds and then discover you \
-                forgot to connect a conveyor or a powerline somewhere? That probably happened here \
-                too, since I changed a lot, I probably messed something up. If you run into any \
-                problems, you can "}
-                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues">
-                    {"file an issue on my GitHub"}
-                </a>
-                {" (there's also a link in the top-right corner of the app, with the bug icon)."}</p>
-                <p>{"The previous version of Satisfactory Accounting is also available, should you \
-                need to switch back to it to work around bugs, at "}
-                <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.8/">
-                    {"https://satisfactory-accounting.github.io/v1.2.8/"}
-                </a>{"."}
-                </p>
-                <h3>{"I hope you like it"}</h3>
+                <p>{"If you run into any problems with this release, you can "}{file_a_bug()}{". \
+                (there's also a link in the top-right corner of the app, with the bug icon)."}</p>
+                <p>{"The previous two versions of Satisfactory Accounting are also available, and \
+                should be compatible with this one, should you need to switch back to them to work \
+                around bugs, at these links:"}</p>
+                <ul>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.9/">
+                            {"https://satisfactory-accounting.github.io/v1.2.9/"}
+                        </a>{"."}
+                    </li>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.8/">
+                            {"https://satisfactory-accounting.github.io/v1.2.8/"}
+                        </a>{"."}
+                    </li>
+                </ul>
+                <h3>{"I'm glad so many of you find this tool useful!"}</h3>
                 {signature()}
             </>
         },
