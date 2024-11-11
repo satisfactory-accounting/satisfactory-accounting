@@ -4,12 +4,13 @@ use yew::html::ImplicitClone;
 
 /// Type for selecting a database version. This allows both pinned versions and special versions
 /// like "Latest".
-#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DatabaseVersionSelector {
-    /// Follow the latest database.
-    Latest,
     /// Pin at the specified database version.
     Pinned(DatabaseVersion),
+    /// Follow the latest database.
+    // Note: placed last because it should compare greater than any DatabaseVersion.
+    Latest,
 }
 
 impl DatabaseVersionSelector {

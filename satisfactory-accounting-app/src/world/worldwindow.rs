@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::cmp::Ordering;
 use std::rc::Rc;
 
 use gloo::file::{Blob, ObjectUrl};
@@ -27,9 +28,18 @@ use crate::world::{
     FetchSaveFileError, WorldId, WorldMetadata,
 };
 
+/// Sorting settings to apply to the world list.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorldSortSettings {
+    /// Which column to sort the world list by.
+    sort_column: SortColumn,
+    /// Direction to sort the world list.
+    direction: SortDirection,
+}
+
 /// Sort order to use for worlds in the world window.
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub enum WorldSortMode {
+enum SortColumn {
     /// Sort by the user world name (then by version, then by id).
     #[default]
     Name,
@@ -39,10 +49,22 @@ pub enum WorldSortMode {
     WorldId,
 }
 
-impl WorldSortMode {
-    /// Returns true if the current value is the default.
-    pub fn is_default(&self) -> bool {
-        *self == Default::default()
+/// Sort order to use for worlds in the world window.
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+enum SortDirection {
+    /// Sort in the normal natural order (a-z, 0-9).
+    #[default]
+    Ascending,
+    /// Sort in reverse order (z-a, 9-0).
+    Descending,
+}
+
+impl SortDirection {
+    fn apply(self, ordering: Ordering) -> Ordering {
+        match self {
+            Self::Ascending => ordering,
+            Self::Descending => ordering.reverse(),
+        }
     }
 }
 
@@ -137,11 +159,29 @@ pub fn WorldChooserWindow() -> Html {
     let user_settings = use_user_settings();
     let user_settings_dispatcher = use_user_settings_dispatcher();
 
+    let sort_direction = user_settings.world_sort_settings.direction;
     let mut sorted_world_list = world_list.iter().collect::<Vec<_>>();
-    match user_settings.world_sort_mode {
-        WorldSortMode::Name => todo!(),
-        WorldSortMode::Version => todo!(),
-        WorldSortMode::WorldId => todo!(),
+    let collator = crate::locale::get_collator();
+    match user_settings.world_sort_settings.sort_column {
+        SortColumn::Name => sorted_world_list.sort_by(|lhs, rhs| {
+            // Only apply sort direction to the name column, the sub-sort of database names is
+            // always latest-first, even when sort direction is reversed.
+            sort_direction
+                .apply(collator.compare(&lhs.name, &rhs.name))
+                // Invert ascending and descending for database versions so more recent versions
+                // are first when sorting by name.
+                .then_with(|| lhs.database.cmp(&rhs.database).reverse())
+        }),
+        SortColumn::Version => sorted_world_list.sort_by(|lhs, rhs| {
+            //lhs.database.cmp(&rhs.database).then_with(||
+        }),
+        SortColumn::WorldId => {
+            // sorted_world_list is already sorted by world_id since world_list is a BTreeMap of
+            // world_ids.
+            if sort_direction == SortDirection::Descending {
+                sorted_world_list.reverse();
+            }
+        }
     }
 
     let world_rows = world_list.iter().map(|meta_ref| {

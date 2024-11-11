@@ -9,7 +9,7 @@ pub use crate::user_settings::manager::{
 pub use crate::user_settings::window::{
     use_user_settings_window, UserSettingsWindowDispatcher, UserSettingsWindowManager,
 };
-use crate::world::WorldSortMode;
+use crate::world::WorldSortSettings;
 
 mod manager;
 mod storagemanager;
@@ -28,8 +28,8 @@ pub struct UserSettings {
     pub show_deprecated_databases: bool,
 
     /// Sort mode to use for the world window.
-    #[serde(default, skip_serializing_if = "WorldSortMode::is_default")]
-    pub world_sort_mode: WorldSortMode,
+    #[serde(default)]
+    pub world_sort_settings: WorldSortSettings,
 
     /// Whether the user has acknowledged the use of local storage.
     #[serde(default)]
