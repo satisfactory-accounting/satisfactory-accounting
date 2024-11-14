@@ -96,16 +96,26 @@
         }
     }
 
-    .balance-value {
+    .balance-value,
+    .value-display,
+    .value-input {
         text-align: right;
     }
 
-    .negative .balance-value {
-        color: colors.$danger;
+    .negative {
+
+        .balance-value,
+        .value-display {
+            color: colors.$danger;
+        }
     }
 
-    .positive .balance-value {
-        color: color.scale(colors.$success, $lightness: -30%);
+    .positive {
+
+        .balance-value,
+        .value-display {
+            color: color.scale(colors.$success, $lightness: -30%);
+        }
     }
 }
 
@@ -114,6 +124,7 @@
     .item-entries.neutral {
         display: none;
     }
+
     // Don't catch the power in this.
     .item-entries .entry-row.neutral {
         display: none;

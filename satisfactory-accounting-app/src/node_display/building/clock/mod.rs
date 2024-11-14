@@ -1,3 +1,4 @@
+use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
 // Copyright 2021 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +14,8 @@ use crate::inputs::clickedit::ClickEdit;
 pub struct Props {
     /// Last set value for the clock speed.
     pub clock_speed: f32,
+    /// Number of virtual copies of the building.
+    pub copies: f32,
     /// Callback to change the actual value.
     pub on_update_speed: Callback<f32>,
 }
@@ -24,16 +27,25 @@ pub fn ClockSpeed(props: &Props) -> Html {
         props.on_update_speed.clone(),
         |edit_text: AttrValue, on_update_speed| {
             if let Ok(value) = edit_text.parse::<f32>() {
-                on_update_speed.emit(value.clamp(0.01, 2.5));
+                on_update_speed.emit(value.clamp(MIN_CLOCK, MAX_CLOCK));
             }
         },
     );
+
+    let last_clock = SplitCopies::split(props.copies, props.clock_speed).last_clock;
 
     let value: AttrValue = props.clock_speed.to_string().into();
     let prefix = html! {
         <span class="material-icons-outlined">{"timer"}</span>
     };
+    let suffix = if last_clock > 0.0 {
+        Some(html! {
+            <span>{"(+"}{last_clock}{")"}</span>
+        })
+    } else {
+        None
+    };
     html! {
-        <ClickEdit {value} class="ClockSpeed" title="Clock Speed" {on_commit} {prefix} />
+        <ClickEdit {value} class="ClockSpeed" title="Clock Speed" {on_commit} {prefix} {suffix} />
     }
 }

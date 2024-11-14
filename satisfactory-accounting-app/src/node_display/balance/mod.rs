@@ -6,10 +6,11 @@
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use satisfactory_accounting::accounting::Node;
-use satisfactory_accounting::database::Item;
+use satisfactory_accounting::database::{Item, ItemId, ItemIdOrPower};
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
+use crate::inputs::clickedit::ClickEdit;
 use crate::node_display::icon::Icon;
 use crate::user_settings::use_user_settings;
 use crate::world::use_db;
@@ -52,19 +53,31 @@ pub struct Props {
     /// Whether to use the vertical or horizontal display format.
     #[prop_or_default]
     pub shape: BalanceShape,
+    /// Callback to use for backdriving (setting the clock speed based on item count).
+    #[prop_or_default]
+    pub on_backdrive: Option<Callback<(ItemIdOrPower, f32)>>,
 }
 
 #[function_component]
-pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
+pub fn NodeBalance(
+    &Props {
+        ref node,
+        shape,
+        ref on_backdrive,
+    }: &Props,
+) -> Html {
     let balance = node.balance();
     let db = use_db();
     let user_settings = use_user_settings();
+
+    let on_backdrive = on_backdrive.as_ref();
+
     let item_balances: Html = match user_settings.balance_sort_mode {
         BalanceSortMode::Item => {
             let combined_balances = balance
                 .balances
                 .iter()
-                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
             html! {
                 <div class="item-entries combined">
                     {for combined_balances}
@@ -76,19 +89,19 @@ pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
                 .balances
                 .iter()
                 .filter(|(_, &rate)| rate > 0.0)
-                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
             let negative_balances = balance
                 .balances
                 .iter()
                 .filter(|(_, &rate)| rate < 0.0)
-                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
 
             let neutral_balances = balance
                 .balances
                 .iter()
                 // Weird NaN handling? I guess I could probably just use is_nan here?
                 .filter(|(_, &rate)| rate == 0.0 || !(rate < 0.0 || rate > 0.0))
-                .map(|(&itemid, &rate)| display_item(db.get(itemid), rate));
+                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
 
             html! {
                 <>
@@ -107,31 +120,62 @@ pub fn NodeBalance(&Props { ref node, shape }: &Props) -> Html {
     };
     html! {
         <div class={classes!("NodeBalance", shape.to_class_name())}>
-            <div class={classes!("entry-row", "power-entry", balance_style(balance.power))} title="Power">
-                <Icon icon="power-line" />
-                <div class="balance-value">{rounded(balance.power)}</div>
-            </div>
+            {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, on_backdrive)}
             { item_balances }
         </div>
     }
 }
 
-fn display_item(item: Option<&Item>, rate: f32) -> Html {
+fn display_item(
+    id: ItemId,
+    item: Option<&Item>,
+    rate: f32,
+    on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
+) -> Html {
     match item {
-        Some(item) => html! {
-            <div class={classes!("entry-row", balance_style(rate))}
-                title={Some(item.name.clone())}>
-                <Icon icon={item.image.clone()}/>
-                <div class="balance-value">{rounded(rate)}</div>
-            </div>
-        },
+        Some(item) => item_row(
+            id.into(),
+            item.name.clone().into(),
+            Some(item.image.clone().into()),
+            rate,
+            on_backdrive,
+        ),
+        None => item_row(id.into(), "Unknown Item".into(), None, rate, on_backdrive),
+    }
+}
+
+fn item_row(
+    id: ItemIdOrPower,
+    title: AttrValue,
+    icon: Option<AttrValue>,
+    rate: f32,
+    on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
+) -> Html {
+    let power_class = match id {
+        ItemIdOrPower::Power => Some("power-entry"),
+        _ => None,
+    };
+    let class = classes!("entry-row", balance_style(rate), power_class);
+    match on_backdrive {
         None => html! {
-            <div class={classes!("entry-row", balance_style(rate))}
-                title="Unknown Item">
-                <Icon />
+            <div {class} {title}>
+                <Icon {icon}/>
                 <div class="balance-value">{rounded(rate)}</div>
             </div>
         },
+        Some(on_backdrive) => {
+            let on_backdrive = on_backdrive.clone();
+            let on_commit = Callback::from(move |edit_text: AttrValue| {
+                if let Ok(value) = edit_text.parse::<f32>() {
+                    on_backdrive.emit((id, value));
+                }
+            });
+            let prefix = html!(<Icon {icon} />);
+            html! {
+                <ClickEdit {class} {prefix} {title} value={rounded(rate).to_string()}
+                    {on_commit} />
+            }
+        }
     }
 }
 

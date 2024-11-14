@@ -38,13 +38,16 @@ impl NodeDisplay {
     pub(super) fn view_building(&self, ctx: &Context<Self>, building: &Building) -> Html {
         let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
         let on_change_type = ctx.link().callback(|id| Msg::ChangeType { id });
+        let on_backdrive = ctx
+            .link()
+            .callback(|(id, rate)| Msg::Backdrive { id, rate });
         html! {
             <div class="NodeDisplay building">
                 {self.drag_handle(ctx)}
                 <BuildingTypeDisplay id={building.building} {on_change_type} />
                 {self.view_building_settings(ctx, building)}
                 if ctx.props().node.warning().is_none() {
-                    <NodeBalance node={&ctx.props().node} />
+                    <NodeBalance node={&ctx.props().node} {on_backdrive} />
                 }
                 <VirtualCopies copies={building.copies} {update_copies} />
                 <div class="section copy-delete">
@@ -72,13 +75,17 @@ impl NodeDisplay {
         if let Some(id) = building.building {
             match &building.settings {
                 BuildingSettings::Manufacturer(settings) => {
-                    self.view_manufacturer_settings(ctx, id, settings)
+                    self.view_manufacturer_settings(ctx, id, building.copies, settings)
                 }
-                BuildingSettings::Miner(settings) => self.view_miner_settings(ctx, id, settings),
+                BuildingSettings::Miner(settings) => {
+                    self.view_miner_settings(ctx, id, building.copies, settings)
+                }
                 BuildingSettings::Generator(settings) => {
-                    self.view_generator_settings(ctx, id, settings)
+                    self.view_generator_settings(ctx, id, building.copies, settings)
                 }
-                BuildingSettings::Pump(settings) => self.view_pump_settings(ctx, id, settings),
+                BuildingSettings::Pump(settings) => {
+                    self.view_pump_settings(ctx, id, building.copies, settings)
+                }
                 BuildingSettings::Geothermal(settings) => {
                     self.view_geothermal_settings(ctx, settings)
                 }
@@ -97,6 +104,7 @@ impl NodeDisplay {
         &self,
         ctx: &Context<Self>,
         building: BuildingId,
+        copies: f32,
         settings: &ManufacturerSettings,
     ) -> Html {
         let link = ctx.link();
@@ -106,7 +114,7 @@ impl NodeDisplay {
             <>
                 <RecipeDisplay building_id={building} recipe_id={settings.recipe}
                     {on_change_recipe} />
-                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
+                { self.view_clock_controls_if_overclockable(ctx, building, copies, settings.clock_speed) }
             </>
         }
     }
@@ -116,6 +124,7 @@ impl NodeDisplay {
         &self,
         ctx: &Context<Self>,
         building: BuildingId,
+        copies: f32,
         settings: &MinerSettings,
     ) -> Html {
         let link = ctx.link();
@@ -125,7 +134,7 @@ impl NodeDisplay {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {on_change_item} />
-                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
+                { self.view_clock_controls_if_overclockable(ctx, building, copies, settings.clock_speed) }
                 <Purity purity={settings.purity} {on_set_purity} />
             </>
         }
@@ -136,6 +145,7 @@ impl NodeDisplay {
         &self,
         ctx: &Context<Self>,
         building: BuildingId,
+        copies: f32,
         settings: &GeneratorSettings,
     ) -> Html {
         let on_change_item = ctx.link().callback(|id| Msg::ChangeItem { id });
@@ -143,7 +153,7 @@ impl NodeDisplay {
             <>
                 <ItemDisplay building_id={building} item_id={settings.fuel}
                     {on_change_item} />
-                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
+                { self.view_clock_controls_if_overclockable(ctx, building, copies, settings.clock_speed) }
             </>
         }
     }
@@ -153,6 +163,7 @@ impl NodeDisplay {
         &self,
         ctx: &Context<Self>,
         building: BuildingId,
+        copies: f32,
         settings: &PumpSettings,
     ) -> Html {
         let link = ctx.link();
@@ -163,7 +174,7 @@ impl NodeDisplay {
             <>
                 <ItemDisplay building_id={building} item_id={settings.resource}
                     {on_change_item} />
-                { self.view_clock_controls_if_overclockable(ctx, building, settings.clock_speed) }
+                { self.view_clock_controls_if_overclockable(ctx, building, copies, settings.clock_speed) }
                 <div class="section multi-purity-group">
                     <MultiPurity purity={ResourcePurity::Impure}
                         num_pads={settings.impure_pads} on_update_pads={&on_update_pads} />
@@ -210,7 +221,8 @@ impl NodeDisplay {
         &self,
         ctx: &Context<Self>,
         building: BuildingId,
-        current_clock_speed: f32,
+        copies: f32,
+        clock_speed: f32,
     ) -> Option<Html> {
         match self.db.get(building) {
             Some(building) if !building.overclockable() => None,
@@ -223,7 +235,7 @@ impl NodeDisplay {
                 let on_update_speed = ctx
                     .link()
                     .callback(|clock_speed| Msg::ChangeClockSpeed { clock_speed });
-                Some(html! { <ClockSpeed clock_speed={current_clock_speed} {on_update_speed} /> })
+                Some(html! { <ClockSpeed {clock_speed} {copies} {on_update_speed} /> })
             }
         }
     }

@@ -1,7 +1,7 @@
 //! Management for user settings.
 use serde::{Deserialize, Serialize};
 
-use crate::node_display::BalanceSortMode;
+use crate::node_display::{BackdriveSettings, BalanceSortMode};
 pub use crate::user_settings::manager::{
     use_user_settings, use_user_settings_dispatcher, UserSettingsDispatcher, UserSettingsManager,
 };
@@ -30,6 +30,10 @@ pub struct UserSettings {
     /// Sort mode to use for the world window.
     #[serde(default)]
     pub world_sort_settings: WorldSortSettings,
+
+    /// Settings for how to backdrive balances.
+    #[serde(default)]
+    pub backdrive_settings: BackdriveSettings,
 
     /// Whether the user has acknowledged the use of local storage.
     #[serde(default)]

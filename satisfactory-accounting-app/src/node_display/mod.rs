@@ -7,6 +7,7 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use log::{error, warn};
 use uuid::Uuid;
@@ -18,16 +19,19 @@ use satisfactory_accounting::accounting::{
     StationSettings,
 };
 use satisfactory_accounting::database::{
-    BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, ItemId, RecipeId,
+    BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, ItemId, ItemIdOrPower,
+    RecipeId,
 };
 
 use crate::inputs::button::Button;
 use crate::material::material_icon;
-use crate::user_settings::use_user_settings;
+use crate::user_settings::{use_user_settings, UserSettings};
 use crate::world::{use_world_dispatcher, use_world_root, NodeMeta, NodeMetas};
 
+pub use self::backdrive::BackdriveSettings;
 pub use self::balance::BalanceSortMode;
 
+mod backdrive;
 mod balance;
 mod building;
 mod copies;
@@ -102,23 +106,40 @@ struct Props {
 enum Msg {
     // Shared messages:
     /// Set the number of virtual copies of this building or group.
-    SetCopyCount { copies: u32 },
+    SetCopyCount {
+        copies: f32,
+    },
 
     // Messages for groups:
     /// Replace the child at the given index with the specified node.
-    ReplaceChild { idx: usize, replacement: Node },
+    ReplaceChild {
+        idx: usize,
+        replacement: Node,
+    },
     /// Delete the child at the specified index.
-    DeleteChild { idx: usize },
+    DeleteChild {
+        idx: usize,
+    },
     /// Copy the child at the specified index.
-    CopyChild { idx: usize },
+    CopyChild {
+        idx: usize,
+    },
     /// Add the given node as a child at the end of the list.
-    AddChild { child: Node },
+    AddChild {
+        child: Node,
+    },
     /// Rename this node.
-    Rename { name: AttrValue },
+    Rename {
+        name: AttrValue,
+    },
     /// When another node starts being dragged over this one.
-    DragEnter { insert_pos: usize },
+    DragEnter {
+        insert_pos: usize,
+    },
     /// When another node is dragged over this one.
-    DragOver { insert_pos: usize },
+    DragOver {
+        insert_pos: usize,
+    },
     /// When another dragging node leaves this one.
     DragLeave,
     /// Move a node between positions.
@@ -129,15 +150,25 @@ enum Msg {
 
     // Messages for buildings:
     /// Change the building type of this node.
-    ChangeType { id: BuildingId },
+    ChangeType {
+        id: BuildingId,
+    },
     /// Change the recipe for the building, if a manufacturer.
-    ChangeRecipe { id: RecipeId },
+    ChangeRecipe {
+        id: RecipeId,
+    },
     /// Change the item for the building, if a Generator, Miner, or Pump.
-    ChangeItem { id: ItemId },
+    ChangeItem {
+        id: ItemId,
+    },
     /// Change the clock speed for the building.
-    ChangeClockSpeed { clock_speed: f32 },
+    ChangeClockSpeed {
+        clock_speed: f32,
+    },
     /// Change the resource purity for the node the building is on.
-    ChangePurity { purity: ResourcePurity },
+    ChangePurity {
+        purity: ResourcePurity,
+    },
     /// Change the number of nodes of a particular purity for a pump.
     ChangePumpPurity {
         /// Purity kind to modify.
@@ -146,12 +177,20 @@ enum Msg {
         num_pads: u32,
     },
     /// Change the consumption of a Station.
-    ChangeConsumption { consumption: f32 },
+    ChangeConsumption {
+        consumption: f32,
+    },
+    /// Backdrive this node to match the requested rate.
+    Backdrive {
+        id: ItemIdOrPower,
+        rate: f32,
+    },
 
     /// Update the database from the context.
     DbContextChange(Database),
     /// Update the metadata from the context.
     MetaContextChange(NodeMetas),
+    UserSettingsChange(Rc<UserSettings>),
 }
 
 /// Display for a single AccountingGraph node.
@@ -169,6 +208,7 @@ struct NodeDisplay {
     _db_handle: ContextHandle<Database>,
     /// Maintains the listener for the metadata context.
     _meta_handle: ContextHandle<NodeMetas>,
+    _user_settings_handle: ContextHandle<Rc<UserSettings>>,
 
     /// Database from the context.
     db: Database,
@@ -176,6 +216,8 @@ struct NodeDisplay {
     metas: NodeMetas,
     /// Metadata from the context.
     meta: NodeMeta,
+    /// User settings.
+    user_settings: Rc<UserSettings>,
 }
 
 impl Component for NodeDisplay {
@@ -193,6 +235,11 @@ impl Component for NodeDisplay {
             .context(ctx.link().callback(Msg::MetaContextChange))
             .expect("NodeDisplay must be inside of the WorldManager's context providers");
 
+        let (user_settings, user_settings_handle) = ctx
+            .link()
+            .context(ctx.link().callback(Msg::UserSettingsChange))
+            .expect("NodeDisplay must be inside of the UserSettings context providers");
+
         let meta = ctx
             .props()
             .node
@@ -207,10 +254,12 @@ impl Component for NodeDisplay {
 
             _db_handle: db_handle,
             _meta_handle: meta_handle,
+            _user_settings_handle: user_settings_handle,
 
             db,
             metas,
             meta,
+            user_settings,
         }
     }
 
@@ -246,16 +295,22 @@ impl Component for NodeDisplay {
                     false
                 }
             }
+            Msg::UserSettingsChange(user_settings) => {
+                self.user_settings = user_settings;
+                // Currently user settings are only used for backdrive mode, so we never need to
+                // redraw when they change.
+                false
+            }
             Msg::SetCopyCount { copies } => {
                 match ctx.props().node.kind() {
                     NodeKind::Group(group) => {
                         let mut new_group = group.clone();
-                        new_group.copies = copies;
+                        new_group.copies = copies.abs().round() as u32;
                         ctx.props().replace.emit((our_idx, new_group.into()));
                     }
                     NodeKind::Building(building) => {
                         let mut new_bldg = building.clone();
-                        new_bldg.copies = copies;
+                        new_bldg.copies = copies.abs();
                         match new_bldg.build_node(&self.db) {
                             Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
                             Err(e) => warn!("Unable to build node: {}", e),
@@ -772,6 +827,14 @@ impl Component for NodeDisplay {
                     Err(e) => warn!("Unable to build node: {}", e),
                 }
 
+                false
+            }
+            Msg::Backdrive { id, rate } => {
+                if let Some(new_node) = self.backdrive(&ctx.props().node, id, rate) {
+                    ctx.props().replace.emit((our_idx, new_node));
+                }
+                // Never need to redraw because this doesn't change our state, and we will redraw
+                // when the parent calls us back with new props.
                 false
             }
         }

@@ -11,7 +11,7 @@ use std::rc::Rc;
 
 use implicit_clone::unsync::IString;
 use implicit_clone::ImplicitClone;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -22,6 +22,39 @@ use crate::database::{
 };
 
 mod balance;
+
+/// Minimum clock speed.
+pub const MIN_CLOCK: f32 = 0.01;
+/// Maximum clock speed.
+pub const MAX_CLOCK: f32 = 2.50;
+
+/// Splits copies into a whole number of integer copies plus one fractional copy.
+#[derive(Debug, Copy, Clone)]
+pub struct SplitCopies {
+    /// The number of whole copies of the building to apply.
+    pub whole_copies: f32,
+    /// The reduced clock speed to apply for the last, fractional copy. May be 0 if the initial
+    /// multiplier is an integer.
+    pub last_clock: f32,
+}
+
+impl SplitCopies {
+    /// Split a multiplier and clock speed into split copies
+    pub fn split(copies: f32, clock_speed: f32) -> Self {
+        let copies = copies.abs();
+        let whole_copies = copies.trunc();
+        let last_copy = copies.fract();
+        let last_clock = if last_copy > 0.0 {
+            (clock_speed * last_copy).clamp(0.01, 2.5)
+        } else {
+            0.0
+        };
+        Self {
+            whole_copies,
+            last_clock,
+        }
+    }
+}
 
 /// Trait for types which can visit groups when creating copies.
 pub trait GroupCopyVisitor {
@@ -290,8 +323,31 @@ impl From<Building> for NodeKind {
 
 /// Provides the default number of virtual copies for Serde to allow deserializing from
 /// before that field was added.
-fn default_copies() -> u32 {
+fn default_group_copies() -> u32 {
     1
+}
+
+/// Provides the default number of virtual copies for Serde to allow deserializing from
+/// before that field was added.
+fn default_building_copies() -> f32 {
+    1.0
+}
+
+/// Serizalizes building copies in a backwards compatible way which allows older versions of the app
+/// to load the world if all building multipliers are integers with less than ~7 digits.
+fn serialize_building_copies<S: Serializer>(
+    &copies: &f32,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    // Do this comparison in f64 space, since that has the range needed to compare these two values
+    // accurately.
+    // We do this for limited backwards compatibility -- if all multipliers are integers, it allows
+    // older versions of the app to still parse them.
+    if copies as f64 == copies as u32 as f64 {
+        serializer.serialize_u32(copies as u32)
+    } else {
+        serializer.serialize_f32(copies)
+    }
 }
 
 /// A grouping of other nodes. It's balance is based on its child nodes.
@@ -307,7 +363,7 @@ pub struct Group {
     /// children.
     pub children: Vec<Node>,
     /// Number of virtual copies of this group. This acts as a multiplier on the balance.
-    #[serde(default = "default_copies")]
+    #[serde(default = "default_group_copies")]
     pub copies: u32,
 
     /// Uniquely identifies a group, even when the node is shared between trees (e.g. when
@@ -411,8 +467,11 @@ pub struct Building {
     /// Settings for this building. Must match the BuildingKind of the building.
     pub settings: BuildingSettings,
     /// Number of copies of this building.
-    #[serde(default = "default_copies")]
-    pub copies: u32,
+    #[serde(
+        default = "default_building_copies",
+        serialize_with = "serialize_building_copies"
+    )]
+    pub copies: f32,
 }
 
 impl Building {
@@ -436,33 +495,38 @@ impl Building {
 }
 
 impl BuildNode for Building {
-    fn build_node(self, database: &Database) -> Result<Node, BuildError> {
+    fn build_node(mut self, database: &Database) -> Result<Node, BuildError> {
         let mut balance = Balance::empty();
         if let Some(building_id) = self.building {
             let building = database
                 .get(building_id)
                 .ok_or(BuildError::UnknownBuilding(building_id))?;
+            if !building.overclockable() {
+                // If this isn't an overclockable building, set the number of copies to the nearest
+                // integer.
+                self.copies = self.copies.round();
+            }
             match (&self.settings, &building.kind) {
                 (BuildingSettings::Manufacturer(ms), BuildingKind::Manufacturer(m)) => {
-                    balance = ms.get_balance(building_id, m, database)?;
+                    balance = ms.get_balance(building_id, m, self.copies, database)?;
                 }
                 (BuildingSettings::Miner(ms), BuildingKind::Miner(m)) => {
-                    balance = ms.get_balance(building_id, m, database)?;
+                    balance = ms.get_balance(building_id, m, self.copies, database)?;
                 }
                 (BuildingSettings::Generator(gs), BuildingKind::Generator(g)) => {
-                    balance = gs.get_balance(building_id, g, database)?;
+                    balance = gs.get_balance(building_id, g, self.copies, database)?;
                 }
                 (BuildingSettings::Pump(ps), BuildingKind::Pump(p)) => {
-                    balance = ps.get_balance(building_id, p, database)?;
+                    balance = ps.get_balance(building_id, p, self.copies, database)?;
                 }
                 (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(g)) => {
-                    balance = gs.get_balance(g);
+                    balance = gs.get_balance(g, self.copies);
                 }
                 (BuildingSettings::PowerConsumer, BuildingKind::PowerConsumer(p)) => {
-                    balance = Balance::power_only(-p.power);
+                    balance = Balance::power_only(-p.power * self.copies.round());
                 }
                 (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
-                    balance = ss.get_balance(building_id, s, database)?;
+                    balance = ss.get_balance(building_id, s, self.copies, database)?;
                 }
                 (settings, building_kind) => {
                     return Err(BuildError::MismatchedKind {
@@ -472,7 +536,6 @@ impl BuildNode for Building {
                 }
             }
         }
-        balance *= self.copies as f32;
         Ok(Node::new(self, balance))
     }
 }
@@ -482,7 +545,7 @@ impl Default for Building {
         Self {
             building: None,
             settings: BuildingSettings::PowerConsumer,
-            copies: 1,
+            copies: 1.0,
         }
     }
 }
@@ -618,6 +681,7 @@ impl ManufacturerSettings {
         &self,
         building_id: BuildingId,
         m: &Manufacturer,
+        copies: f32,
         database: &Database,
     ) -> Result<Balance, BuildError> {
         let mut balance = Balance::empty();
@@ -633,9 +697,14 @@ impl ManufacturerSettings {
                 });
             }
 
-            balance.power = -m.power_consumption.get_consumption_rate(self.clock_speed);
+            let clock_split = SplitCopies::split(copies, self.clock_speed);
+            let base_power = -m.power_consumption.get_consumption_rate(self.clock_speed);
+            let last_power = -m
+                .power_consumption
+                .get_consumption_rate(clock_split.last_clock);
+            balance.power = base_power * clock_split.whole_copies + last_power;
             let recipe_runs_per_minute =
-                60.0 / recipe.time * m.manufacturing_speed * self.clock_speed;
+                60.0 / recipe.time * m.manufacturing_speed * self.clock_speed * copies;
 
             for input in &recipe.ingredients {
                 *balance.balances.entry(input.item).or_default() -=
@@ -777,6 +846,7 @@ impl MinerSettings {
         &self,
         building_id: BuildingId,
         m: &Miner,
+        copies: f32,
         database: &Database,
     ) -> Result<Balance, BuildError> {
         let mut balance = Balance::empty();
@@ -792,9 +862,14 @@ impl MinerSettings {
                 });
             }
 
-            balance.power = -m.power_consumption.get_consumption_rate(self.clock_speed);
+            let clock_split = SplitCopies::split(copies, self.clock_speed);
+            let base_power = -m.power_consumption.get_consumption_rate(self.clock_speed);
+            let last_power = -m
+                .power_consumption
+                .get_consumption_rate(clock_split.last_clock);
+            balance.power = base_power * clock_split.whole_copies + last_power;
             let cycles_per_minute =
-                60.0 / m.cycle_time * self.clock_speed * self.purity.speed_multiplier();
+                60.0 / m.cycle_time * self.clock_speed * self.purity.speed_multiplier() * copies;
 
             balance
                 .balances
@@ -846,6 +921,7 @@ impl GeneratorSettings {
         &self,
         building_id: BuildingId,
         g: &Generator,
+        copies: f32,
         database: &Database,
     ) -> Result<Balance, BuildError> {
         let mut balance = Balance::empty();
@@ -863,14 +939,20 @@ impl GeneratorSettings {
                 });
             }
 
-            balance.power = g.power_production.get_production_rate(self.clock_speed);
+            let clock_split = SplitCopies::split(copies, self.clock_speed);
+            let base_power = -g.power_production.get_production_rate(self.clock_speed);
+            let last_power = -g
+                .power_production
+                .get_production_rate(clock_split.last_clock);
+            balance.power = base_power * clock_split.whole_copies + last_power;
             if g.used_water > 0.0 {
                 balance
                     .balances
-                    .insert(ItemId::water(), -balance.power * g.used_water);
+                    .insert(ItemId::water(), -balance.power * g.used_water * copies);
             }
 
             // Burn time in Seconds MJ / MW = MJ/(MJ/s) = s
+            // Copies is accounted for by using the computed total power production.
             let fuel_burn_time = energy.energy / balance.power;
             // Rate of fuel usage in items/min.
             let fuel_burn_rate = 60.0 / fuel_burn_time;
@@ -941,6 +1023,7 @@ impl PumpSettings {
         &self,
         building_id: BuildingId,
         p: &Pump,
+        copies: f32,
         database: &Database,
     ) -> Result<Balance, BuildError> {
         let mut balance = Balance::empty();
@@ -956,8 +1039,13 @@ impl PumpSettings {
                 });
             }
 
-            balance.power = -p.power_consumption.get_consumption_rate(self.clock_speed);
-            let base_cycles_per_minute = 60.0 / p.cycle_time * self.clock_speed;
+            let clock_split = SplitCopies::split(copies, self.clock_speed);
+            let base_power = -p.power_consumption.get_consumption_rate(self.clock_speed);
+            let last_power = -p
+                .power_consumption
+                .get_consumption_rate(clock_split.last_clock);
+            balance.power = base_power * clock_split.whole_copies + last_power;
+            let base_cycles_per_minute = 60.0 / p.cycle_time * self.clock_speed * copies;
             let total_items_per_minute = base_cycles_per_minute
                 * p.items_per_cycle
                 * (self.pure_pads as f32 * ResourcePurity::Pure.speed_multiplier()
@@ -1004,8 +1092,8 @@ impl Default for GeothermalSettings {
 }
 
 impl GeothermalSettings {
-    fn get_balance(&self, g: &Geothermal) -> Balance {
-        Balance::power_only(self.purity.speed_multiplier() * g.power)
+    fn get_balance(&self, g: &Geothermal, copies: f32) -> Balance {
+        Balance::power_only(self.purity.speed_multiplier() * g.power * copies.round())
     }
 }
 
@@ -1023,6 +1111,7 @@ impl StationSettings {
         &self,
         building_id: BuildingId,
         s: &Station,
+        copies: f32,
         database: &Database,
     ) -> Result<Balance, BuildError> {
         let mut balance = Balance::empty();
@@ -1038,8 +1127,10 @@ impl StationSettings {
                 });
             }
 
-            balance.power = -s.power;
-            balance.balances.insert(fuel_id, -self.consumption);
+            balance.power = -s.power * copies.round();
+            balance
+                .balances
+                .insert(fuel_id, -self.consumption * copies.round());
         }
         Ok(balance)
     }

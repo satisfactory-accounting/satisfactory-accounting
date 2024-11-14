@@ -12,9 +12,9 @@ use crate::inputs::clickedit::ClickEdit;
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
     /// Last set value for the number of virtual copies.
-    pub copies: u32,
+    pub copies: f32,
     /// Callback to change the actual value.
-    pub update_copies: Callback<u32>,
+    pub update_copies: Callback<f32>,
 }
 
 /// Display and editing for number of coipes.
@@ -23,7 +23,7 @@ pub fn VirtualCopies(props: &Props) -> Html {
     let on_commit = use_callback(
         props.update_copies.clone(),
         |edit_text: AttrValue, update_copies| {
-            if let Ok(value) = edit_text.parse::<u32>() {
+            if let Ok(value) = edit_text.parse::<f32>() {
                 update_copies.emit(value);
             }
         },

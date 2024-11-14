@@ -63,7 +63,7 @@ impl NodeDisplay {
                         <GroupName name={group.name.clone()} {rename} />
                     </div>
                     if !ctx.props().path.is_empty() {
-                        <VirtualCopies copies={group.copies} {update_copies} />
+                        <VirtualCopies copies={group.copies as f32} {update_copies} />
                     }
                     <div class="section copy-delete">
                         {self.child_warnings(ctx)}
@@ -125,7 +125,7 @@ impl NodeDisplay {
                 </div>
                 <NodeBalance node={&ctx.props().node} />
                 if !ctx.props().path.is_empty() {
-                    <VirtualCopies copies={group.copies} {update_copies} />
+                    <VirtualCopies copies={group.copies as f32} {update_copies} />
                 }
                 <div class="section copy-delete">
                     {self.child_warnings(ctx)}

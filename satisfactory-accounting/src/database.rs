@@ -462,6 +462,21 @@ typed_symbol! {
     }
 }
 
+/// Enum used when you need to refer to either an item or the power.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ItemIdOrPower {
+    /// Refers to power.
+    Power,
+    /// Refers to an item.
+    Item(ItemId),
+}
+
+impl From<ItemId> for ItemIdOrPower {
+    fn from(value: ItemId) -> Self {
+        Self::Item(value)
+    }
+}
+
 /// Recipe for crafting an item or items.
 ///
 /// Recipies sort only by ID.
