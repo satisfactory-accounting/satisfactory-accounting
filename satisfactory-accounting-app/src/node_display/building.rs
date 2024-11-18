@@ -10,7 +10,7 @@ use satisfactory_accounting::accounting::{
     BuildError, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
     ManufacturerSettings, MinerSettings, PumpSettings, ResourcePurity, StationSettings,
 };
-use satisfactory_accounting::database::BuildingId;
+use satisfactory_accounting::database::{BuildingId, BuildingKind, BuildingKindId};
 use yew::prelude::*;
 
 use crate::node_display::balance::NodeBalance;
@@ -38,9 +38,10 @@ impl NodeDisplay {
     pub(super) fn view_building(&self, ctx: &Context<Self>, building: &Building) -> Html {
         let update_copies = ctx.link().callback(|copies| Msg::SetCopyCount { copies });
         let on_change_type = ctx.link().callback(|id| Msg::ChangeType { id });
-        let on_backdrive = ctx
-            .link()
-            .callback(|(id, rate)| Msg::Backdrive { id, rate });
+        let on_backdrive = self.supports_backdrive(building).then(|| {
+            ctx.link()
+                .callback(|(id, rate)| Msg::Backdrive { id, rate })
+        });
         html! {
             <div class="NodeDisplay building">
                 {self.drag_handle(ctx)}
@@ -59,6 +60,15 @@ impl NodeDisplay {
                 </div>
             </div>
         }
+    }
+
+    /// Whether a building supports backdriving.
+    fn supports_backdrive(&self, building: &Building) -> bool {
+        let building_id = match building.building {
+            Some(id) => id,
+            None => return false,
+        };
+        todo!()
     }
 
     fn view_warning(&self, err: BuildError) -> Html {

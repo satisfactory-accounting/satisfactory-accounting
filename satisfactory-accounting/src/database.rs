@@ -577,12 +577,10 @@ impl BuildingType {
     /// Return true if this type of building can be overclocked.
     pub fn overclockable(&self) -> bool {
         match &self.kind {
-            BuildingKind::Manufacturer(manufacturer) => {
-                manufacturer.power_consumption.power_exponent != 0.0
-            }
-            BuildingKind::Miner(miner) => miner.power_consumption.power_exponent != 0.0,
-            BuildingKind::Generator(generator) => generator.power_production.power_exponent != 0.0,
-            BuildingKind::Pump(pump) => pump.power_consumption.power_exponent != 0.0,
+            BuildingKind::Manufacturer(manufacturer) => manufacturer.overclockable(),
+            BuildingKind::Miner(miner) => miner.overclockable(),
+            BuildingKind::Generator(generator) => generator.overclockable(),
+            BuildingKind::Pump(pump) => pump.overclockable(),
             BuildingKind::Geothermal(_) => false,
             BuildingKind::PowerConsumer(_) => false,
             BuildingKind::Station(_) => false,
@@ -691,9 +689,10 @@ pub enum BuildingKindId {
 /// Power-usage information for a building.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Power {
-    /// Amount of power used by this building at 100% production, in MW.
+    /// Amount of power used by this building at 100% production, in MW. Always non-negative.
     pub power: f32,
-    /// Exponent used to adjust power consumption when scaling down or up.
+    /// Exponent used to adjust power consumption when scaling down or up. Always non-negative. 0
+    /// means not overclockable.
     pub power_exponent: f32,
 }
 
@@ -707,7 +706,15 @@ impl Power {
     /// Get the rate of power production for these power settings at the given clock
     /// speed.
     pub fn get_production_rate(&self, clock_speed: f32) -> f32 {
+        if self.power_exponent == 0.0 {
+            return self.power;
+        }
         self.power * clock_speed.powf(1.0 / self.power_exponent)
+    }
+
+    /// Whether this power rate allows overclocking.
+    pub fn overclockable(&self) -> bool {
+        self.power_exponent != 0.0
     }
 }
 
@@ -720,6 +727,14 @@ pub struct Manufacturer {
     pub available_recipes: Vec<RecipeId>,
     /// Power usage of manufacturing.
     pub power_consumption: Power,
+}
+
+impl Manufacturer {
+    /// Whether this manufacturer allows overclocking.
+    #[inline]
+    pub fn overclockable(&self) -> bool {
+        self.power_consumption.overclockable()
+    }
 }
 
 /// Miner settings of a building.
@@ -735,6 +750,14 @@ pub struct Miner {
     pub power_consumption: Power,
 }
 
+impl Miner {
+    /// Whether this miner allows overclocking.
+    #[inline]
+    pub fn overclockable(&self) -> bool {
+        self.power_consumption.overclockable()
+    }
+}
+
 /// Generator settings of a building.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Generator {
@@ -744,6 +767,14 @@ pub struct Generator {
     pub used_water: f32,
     /// Power production of this generator.
     pub power_production: Power,
+}
+
+impl Generator {
+    /// Whether this generator allows overclocking.
+    #[inline]
+    pub fn overclockable(&self) -> bool {
+        self.power_production.overclockable()
+    }
 }
 
 /// Pump settings of a building.
@@ -757,6 +788,14 @@ pub struct Pump {
     pub cycle_time: f32,
     /// Power usage of manufacturing.
     pub power_consumption: Power,
+}
+
+impl Pump {
+    /// Whether this pump allows overclocking.
+    #[inline]
+    pub fn overclockable(&self) -> bool {
+        self.power_consumption.overclockable()
+    }
 }
 
 /// Geothermal generator settings.
