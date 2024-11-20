@@ -9,9 +9,10 @@ use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 mod versions {
     pub(super) const V1M2P9: u32 = 2;
     pub(super) const V1M2P10: u32 = 3;
+    pub(super) const V1M2P11: u32 = 4;
 
-    pub(super) const PREVIOUS: u32 = V1M2P9;
-    pub(super) const CURRENT: u32 = V1M2P10;
+    pub(super) const PREVIOUS: u32 = V1M2P10;
+    pub(super) const CURRENT: u32 = V1M2P11;
 }
 
 struct Notification {
@@ -92,12 +93,13 @@ fn get_new_user_welcome() -> Notification {
                     across a whole word and locally, in whatever level of groups you find useful."
                 }</p>
                 <p>{
-                    "Unlike some other tools, there's not a huge focus on factory planning, (this \
-                    tool won't calculate production chanins for you, and it doesn't know anything \
-                    about conveyor belt speeds), but you may also find it useful for planning if \
-                    you, like me, prefer to just start picking some buildings and recipes and \
-                    manually adjust the building counts and clock speeds until you get a ratio \
-                    you're happy with."
+                    "Unlike some other tools, Satisfactory Accounting doesn't calculate entire \
+                    factory chains for you or pick out buildigns and recipies to use to get \
+                    particular outputs. However it does support calculating how many copies of a \
+                    buildng you need and at what clock speeds in order to produce or consume items \
+                    at a particular rate, once you have chosen a building and recipe. If your \
+                    factory planning style is similar to mine, you may find this more useful than \
+                    a tool that just tells you a whole chain."
                 }</p>
                 <p>{
                     "My hope is that this tool will fill a niche in the Satisfactory community for \
@@ -113,56 +115,90 @@ fn get_new_user_welcome() -> Notification {
 
 fn get_existing_user_notification(acked_version: u32) -> Notification {
     Notification {
-        title: "Satisfactory Accounting v1.2.10",
+        title: "Satisfactory Accounting v1.2.11",
         content: html! {
             <>
                 <h2>{"Welcome back, Pioneer."}</h2>
-                <p>{"This is a minor update to the download/upload functionality I added in v1.2.9 \
-                which is intended to make download/upload a bit more useful to those of you \
-                sharing save files with friends."}</p>
+                <p>{"Our most requested feature is finally here, after only, what like 2 years? \
+                Plus, it's not nearly as limited as I said it would be in the last update."}</p>
                 <h3>{"What's in this version"}</h3>
                 <ul>
                     <li>
-                        <p><b>{"Upload-replace."}</b>{" Save files downloaded from the App now \
-                        include a unique ID which identifies which world they are. When you upload \
-                        a world file, the App now checks if the ID matches an existing world, and \
-                        if it does, it will now give you an option to replace the existing world \
-                        or upload the file as a new world. To avoid confusion, I've now made world \
-                        IDs visible in the world list."}</p>
-                        <p>{"Older world files from before this change won't contain unique IDs, \
-                        so if you upload an older file, it will always upload as a new world. But \
-                        all files you download after this should have IDs. If you know what you're
-                        doing, you can also add the world ID to existing files, or change world \
-                        IDs in the JSON files to control what world a file will upload as. That's \
-                        not an option in the UI because I thought it would be simpler if \
-                        upload-replace was automatic in the common case."}</p>
-                        <p>{"If you've already shared world files a bunch, you may have multiple \
-                        copies of a world with diverging IDs. To get them to match, you'll just \
-                        have to pick one version to upload everywhere so every computer/person \
-                        sharing the file has a version with the same ID, and then after that you \
-                        should all get the option to upload-and-replace."}</p>
+                        <p><b>{"Fractional Multipliers"}</b>{" If a building supports \
+                        overclocking, then it can now have a non-integer multiplier. When a \
+                        building has a fractional multiplier, it represents N buildings at the \
+                        current clock speed, plus one building at a reduced clock speed."}</p>
+                        <p>{"For example, if you have a multiplier of 3.5, on a building with \
+                        clock speed 1.0, then that means 3 buildings at 1.0 plus 1 building with \
+                        clock speed 0.5.. If you have a multiplier of 3.5 and a clock speed of \
+                        2.0, then that means 3 buildings with clock speed 2.0, plus 1 building with
+                        clock speed 1.0."}</p>
+                        <p>{"Note that clock speeds are clamped at the limits imposed by the game, \
+                        so for example if you have a building at 0.1 clock speed and try to \
+                        multiply that by 3.05, you'll end up with 3 @ 0.1 + 1 @ 0.01, not 3 @ 0.1 \
+                        + 1 @ 0.005, which matches what you can do in game. Unless you frequently \
+                        use very low clock speeds, this probably doesn't matter to you"}</p>
                     </li>
                     <li>
-                        <p><b>{"World List Sorting."}</b>{" Until now, the world list was always \
-                        sorted by world ID. Since world IDs are random, that means the order of \
-                        worlds in the list was pretty random. Now the list is sorted by name by \
-                        default and you can click the headings to change which column it sorts by."}
-                        </p>
+                        <p><b>{"Backdriving!"}</b>{" or \"let me type in the number of items\". \
+                        You can now click and edit the number of items on a building directly, and \
+                        the tool will calculate the number of buildings and clock speed you need \
+                        to produce that number of items, and update the building to match the \
+                        desired output rate. Since it doesn't change recipies, you can always type \
+                        positive numbers, and it will know whether it's an input or an output."}</p>
+                        <p>{"There are a couple different modes available. The tool can either \
+                        produce buildings with a uniform clock speed set on all buildings, or it \
+                        can set to have most buildings with the same clock speed plus only one \
+                        with a different clock speed, using the fractional multipliers above. The \
+                        latter mode is more useful if you want most of your buildings to have a \
+                        clock speed of 1.0."}</p>
+                        <p>{"You can find more about the two modes in the settings menu, and \
+                        switch between them for different categories of buildings."}</p>
                     </li>
                 </ul>
                 <h3>{"What's coming next"}</h3>
-                <p>{"v1.2.11 will contain a basic backdrive mode. That is the highly requested \
-                feature of "}
-                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/12">
-                    {"\"let me directly type the number of items\""}
-                </a>{". I can tell you now that there will be some limitations on how much this \
-                feature can do. The version coming in 1.2.11 will always use a uniform clock speed \
-                across all buildings, even if its a lot of buildings, so you'll get results like \
-                10\u{00d7} buildings with 95% clock speed instead of 9\u{00d7} with 100% + \
-                1\u{00d7} with 50%. That's a limitation in how I represent buildings today, which \
-                I'm hoping to address with a more substantial change in v1.3.x."}</p>
+                <p>{"v1.2.12 will be a minor update that "}
+                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/27">
+                    {"adds settings for controlling rounding"}
+                </a>{". I believe that the rest of the open feature requests will actually require \
+                more substantial changes to the underlying model I use to represent buildings \
+                (especially things like transportation of resources between groups and properly \
+                supporting the Alien Power Augmenter), so I anticipate 1.2.12 being the last 1.2.x \
+                update, aside from any bug fixes that come up. At that point I'll have to "}</p>
                 if acked_version < versions::PREVIOUS {
                     <h3>{"Additionally, you may have missed these updates from previous releases:"}</h3>
+                    if acked_version < versions::V1M2P10 {
+                        <h4>{"Version 1.2.10"}</h4>
+                        <ul>
+                            <li>
+                                <p><b>{"Upload-replace."}</b>{" Save files downloaded from the App now \
+                                include a unique ID which identifies which world they are. When you upload \
+                                a world file, the App now checks if the ID matches an existing world, and \
+                                if it does, it will now give you an option to replace the existing world \
+                                or upload the file as a new world. To avoid confusion, I've now made world \
+                                IDs visible in the world list."}</p>
+                                <p>{"Older world files from before this change won't contain unique IDs, \
+                                so if you upload an older file, it will always upload as a new world. But \
+                                all files you download after this should have IDs. If you know what you're
+                                doing, you can also add the world ID to existing files, or change world \
+                                IDs in the JSON files to control what world a file will upload as. That's \
+                                not an option in the UI because I thought it would be simpler if \
+                                upload-replace was automatic in the common case."}</p>
+                                <p>{"If you've already shared world files a bunch, you may have multiple \
+                                copies of a world with diverging IDs. To get them to match, you'll just \
+                                have to pick one version to upload everywhere so every computer/person \
+                                sharing the file has a version with the same ID, and then after that you \
+                                should all get the option to upload-and-replace."}</p>
+                            </li>
+                            <li>
+                                <p><b>{"World List Sorting."}</b>{" Until now, the world list was always \
+                                sorted by world ID. Since world IDs are random, that means the order of \
+                                worlds in the list was pretty random. Now the list is sorted by name by \
+                                default and you can click the headings to change which column it sorts by."}
+                                </p>
+                            </li>
+                        </ul>
+                    }
                     if acked_version < versions::V1M2P9 {
                         <h4>{"Version 1.2.9"}</h4>
                         <ul>
@@ -228,10 +264,18 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                 <h3>{"In case of issues"}</h3>
                 <p>{"If you run into any problems with this release, you can "}{file_a_bug()}{". \
                 (there's also a link in the top-right corner of the app, with the bug icon)."}</p>
-                <p>{"The previous two versions of Satisfactory Accounting are also available, and \
-                should be compatible with this one, should you need to switch back to them to work \
-                around bugs, at these links:"}</p>
+                <p>{"The previous two versions of Satisfactory Accounting are also available, \
+                should you need to switch back to them to work around bugs. "}<b>{"However"}</b>
+                {", the older versions are not compatible with fractional building multipliers. If \
+                any buildings in a world have non-integer multipliers, you won't be able to load \
+                that world in the older versions."}</p>
+                <p>{"You can find the older versions at these links:"}</p>
                 <ul>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.10/">
+                            {"https://satisfactory-accounting.github.io/v1.2.10/"}
+                        </a>{"."}
+                    </li>
                     <li>
                         <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.9/">
                             {"https://satisfactory-accounting.github.io/v1.2.9/"}
@@ -243,7 +287,7 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                         </a>{"."}
                     </li>
                 </ul>
-                <h3>{"I'm glad so many of you find this tool useful!"}</h3>
+                <h3><a target="_blank" href="https://youtu.be/79DijltQXMM">{"You're welcome!"}</a></h3>
                 {signature()}
             </>
         },
