@@ -2,4 +2,8 @@
 
 .ClockSpeed {
     @include sized-clickedit-mixin.sized-clickedit-mixin(2.125em);
+
+    .extra-multiplier {
+        white-space: nowrap;
+    }
 }

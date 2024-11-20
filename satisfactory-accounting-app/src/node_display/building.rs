@@ -10,7 +10,7 @@ use satisfactory_accounting::accounting::{
     BuildError, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
     ManufacturerSettings, MinerSettings, PumpSettings, ResourcePurity, StationSettings,
 };
-use satisfactory_accounting::database::{BuildingId, BuildingKind, BuildingKindId};
+use satisfactory_accounting::database::{BuildingId, BuildingKind};
 use yew::prelude::*;
 
 use crate::node_display::balance::NodeBalance;
@@ -68,7 +68,19 @@ impl NodeDisplay {
             Some(id) => id,
             None => return false,
         };
-        todo!()
+        let building = match self.db.get(building_id) {
+            Some(bldg) => bldg,
+            None => return false,
+        };
+        match building.kind {
+            BuildingKind::Manufacturer(_) => true,
+            BuildingKind::Miner(_) => true,
+            BuildingKind::Generator(_) => true,
+            BuildingKind::Pump(_) => true,
+            BuildingKind::Geothermal(ref g) => g.power > 0.0,
+            BuildingKind::PowerConsumer(ref p) => p.power > 0.0,
+            BuildingKind::Station(_) => false,
+        }
     }
 
     fn view_warning(&self, err: BuildError) -> Html {

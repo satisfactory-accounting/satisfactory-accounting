@@ -9,6 +9,7 @@ use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
 use yew::prelude::*;
 
 use crate::inputs::clickedit::ClickEdit;
+use crate::material::material_icon_outlined;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
@@ -32,15 +33,18 @@ pub fn ClockSpeed(props: &Props) -> Html {
         },
     );
 
-    let last_clock = SplitCopies::split(props.copies, props.clock_speed).last_clock;
+    let split = SplitCopies::split(props.copies, props.clock_speed);
 
     let value: AttrValue = props.clock_speed.to_string().into();
-    let prefix = html! {
-        <span class="material-icons-outlined">{"timer"}</span>
-    };
-    let suffix = if last_clock > 0.0 {
+    let prefix = material_icon_outlined("timer");
+    let suffix = if split.last_clock > 0.0 {
         Some(html! {
-            <span>{"(+"}{last_clock}{")"}</span>
+            <span class="extra-multiplier">
+                {"\u{00d7}"}{split.whole_copies}
+                {" + "}
+                {material_icon_outlined("timer")}
+                {" "}{split.last_clock}{" \u{00d7}1"}
+            </span>
         })
     } else {
         None

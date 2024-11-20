@@ -1,10 +1,11 @@
 use log::{info, warn};
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, GeneratorSettings, ManufacturerSettings, MinerSettings,
-    Node, PumpSettings, ResourcePurity,
+    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
+    ManufacturerSettings, MinerSettings, Node, PumpSettings, ResourcePurity,
 };
 use satisfactory_accounting::database::{
-    BuildingKind, Generator, ItemId, ItemIdOrPower, Manufacturer, Miner, Power, PowerConsumer, Pump,
+    BuildingKind, Generator, Geothermal, ItemId, ItemIdOrPower, Manufacturer, Miner, Power,
+    PowerConsumer, Pump,
 };
 use serde::{Deserialize, Serialize};
 
@@ -99,11 +100,15 @@ impl NodeDisplay {
                 let (copies, ps) = self.backdrive_pump(id, rate, ps, p)?;
                 (copies, ps.into())
             }
+            (BuildingSettings::Geothermal(gs), BuildingKind::Geothermal(g)) => (
+                self.backdrive_geothermal(id, rate, gs, g)?,
+                gs.clone().into(),
+            ),
             (BuildingSettings::PowerConsumer, BuildingKind::PowerConsumer(p)) => (
                 self.backdrive_power_consumer(id, rate, p)?,
                 BuildingSettings::PowerConsumer.into(),
             ),
-            (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
+            (BuildingSettings::Station(_), BuildingKind::Station(_)) => {
                 warn!("Stations do not support backdriving");
                 return None;
             }
@@ -150,13 +155,13 @@ impl NodeDisplay {
                     None
                 })?;
 
-                let total_input_rate: f32 = recipe
+                let total_input_count: f32 = recipe
                     .ingredients
                     .iter()
                     .filter(|ing| ing.item == item_id)
                     .map(|ing| ing.amount)
                     .sum();
-                let total_output_rate: f32 = recipe
+                let total_output_count: f32 = recipe
                     .products
                     .iter()
                     .filter(|ing| ing.item == item_id)
@@ -164,7 +169,8 @@ impl NodeDisplay {
                     .sum();
                 // For backdriving calculations, we don't care if it's an input or an output, so we
                 // just use abs here.
-                let item_net_rate = (total_input_rate - total_output_rate).abs();
+                let item_net_rate =
+                    (total_input_count - total_output_count).abs() / recipe.time * 60.0;
 
                 backdrive_production_consumption(
                     ms.clock_speed,
@@ -305,6 +311,27 @@ impl NodeDisplay {
         let mut gs = gs.clone();
         gs.clock_speed = res.clock;
         Some((res.copies, gs))
+    }
+
+    /// Backdrives geothermal to a particular power production rate.
+    fn backdrive_geothermal(
+        &self,
+        id: ItemIdOrPower,
+        rate: f32,
+        gs: &GeothermalSettings,
+        g: &Geothermal,
+    ) -> Option<f32> {
+        if g.power == 0.0 {
+            warn!("Unable to backdrive - geothermal has no power production");
+            return None;
+        }
+        if id != ItemIdOrPower::Power {
+            warn!("Unable to backdrive - geothermal can only backdrive power");
+            return None;
+        }
+        // Geothermal doesn't allow overclocking so just round up.
+        let multiplier = rate / (g.power * gs.purity.speed_multiplier());
+        Some(multiplier.ceil())
     }
 
     /// Backdrivea pump to match a particular resource production rate.
@@ -507,6 +534,8 @@ fn backdrive_production_consumption(
         warn!("Cannot backdrive item because its production rate is 0.");
         return None;
     }
+
+    info!("backdrive: rate {rate}, base_rate: {base_rate}, current_clock: {current_clock}");
 
     let overall_multiplier = rate / base_rate;
 
