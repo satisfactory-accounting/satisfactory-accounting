@@ -1,15 +1,19 @@
 use log::{info, warn};
 use satisfactory_accounting::accounting::{
     BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
-    ManufacturerSettings, MinerSettings, Node, PumpSettings, ResourcePurity,
+    ManufacturerSettings, MinerSettings, Node, PumpSettings, ResourcePurity, MAX_CLOCK, MIN_CLOCK,
 };
 use satisfactory_accounting::database::{
     BuildingKind, Generator, Geothermal, ItemId, ItemIdOrPower, Manufacturer, Miner, Power,
     PowerConsumer, Pump,
 };
 use serde::{Deserialize, Serialize};
+use yew::{function_component, html, use_callback, Html, Properties};
 
+use crate::inputs::toggle::MaterialRadio;
+use crate::node_display::clock::ClockSpeed;
 use crate::node_display::NodeDisplay;
+use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
 
 /// Container for settings related to backdriving.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -20,6 +24,63 @@ pub struct BackdriveSettings {
     extractor: BuildingBackdriveSettings,
     /// Backdrive settings for generators.
     generator: BuildingBackdriveSettings,
+}
+
+impl BackdriveSettings {
+    /// Updates the backdriving settings. Returns true if the settings changed.
+    pub fn update(&mut self, msg: BackdriveSettingsMsg) -> bool {
+        match msg.action {
+            BackdriveSettingsAction::SetMaxClock {
+                building_type,
+                uniform_max_clock,
+            } => {
+                let uniform_max_clock = uniform_max_clock.clamp(MIN_CLOCK, MAX_CLOCK);
+                let settings = self.select_building_type_mut(building_type);
+                if settings.uniform_max_clock == uniform_max_clock {
+                    false
+                } else {
+                    settings.uniform_max_clock = uniform_max_clock;
+                    true
+                }
+            }
+            BackdriveSettingsAction::SetMode {
+                building_type,
+                mode,
+            } => {
+                let settings = self.select_building_type_mut(building_type);
+                if settings.mode == mode {
+                    false
+                } else {
+                    settings.mode = mode;
+                    true
+                }
+            }
+        }
+    }
+
+    /// Gets the backdrive building settings for the given building type category.
+    fn select_building_type(
+        &self,
+        building_type: BackdriveSettingsType,
+    ) -> &BuildingBackdriveSettings {
+        match building_type {
+            BackdriveSettingsType::Manufacturer => &self.manufacturer,
+            BackdriveSettingsType::Extractor => &self.extractor,
+            BackdriveSettingsType::Generator => &self.generator,
+        }
+    }
+
+    /// Gets the backdrive building settings for the given building type category.
+    fn select_building_type_mut(
+        &mut self,
+        building_type: BackdriveSettingsType,
+    ) -> &mut BuildingBackdriveSettings {
+        match building_type {
+            BackdriveSettingsType::Manufacturer => &mut self.manufacturer,
+            BackdriveSettingsType::Extractor => &mut self.extractor,
+            BackdriveSettingsType::Generator => &mut self.generator,
+        }
+    }
 }
 
 impl Default for BackdriveSettings {
@@ -59,6 +120,163 @@ struct BuildingBackdriveSettings {
     mode: BackdriveMode,
     /// Maximum clock speed to use when operating in uniform clock mode.
     uniform_max_clock: f32,
+}
+
+/// Message to update the backdriving settings.
+pub struct BackdriveSettingsMsg {
+    action: BackdriveSettingsAction,
+}
+
+/// Actions to apply to the backdrive settings.
+enum BackdriveSettingsAction {
+    /// Set the maximum clock rate for one of the categories.
+    SetMaxClock {
+        building_type: BackdriveSettingsType,
+        uniform_max_clock: f32,
+    },
+    /// Set the mode for one of the categories.
+    SetMode {
+        building_type: BackdriveSettingsType,
+        mode: BackdriveMode,
+    },
+}
+
+/// For actions that act on BuildingBackdriveSettings, selects which buildng type to apply to.
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum BackdriveSettingsType {
+    Manufacturer,
+    Extractor,
+    Generator,
+}
+
+/// Displays the settings section for controlling backdrive settings.
+#[function_component]
+pub fn BackdriveSettingsSection() -> Html {
+    html! {
+        <div class="settings-section">
+            <h2>{"Backdriving Settings"}</h2>
+            <p>{"Backdriving allows you to click on the outputs of a building and type the number \
+            of items you want it to produce and have it calculate a clock speed and building \
+            multiplier to get that production rate. There are two supported modes for backdriving:"}</p>
+            <ul class="description">
+                <li><p><b>{"Mixed Clock Mode:"}</b>{" In this mode, the clock speed that is set on \
+                the building doesn't get modified. Instead, we set only the building's multiplier \
+                to produce the correct number of items. If the number of items isn't an exact \
+                multiple of the production rate at the current clock speed, we use a fractional \
+                building  multiplier."}</p>
+                <p>{"Fractional building multipliers represent N buildings at the stated clock \
+                speed + 1 buiding at a fractional clock speed, for example, if a building is set \
+                to a clock speed of 2.0, and you set the multiplier to 3.75, that means 3 \
+                buildings with a clock speed of 2.0 plus 1 building with a clock speed of 1.5."}</p>
+                <p>{"Mixed clock mode allows you to minimize the number of buildings that need \
+                overclocking, since the clock speed stays the same except for the last building."}
+                </p></li>
+                <li><p><b>{"Uniform Clock Mode:"}</b>{" In this mode, both the clock speed and \
+                number of buildings are modified. The multiplier will always be set to a whole \
+                number of buildings, and then all buildings will be over or under clocked to get \
+                the correct number of output items."}</p>
+                <p>{"Uniform clock mode requires overclocking on more buildings, but is nice when \
+                you want to minimize the number of buildings, for example for miners. You can set \
+                a limit on the clock speed it is allowed to ramp up to."}</p></li>
+            </ul>
+            <p>{"You can set separate backdriving settings for three categories of buildings: \
+            production buildings, such as Constructors, Assemblers, and Manufacturers, extraction \
+            buildings such as Miners and Resource Wells, and Generators."}</p>
+            <p>{"Note that for buildings that don't allow overclocking, neither mode works, and we \
+            instead just choose enough buildings to get at least as many items as you requested."}</p>
+            <div class="settings-subsection">
+                <h3>{"Production Building Settings"}</h3>
+                <BuildingSubsection section={BackdriveSettingsType::Manufacturer} />
+            </div>
+            <div class="settings-subsection">
+                <h3>{"Extraction Building Settings"}</h3>
+                <BuildingSubsection section={BackdriveSettingsType::Extractor} />
+            </div>
+            <div class="settings-subsection">
+                <h3>{"Generator Building Settings"}</h3>
+                <BuildingSubsection section={BackdriveSettingsType::Generator} />
+            </div>
+        </div>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+struct BuildingSubsectionProps {
+    /// Which settings type to show in this section.
+    section: BackdriveSettingsType,
+}
+
+/// Displays building settings for one building type.
+#[function_component]
+fn BuildingSubsection(props: &BuildingSubsectionProps) -> Html {
+    let user_settings = use_user_settings();
+    let user_settings_dispatcher = use_user_settings_dispatcher();
+
+    let update_max_speed = use_callback(
+        (props.section, user_settings_dispatcher.clone()),
+        |speed, (section, user_settings_dispatcher)| {
+            user_settings_dispatcher.update_backdrive_settings(BackdriveSettingsMsg {
+                action: BackdriveSettingsAction::SetMaxClock {
+                    building_type: *section,
+                    uniform_max_clock: speed,
+                },
+            });
+        },
+    );
+
+    let set_mixed = use_callback(
+        (props.section, user_settings_dispatcher.clone()),
+        |_, (section, user_settings_dispatcher)| {
+            user_settings_dispatcher.update_backdrive_settings(BackdriveSettingsMsg {
+                action: BackdriveSettingsAction::SetMode {
+                    building_type: *section,
+                    mode: BackdriveMode::VariableClock,
+                },
+            });
+        },
+    );
+
+    let set_uniform = use_callback(
+        (props.section, user_settings_dispatcher.clone()),
+        |_, (section, user_settings_dispatcher)| {
+            user_settings_dispatcher.update_backdrive_settings(BackdriveSettingsMsg {
+                action: BackdriveSettingsAction::SetMode {
+                    building_type: *section,
+                    mode: BackdriveMode::UniformClock,
+                },
+            });
+        },
+    );
+
+    let settings = user_settings
+        .backdrive_settings
+        .select_building_type(props.section);
+
+    html! {
+        <ul>
+            <li>
+                <label>
+                    <span>{"Mixed Clock Speed"}</span>
+                    <MaterialRadio
+                        checked={settings.mode == BackdriveMode::VariableClock}
+                        onclick={set_mixed} />
+                </label>
+            </li>
+            <li>
+                <label>
+                    <span>{"Uniform Clock Speed"}</span>
+                    <span class="max-uniform-clock">
+                        <span>{"Max clock speed"}</span>
+                        <ClockSpeed clock_speed={settings.uniform_max_clock} copies=1.0
+                            on_update_speed={update_max_speed} />
+                    </span>
+                    <MaterialRadio
+                        checked={settings.mode == BackdriveMode::UniformClock}
+                        onclick={set_uniform} />
+                </label>
+            </li>
+        </ul>
+    }
 }
 
 impl NodeDisplay {

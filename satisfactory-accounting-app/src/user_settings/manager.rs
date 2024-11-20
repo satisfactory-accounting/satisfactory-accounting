@@ -8,7 +8,7 @@ use log::warn;
 use yew::html::Scope;
 use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Properties};
 
-use crate::node_display::BalanceSortMode;
+use crate::node_display::{BackdriveSettingsMsg, BalanceSortMode};
 use crate::refeqrc::RefEqRc;
 use crate::user_settings::storagemanager::persist_local_storage;
 use crate::user_settings::UserSettings;
@@ -56,6 +56,8 @@ pub enum Msg {
     AckNotification { version: u32 },
     /// Updates the world sort settings by applying the given message.
     UpdateWorldSortSettings { msg: WorldSortSettingsMsg },
+    /// Updates the backdrive settings by applying the given message.
+    UpdateBackdriveSettings { msg: BackdriveSettingsMsg },
 }
 
 pub struct UserSettingsManager {
@@ -165,6 +167,19 @@ impl UserSettingsManager {
             false
         }
     }
+
+    /// Message handler for UpdateBackdriveSettings.
+    fn update_backdrive_settings(&mut self, msg: BackdriveSettingsMsg) -> bool {
+        if Rc::make_mut(&mut self.user_settings)
+            .backdrive_settings
+            .update(msg)
+        {
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -208,6 +223,7 @@ impl Component for UserSettingsManager {
             Msg::AckLocalStorage { version } => self.ack_local_storage(version),
             Msg::AckNotification { version } => self.ack_notification(version),
             Msg::UpdateWorldSortSettings { msg } => self.update_world_sort_settings(msg),
+            Msg::UpdateBackdriveSettings { msg } => self.update_backdrive_settings(msg),
         }
     }
 
@@ -285,6 +301,12 @@ impl UserSettingsDispatcher {
     pub fn update_world_sort_settings(&self, msg: WorldSortSettingsMsg) {
         self.scope
             .send_message(Msg::UpdateWorldSortSettings { msg });
+    }
+
+    /// Updates the backdriving settings.
+    pub fn update_backdrive_settings(&self, msg: BackdriveSettingsMsg) {
+        self.scope
+            .send_message(Msg::UpdateBackdriveSettings { msg });
     }
 }
 

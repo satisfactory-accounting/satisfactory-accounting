@@ -28,12 +28,13 @@ use crate::material::material_icon;
 use crate::user_settings::{use_user_settings, UserSettings};
 use crate::world::{use_world_dispatcher, use_world_root, NodeMeta, NodeMetas};
 
-pub use self::backdrive::BackdriveSettings;
+pub use self::backdrive::{BackdriveSettings, BackdriveSettingsMsg, BackdriveSettingsSection};
 pub use self::balance::BalanceSortMode;
 
 mod backdrive;
 mod balance;
 mod building;
+mod clock;
 mod copies;
 mod drag;
 mod graph_manipulation;

@@ -4,6 +4,7 @@
 
 @use "balance/NodeBalance.scss";
 @use "building/building.scss";
+@use "clock/ClockSpeed.scss";
 @use "copies/VirtualCopies.scss";
 @use "group/GroupName.scss";
 @use "icon/Icon.scss";
@@ -154,4 +155,12 @@ $bg-hov: color.scale($background, $lightness: -10%);
     .BuildError {
         cursor: pointer;
     }
+}
+
+.max-uniform-clock {
+    font-weight: normal;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px
 }

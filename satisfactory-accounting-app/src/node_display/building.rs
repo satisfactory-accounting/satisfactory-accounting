@@ -14,11 +14,11 @@ use satisfactory_accounting::database::{BuildingId, BuildingKind};
 use yew::prelude::*;
 
 use crate::node_display::balance::NodeBalance;
+use crate::node_display::clock::ClockSpeed;
 use crate::node_display::copies::VirtualCopies;
 use crate::node_display::{Msg, NodeDisplay};
 
 use building_type::BuildingTypeDisplay;
-use clock::ClockSpeed;
 use item::ItemDisplay;
 use multi_purity::MultiPurity;
 use purity::Purity;
@@ -26,7 +26,6 @@ use recipe::RecipeDisplay;
 use station_consumption::StationConsumption;
 
 mod building_type;
-mod clock;
 mod item;
 mod multi_purity;
 mod purity;

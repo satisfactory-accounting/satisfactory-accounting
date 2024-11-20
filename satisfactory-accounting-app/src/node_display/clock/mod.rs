@@ -38,14 +38,18 @@ pub fn ClockSpeed(props: &Props) -> Html {
     let value: AttrValue = props.clock_speed.to_string().into();
     let prefix = material_icon_outlined("timer");
     let suffix = if split.last_clock > 0.0 {
-        Some(html! {
-            <span class="extra-multiplier">
-                {"\u{00d7}"}{split.whole_copies}
-                {" + "}
-                {material_icon_outlined("timer")}
-                {" "}{split.last_clock}{" \u{00d7}1"}
+        Some(html! {<>
+            <span class="extra-multiplier whole">
+                {"\u{00d7} "}{split.whole_copies}
             </span>
-        })
+            <span class="extra-multiplier plus">
+                {" + "}
+            </span>
+            {material_icon_outlined("timer")}
+            <span class="extra-multiplier fractional">
+                {" "}{split.last_clock}{" \u{00d7} 1"}
+            </span>
+        </>})
     } else {
         None
     };

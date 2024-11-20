@@ -4,7 +4,7 @@ use yew::{function_component, hook, html, use_callback, use_context, Html};
 
 use crate::inputs::button::Button;
 use crate::inputs::toggle::{MaterialCheckbox, MaterialRadio};
-use crate::node_display::BalanceSortMode;
+use crate::node_display::{BackdriveSettingsSection, BalanceSortMode};
 use crate::overlay_window::controller::{ShowWindowDispatcher, WindowManager};
 use crate::overlay_window::OverlayWindow;
 use crate::user_settings::{use_user_settings, use_user_settings_dispatcher};
@@ -92,6 +92,7 @@ pub fn UserSettingsWindow() -> Html {
                     </ul>
                 </div>
             </div>
+            <BackdriveSettingsSection />
             <div class="settings-section">
                 <h2>{"Storage Persistence"}</h2>
                 <p>{"Satisfactory Accounting stores your worlds and user settings in "}
