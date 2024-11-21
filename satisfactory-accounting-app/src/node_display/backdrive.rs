@@ -494,7 +494,7 @@ impl NodeDisplay {
                         return None;
                     }
                     // Energy MJ * (Fuel / min) * (min / sec) = Energy MJ / sec = Power MW
-                    fuel.energy * rate * 60.0
+                    fuel.energy * rate / 60.0
                 } else if let Some(byproduct_rate) =
                     fuel.byproducts.iter().find(|by| by.item == item_id)
                 {
@@ -505,7 +505,7 @@ impl NodeDisplay {
                     // (Items / min) / (Items / Fuel) = (Fuel / min)
                     let fuel_rate = rate / byproduct_rate.amount;
                     // see above
-                    fuel.energy * fuel_rate * 60.0
+                    fuel.energy * fuel_rate / 60.0
                 } else if item_id == ItemId::water() {
                     if g.used_water == 0.0 {
                         warn!("Unable to backdrive - water consumption is 0");

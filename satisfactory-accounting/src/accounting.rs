@@ -940,15 +940,15 @@ impl GeneratorSettings {
             }
 
             let clock_split = SplitCopies::split(copies, self.clock_speed);
-            let base_power = -g.power_production.get_production_rate(self.clock_speed);
-            let last_power = -g
+            let base_power = g.power_production.get_production_rate(self.clock_speed);
+            let last_power = g
                 .power_production
                 .get_production_rate(clock_split.last_clock);
             balance.power = base_power * clock_split.whole_copies + last_power;
             if g.used_water > 0.0 {
                 balance
                     .balances
-                    .insert(ItemId::water(), -balance.power * g.used_water * copies);
+                    .insert(ItemId::water(), -balance.power * g.used_water);
             }
 
             // Burn time in Seconds MJ / MW = MJ/(MJ/s) = s
