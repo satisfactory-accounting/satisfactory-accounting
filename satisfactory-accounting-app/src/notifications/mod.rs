@@ -287,7 +287,7 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                         </a>{"."}
                     </li>
                 </ul>
-                <h3><a target="_blank" href="https://youtu.be/79DijltQXMM">{"You're welcome!"}</a></h3>
+                <h3><a target="_blank" href="https://youtu.be/79DijItQXMM">{"You're welcome!"}</a></h3>
                 {signature()}
             </>
         },
