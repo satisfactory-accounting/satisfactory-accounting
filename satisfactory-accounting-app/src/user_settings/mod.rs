@@ -11,7 +11,10 @@ pub use crate::user_settings::window::{
 };
 use crate::world::WorldSortSettings;
 
+use self::number_format::NumberDisplaySettings;
+
 mod manager;
+pub mod number_format;
 mod storagemanager;
 mod window;
 
@@ -34,6 +37,10 @@ pub struct UserSettings {
     /// Settings for how to backdrive balances.
     #[serde(default)]
     pub backdrive_settings: BackdriveSettings,
+
+    /// Settings for how to round and display balances and clock.
+    #[serde(default)]
+    pub number_display: NumberDisplaySettings,
 
     /// Whether the user has acknowledged the use of local storage.
     #[serde(default)]

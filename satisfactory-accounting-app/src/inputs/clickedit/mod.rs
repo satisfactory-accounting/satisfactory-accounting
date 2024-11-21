@@ -9,6 +9,9 @@ use crate::inputs::whitespace::space_to_nbsp;
 pub struct Props {
     /// Last committed value.
     pub value: AttrValue,
+    /// Rounded value. Displayed when *not* editing.
+    #[prop_or_default]
+    pub rounded_value: Option<AttrValue>,
     /// Title for the node.
     pub title: AttrValue,
     /// Extra classes to apply to the container div.
@@ -140,6 +143,7 @@ impl Component for ClickEdit {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let Props {
             value,
+            rounded_value,
             title,
             prefix,
             suffix,
@@ -169,6 +173,7 @@ impl Component for ClickEdit {
             }
         } else {
             let onclick = self.onclick.clone();
+            let value = rounded_value.as_ref().unwrap_or(value);
             html! {
                 <div {class} {title} {onclick}>
                     { prefix.clone() }
