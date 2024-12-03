@@ -10,6 +10,7 @@ use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Pr
 
 use crate::node_display::{BackdriveSettingsMsg, BalanceSortMode};
 use crate::refeqrc::RefEqRc;
+use crate::user_settings::number_format::NumberDisplaySettingsMsg;
 use crate::user_settings::storagemanager::persist_local_storage;
 use crate::user_settings::UserSettings;
 use crate::world::WorldSortSettingsMsg;
@@ -58,6 +59,8 @@ pub enum Msg {
     UpdateWorldSortSettings { msg: WorldSortSettingsMsg },
     /// Updates the backdrive settings by applying the given message.
     UpdateBackdriveSettings { msg: BackdriveSettingsMsg },
+    /// Updates the number display settings by applying the given message.
+    UpdateNumberDisplaySettings { msg: NumberDisplaySettingsMsg },
 }
 
 pub struct UserSettingsManager {
@@ -180,6 +183,19 @@ impl UserSettingsManager {
             false
         }
     }
+
+    /// Message handler for UpdateNumberDisplaySettings.
+    fn update_number_display_settings(&mut self, msg: NumberDisplaySettingsMsg) -> bool {
+        if Rc::make_mut(&mut self.user_settings)
+            .number_display
+            .update(msg)
+        {
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -224,6 +240,7 @@ impl Component for UserSettingsManager {
             Msg::AckNotification { version } => self.ack_notification(version),
             Msg::UpdateWorldSortSettings { msg } => self.update_world_sort_settings(msg),
             Msg::UpdateBackdriveSettings { msg } => self.update_backdrive_settings(msg),
+            Msg::UpdateNumberDisplaySettings { msg } => self.update_number_display_settings(msg),
         }
     }
 
@@ -307,6 +324,15 @@ impl UserSettingsDispatcher {
     pub fn update_backdrive_settings(&self, msg: BackdriveSettingsMsg) {
         self.scope
             .send_message(Msg::UpdateBackdriveSettings { msg });
+    }
+
+    /// Updates the number display settings.
+    pub(in crate::user_settings) fn update_number_display_settings(
+        &self,
+        msg: impl Into<NumberDisplaySettingsMsg>,
+    ) {
+        self.scope
+            .send_message(Msg::UpdateNumberDisplaySettings { msg: msg.into() });
     }
 }
 

@@ -1,22 +1,38 @@
 use serde::{Deserialize, Serialize};
 
-/// Determines how roudning affect the style of displayed balances.
+pub use settings_page::{NumberDisplaySettingsMsg, NumberDisplaySettingsSection};
+
+mod settings_page;
+
+/// How to style numbers (e.g. color them for positive/negative) in relation to their rounding.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NumberStylingMode {
-    /// Style based on the rounded value.
+    /// Style based on the displayed value.
     #[default]
-    Rounded,
+    DisplayedValue,
     /// Style based on the exact value, even if that doesn't match the rounded value.
-    Exact,
+    ExactValue,
 }
 
-/// How to display values in the balance, clock speed, etc.
+/// How to style numbers based on their rounded values.
+///
+/// This is a struct wrapping the [`NumberStylingMode`] enum for future expandability.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NumberStylingSettings {
+    /// The styling mode to use.
+    mode: NumberStylingMode,
+}
+
+/// How to format numbers for display in the balance, clock speed, etc.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NumberFormatMode {
-    /// Display a rounded value.
-    Rounded,
-    /// Display the exact value.
-    Exact,
+    /// Format the numbers in decimal, with as much precision as is available.
+    DecimalPrecise,
+    /// Format the numbers in decimal, rounded to some number of digits after the decimal point.
+    DecimalRounded,
+    /// Format the numbers in decimal, rouned to some number of digits after the decimal point. Also
+    /// pad out to that number of digits with zeros.
+    DecimalRoundedPadded,
 }
 
 /// Number display settings for a particular kind of number (clock speed, balances, etc.)
@@ -32,9 +48,9 @@ pub struct NumberFormatSettings {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BalanceDisplaySettings {
     /// Whether the red/green/black coloring is based on the exact value or rounded value.
-    highlight_style: NumberStylingMode,
+    highlight_style: NumberStylingSettings,
     /// Whether hide-empty-balances should be based on the exact value or rounded value.
-    hide_style: NumberStylingMode,
+    hide_style: NumberStylingSettings,
     /// Format settings to use for power.
     ///
     /// This is broken out in anticipation of fraction mode, where power will still be floating
@@ -47,7 +63,7 @@ pub struct BalanceDisplaySettings {
 impl Default for BalanceDisplaySettings {
     fn default() -> Self {
         let format = NumberFormatSettings {
-            mode: NumberFormatMode::Rounded,
+            mode: NumberFormatMode::DecimalRounded,
             round_decimal_places: 2,
         };
         Self {
@@ -70,7 +86,25 @@ impl Default for ClockDisplaySettings {
     fn default() -> Self {
         Self {
             format: NumberFormatSettings {
-                mode: NumberFormatMode::Exact,
+                mode: NumberFormatMode::DecimalPrecise,
+                round_decimal_places: 6,
+            },
+        }
+    }
+}
+
+/// Settings to apply to multiplier display.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct MultiplierDisplaySettings {
+    /// Number format settings to apply to the multiplier.
+    format: NumberFormatSettings,
+}
+
+impl Default for MultiplierDisplaySettings {
+    fn default() -> Self {
+        Self {
+            format: NumberFormatSettings {
+                mode: NumberFormatMode::DecimalPrecise,
                 round_decimal_places: 6,
             },
         }
@@ -81,7 +115,12 @@ impl Default for ClockDisplaySettings {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NumberDisplaySettings {
     /// How to display balances.
+    #[serde(default)]
     balance: BalanceDisplaySettings,
     /// How to display the clock speed.
+    #[serde(default)]
     clock: ClockDisplaySettings,
+    /// Display settings to apply to multipliers.
+    #[serde(default)]
+    multiplier: MultiplierDisplaySettings,
 }
