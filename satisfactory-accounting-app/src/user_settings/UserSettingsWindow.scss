@@ -40,4 +40,14 @@
         justify-content: space-between;
         align-items: center;
     }
+
+    .num-digits-to-round-to {
+        flex-grow: 1;
+        .prefix {
+            flex-grow: 10;
+        }
+        .value {
+            text-align: right;
+        }
+    }
 }

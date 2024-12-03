@@ -5,6 +5,53 @@ use yew::prelude::*;
 use crate::inputs::events::get_value_from_input_event;
 use crate::inputs::whitespace::space_to_nbsp;
 
+/// Direction of the adjustment to apply.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AdjustDir {
+    Up,
+    Down,
+}
+
+/// The scale of a value adjustment.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AdjustScale {
+    /// A fine adjustment (arrow keys)
+    Fine,
+    /// A coarse adjustment (pg up/down keys).
+    Coarse,
+}
+
+/// A modifier to add to the adjustment scale.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AdjustModifier {
+    /// No modifier on the scale.
+    None,
+    /// Adjust by a smaller amount than the scale.
+    Smaller,
+}
+
+impl AdjustModifier {
+    /// Interpret keys pressed on the given keybaord event as a modifier.
+    fn interpret(e: &KeyboardEvent) -> Self {
+        if e.shift_key() {
+            Self::Smaller
+        } else {
+            Self::None
+        }
+    }
+}
+
+/// An adjustment to apply to the value, rather than by typing in full numbers.
+#[derive(Debug, Copy, Clone)]
+pub struct ValueAdjustment {
+    /// Whether to adjust up or down.
+    pub dir: AdjustDir,
+    /// What scale of adjustment to make.
+    pub scale: AdjustScale,
+    /// Modifier to apply to the scale.
+    pub modifier: AdjustModifier,
+}
+
 #[derive(Debug, Properties, PartialEq)]
 pub struct Props {
     /// Last committed value.
@@ -25,6 +72,11 @@ pub struct Props {
     pub suffix: Html,
     /// Callback to invoke when the edit is committed.
     pub on_commit: Callback<AttrValue>,
+    /// Callback to allow small adjustments of the value by itting keys like pg up, pg down, or
+    /// up/down. This callback takes the adjustment info and the current value and emits an updated
+    /// editable value.
+    #[prop_or_default]
+    pub adjust: Option<fn(ValueAdjustment, AttrValue) -> AttrValue>,
 }
 
 pub enum Msg {
@@ -36,6 +88,8 @@ pub enum Msg {
     FinishEdit,
     /// Cancel editing without changing the value.
     Cancel,
+    /// Adjust the value by a given amount.
+    Adjust { adjustment: ValueAdjustment },
 }
 
 /// Helper to display some text with click-to-edit.
@@ -83,6 +137,34 @@ impl Component for ClickEdit {
             }),
             onkeyup: link.batch_callback(|e: KeyboardEvent| match &*e.key() {
                 "Esc" | "Escape" => Some(Msg::Cancel),
+                "Up" | "ArrowUp" => Some(Msg::Adjust {
+                    adjustment: ValueAdjustment {
+                        dir: AdjustDir::Up,
+                        scale: AdjustScale::Fine,
+                        modifier: AdjustModifier::interpret(&e),
+                    },
+                }),
+                "Down" | "ArrowDown" => Some(Msg::Adjust {
+                    adjustment: ValueAdjustment {
+                        dir: AdjustDir::Down,
+                        scale: AdjustScale::Fine,
+                        modifier: AdjustModifier::interpret(&e),
+                    },
+                }),
+                "PageUp" => Some(Msg::Adjust {
+                    adjustment: ValueAdjustment {
+                        dir: AdjustDir::Up,
+                        scale: AdjustScale::Coarse,
+                        modifier: AdjustModifier::interpret(&e),
+                    },
+                }),
+                "PageDown" => Some(Msg::Adjust {
+                    adjustment: ValueAdjustment {
+                        dir: AdjustDir::Down,
+                        scale: AdjustScale::Coarse,
+                        modifier: AdjustModifier::interpret(&e),
+                    },
+                }),
                 _ => None,
             }),
             onblur: link.callback(|_| Msg::FinishEdit),
@@ -136,6 +218,19 @@ impl Component for ClickEdit {
             Msg::Cancel => {
                 self.edit_text = None;
                 true
+            }
+            Msg::Adjust { adjustment } => {
+                match (ctx.props().adjust.as_ref(), self.edit_text.take()) {
+                    (Some(adjuster), Some(value)) => {
+                        self.edit_text = Some(adjuster(adjustment, value));
+                        true
+                    }
+                    (_, None) => {
+                        warn!("Adjust while not editing");
+                        false
+                    }
+                    _ => false,
+                }
             }
         }
     }
