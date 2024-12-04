@@ -7,7 +7,11 @@
 //       http://www.apache.org/licenses/LICENSE-2.0
 use yew::prelude::*;
 
-use crate::inputs::clickedit::ClickEdit;
+use crate::inputs::clickedit::{
+    AdjustDir, AdjustModifier, AdjustScale, ClickEdit, ValueAdjustment,
+};
+use crate::user_settings::number_format::UserConfiguredFormat;
+use crate::user_settings::use_user_settings;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
@@ -29,11 +33,38 @@ pub fn VirtualCopies(props: &Props) -> Html {
         },
     );
 
+    let user_settings = use_user_settings();
+    let rounding = &user_settings.number_display.multiplier.format;
+
     let value: AttrValue = props.copies.to_string().into();
+    let rounded_value: AttrValue = props.copies.format(rounding).to_string().into();
     let suffix = html! {
         <span>{"\u{00d7}"}</span>
     };
+
+    fn adjust(adjustment: ValueAdjustment, current: AttrValue) -> AttrValue {
+        let current = match current.parse::<f32>() {
+            Ok(current) => current,
+            Err(_) => return current,
+        };
+        let dir = match adjustment.dir {
+            AdjustDir::Up => 1.0,
+            AdjustDir::Down => -1.0,
+        };
+        let dist = match (adjustment.scale, adjustment.modifier) {
+            // Fine adjustment by increments of 1 building.
+            (AdjustScale::Fine, AdjustModifier::None) => 1.0,
+            // Coarse adjustment by increments of 5 buildings.
+            (AdjustScale::Coarse, AdjustModifier::None) => 5.0,
+            // Small scale adjustments are by 1% and 10% of clock respectively.
+            (AdjustScale::Fine, AdjustModifier::Smaller) => 0.01,
+            (AdjustScale::Coarse, AdjustModifier::Smaller) => 0.1,
+        };
+        (current + dir * dist).to_string().into()
+    }
+
     html! {
-        <ClickEdit {value} class="VirtualCopies" title="Multiplier" {on_commit} {suffix} />
+        <ClickEdit {value} {rounded_value} class="VirtualCopies" title="Multiplier" {on_commit}
+            {suffix} adjust={adjust as fn(_,_)->_} />
     }
 }

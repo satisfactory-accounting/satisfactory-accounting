@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 pub use settings_page::{NumberDisplaySettingsMsg, NumberDisplaySettingsSection};
+pub use formatters::UserConfiguredFormat;
 
 mod settings_page;
+mod formatters;
 
 /// How to style numbers (e.g. color them for positive/negative) in relation to their rounding.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,7 +22,7 @@ pub enum NumberStylingMode {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NumberStylingSettings {
     /// The styling mode to use.
-    mode: NumberStylingMode,
+    pub mode: NumberStylingMode,
 }
 
 /// How to format numbers for display in the balance, clock speed, etc.
@@ -39,25 +41,25 @@ pub enum NumberFormatMode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NumberFormatSettings {
     /// How to format the numbers.
-    mode: NumberFormatMode,
+    pub mode: NumberFormatMode,
     /// Number of decimal places to keep when rounding.
-    round_decimal_places: u32,
+    pub round_decimal_places: u32,
 }
 
 /// Settings to apply to balance display.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BalanceDisplaySettings {
     /// Whether the red/green/black coloring is based on the exact value or rounded value.
-    highlight_style: NumberStylingSettings,
+    pub highlight_style: NumberStylingSettings,
     /// Whether hide-empty-balances should be based on the exact value or rounded value.
-    hide_style: NumberStylingSettings,
+    pub hide_style: NumberStylingSettings,
     /// Format settings to use for power.
     ///
     /// This is broken out in anticipation of fraction mode, where power will still be floating
     /// point. For now it is locked to follow item_format_settings.
-    power_format_settings: NumberFormatSettings,
+    pub power_format_settings: NumberFormatSettings,
     /// Format settings to use for items.
-    item_format_settings: NumberFormatSettings,
+    pub item_format_settings: NumberFormatSettings,
 }
 
 impl Default for BalanceDisplaySettings {
@@ -79,7 +81,7 @@ impl Default for BalanceDisplaySettings {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClockDisplaySettings {
     /// Number format settings to apply to the clock.
-    format: NumberFormatSettings,
+    pub format: NumberFormatSettings,
 }
 
 impl Default for ClockDisplaySettings {
@@ -97,7 +99,7 @@ impl Default for ClockDisplaySettings {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MultiplierDisplaySettings {
     /// Number format settings to apply to the multiplier.
-    format: NumberFormatSettings,
+    pub format: NumberFormatSettings,
 }
 
 impl Default for MultiplierDisplaySettings {
@@ -116,11 +118,11 @@ impl Default for MultiplierDisplaySettings {
 pub struct NumberDisplaySettings {
     /// How to display balances.
     #[serde(default)]
-    balance: BalanceDisplaySettings,
+    pub balance: BalanceDisplaySettings,
     /// How to display the clock speed.
     #[serde(default)]
-    clock: ClockDisplaySettings,
+    pub clock: ClockDisplaySettings,
     /// Display settings to apply to multipliers.
     #[serde(default)]
-    multiplier: MultiplierDisplaySettings,
+    pub multiplier: MultiplierDisplaySettings,
 }

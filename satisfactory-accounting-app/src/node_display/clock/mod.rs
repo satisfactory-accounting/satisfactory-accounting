@@ -1,4 +1,3 @@
-use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
 // Copyright 2021 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -7,9 +6,14 @@ use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use yew::prelude::*;
+use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
 
-use crate::inputs::clickedit::ClickEdit;
+use crate::inputs::clickedit::{
+    AdjustDir, AdjustModifier, AdjustScale, ClickEdit, ValueAdjustment,
+};
 use crate::material::material_icon_outlined;
+use crate::user_settings::number_format::UserConfiguredFormat;
+use crate::user_settings::use_user_settings;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
@@ -33,9 +37,12 @@ pub fn ClockSpeed(props: &Props) -> Html {
         },
     );
 
+    let rounding = &use_user_settings().number_display.clock.format;
+
     let split = SplitCopies::split(props.copies, props.clock_speed);
 
     let value: AttrValue = props.clock_speed.to_string().into();
+    let rounded_value: AttrValue = props.clock_speed.format(rounding).to_string().into();
     let prefix = material_icon_outlined("timer");
     let suffix = if split.last_clock > 0.0 {
         Some(html! {<>
@@ -47,13 +54,37 @@ pub fn ClockSpeed(props: &Props) -> Html {
             </span>
             {material_icon_outlined("timer")}
             <span class="extra-multiplier fractional">
-                {" "}{split.last_clock}{" \u{00d7} 1"}
+                {" "}{split.last_clock.format(rounding)}{" \u{00d7} 1"}
             </span>
         </>})
     } else {
         None
     };
+
+    fn adjust(adjustment: ValueAdjustment, current: AttrValue) -> AttrValue {
+        let current = match current.parse::<f32>() {
+            Ok(current) => current,
+            Err(_) => return current,
+        };
+        let dir = match adjustment.dir {
+            AdjustDir::Up => 1.0,
+            AdjustDir::Down => -1.0,
+        };
+        let dist = match (adjustment.scale, adjustment.modifier) {
+            // Fine adjustment by increments of 1 power slug.
+            (AdjustScale::Fine, AdjustModifier::None) => 0.5,
+            // Coarse adjustment by increments of 100%.
+            (AdjustScale::Coarse, AdjustModifier::None) => 1.0,
+            // Small scale adjustments are by 1% and 10% respectively.
+            (AdjustScale::Fine, AdjustModifier::Smaller) => 0.01,
+            (AdjustScale::Coarse, AdjustModifier::Smaller) => 0.1,
+        };
+        (current + dir * dist).to_string().into()
+    }
+
     html! {
-        <ClickEdit {value} class="ClockSpeed" title="Clock Speed" {on_commit} {prefix} {suffix} />
+        <ClickEdit {value} {rounded_value} class="ClockSpeed" title="Clock Speed" {on_commit}
+            {prefix} {suffix}
+            adjust={adjust as fn(_,_) -> _} />
     }
 }
