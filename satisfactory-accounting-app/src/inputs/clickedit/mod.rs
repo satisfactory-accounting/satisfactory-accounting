@@ -184,6 +184,7 @@ impl Component for ClickEdit {
         }
         // Skip re-rendering if only the callback has changed.
         new_props.value != old_props.value
+            || new_props.rounded_value != old_props.rounded_value
             || new_props.title != old_props.title
             || new_props.prefix != old_props.prefix
             || new_props.suffix != old_props.suffix

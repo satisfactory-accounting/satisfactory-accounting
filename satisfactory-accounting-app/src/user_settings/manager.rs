@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use gloo::storage::errors::StorageError;
 use gloo::storage::{LocalStorage, Storage as _};
-use log::warn;
+use log::{info, warn};
 use yew::html::Scope;
 use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Properties};
 
