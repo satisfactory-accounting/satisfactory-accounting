@@ -12,6 +12,9 @@ use yew::prelude::*;
 
 use crate::inputs::clickedit::ClickEdit;
 use crate::node_display::icon::Icon;
+use crate::user_settings::number_format::{
+    BalanceDisplaySettings, NumberFormatSettings, NumberStylingMode, UserConfiguredFormat,
+};
 use crate::user_settings::use_user_settings;
 use crate::world::use_db;
 
@@ -149,18 +152,26 @@ fn item_row(
     title: AttrValue,
     icon: Option<AttrValue>,
     rate: f32,
+    display_settings: &BalanceDisplaySettings,
     on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
 ) -> Html {
-    let power_class = match id {
-        ItemIdOrPower::Power => Some("power-entry"),
-        _ => None,
+    let (power_class, rounding) = match id {
+        ItemIdOrPower::Power => (Some("power-entry"), &display_settings.power_format_settings),
+        _ => (None, &display_settings.item_format_settings),
     };
-    let class = classes!("entry-row", balance_style(rate), power_class);
+    let class = classes!(
+        "entry-row",
+        balance_style(rate, rounding, display_settings),
+        power_class
+    );
+
+    let rounded_value: AttrValue = rate.format(rounding).to_string().into();
+
     match on_backdrive {
         None => html! {
             <div {class} {title}>
                 <Icon {icon}/>
-                <div class="balance-value">{rounded(rate)}</div>
+                <div class="balance-value">{rounded_value}</div>
             </div>
         },
         Some(on_backdrive) => {
@@ -172,23 +183,38 @@ fn item_row(
             });
             let prefix = html!(<Icon {icon} />);
             html! {
-                <ClickEdit {class} {prefix} {title} value={rounded(rate).to_string()}
+                <ClickEdit {class} {prefix} {title} value={rate.to_string()} {rounded_value}
                     {on_commit} />
             }
         }
     }
 }
 
-fn rounded(val: f32) -> f32 {
-    (val * 100.0).round() / 100.0
-}
-
-fn balance_style(balance: f32) -> &'static str {
-    if balance < 0.0 {
+fn balance_style(
+    balance: f32,
+    rounding: &NumberFormatSettings,
+    settings: &BalanceDisplaySettings,
+) -> Classes {
+    let rate_for_color = match settings.highlight_style.mode {
+        NumberStylingMode::DisplayedValue => balance.round_by_format(rounding),
+        NumberStylingMode::ExactValue => balance,
+    };
+    let rate_for_hide = match settings.hide_style.mode {
+        NumberStylingMode::DisplayedValue => balance.round_by_format(rounding),
+        NumberStylingMode::ExactValue => balance,
+    };
+    let rate_color_mode = if rate_for_color < 0.0 {
         "negative"
-    } else if balance > 0.0 {
+    } else if rate_for_color > 0.0 {
         "positive"
     } else {
         "neutral"
-    }
+    };
+    // Handle NaN the same as for color mode.
+    let hide_mode = if !(rate_for_hide < 0.0) && !(rate_for_hide > 0.0) {
+        Some("hideable-neutral")
+    } else {
+        None
+    };
+    classes!(rate_color_mode, hide_mode)
 }
