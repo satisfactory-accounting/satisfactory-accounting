@@ -5,8 +5,8 @@
 //   You may obtain a copy of the License at
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
-use yew::prelude::*;
 use satisfactory_accounting::accounting::{SplitCopies, MAX_CLOCK, MIN_CLOCK};
+use yew::prelude::*;
 
 use crate::inputs::clickedit::{
     AdjustDir, AdjustModifier, AdjustScale, ClickEdit, ValueAdjustment,

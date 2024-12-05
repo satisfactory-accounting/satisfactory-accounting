@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-pub use settings_page::{NumberDisplaySettingsMsg, NumberDisplaySettingsSection};
 pub use formatters::UserConfiguredFormat;
+pub use settings_page::{NumberDisplaySettingsMsg, NumberDisplaySettingsSection};
 
-mod settings_page;
 mod formatters;
+mod settings_page;
 
 /// How to style numbers (e.g. color them for positive/negative) in relation to their rounding.
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
