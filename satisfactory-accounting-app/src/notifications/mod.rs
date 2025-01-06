@@ -10,7 +10,7 @@ mod versions {
     pub(super) const V1M2P9: u32 = 2;
     pub(super) const V1M2P10: u32 = 3;
     pub(super) const V1M2P11: u32 = 4;
-    pub(super) const V1M2P13: u32 = 4;
+    pub(super) const V1M2P13: u32 = 5;
 
     pub(super) const PREVIOUS: u32 = V1M2P11;
     pub(super) const CURRENT: u32 = V1M2P13;
@@ -280,6 +280,11 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                 that world in the older versions."}</p>
                 <p>{"You can find the older versions at these links:"}</p>
                 <ul>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.11/">
+                            {"https://satisfactory-accounting.github.io/v1.2.11/"}
+                        </a>{"."}
+                    </li>
                     <li>
                         <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.10/">
                             {"https://satisfactory-accounting.github.io/v1.2.10/"}
