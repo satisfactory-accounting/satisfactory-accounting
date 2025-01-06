@@ -10,9 +10,10 @@ mod versions {
     pub(super) const V1M2P9: u32 = 2;
     pub(super) const V1M2P10: u32 = 3;
     pub(super) const V1M2P11: u32 = 4;
+    pub(super) const V1M2P13: u32 = 4;
 
-    pub(super) const PREVIOUS: u32 = V1M2P10;
-    pub(super) const CURRENT: u32 = V1M2P11;
+    pub(super) const PREVIOUS: u32 = V1M2P11;
+    pub(super) const CURRENT: u32 = V1M2P13;
 }
 
 struct Notification {
@@ -115,58 +116,66 @@ fn get_new_user_welcome() -> Notification {
 
 fn get_existing_user_notification(acked_version: u32) -> Notification {
     Notification {
-        title: "Satisfactory Accounting v1.2.11",
+        title: "Satisfactory Accounting v1.2.13",
         content: html! {
             <>
                 <h2>{"Welcome back, Pioneer."}</h2>
-                <p>{"Our most requested feature is finally here, after only, what like 2 years? \
-                Plus, it's not nearly as limited as I said it would be in the last update."}</p>
+                <p>{"This is a minor update which adds support for adjusting how values are \
+                rounded in the app."}</p>
                 <h3>{"What's in this version"}</h3>
                 <ul>
                     <li>
-                        <p><b>{"Fractional Multipliers"}</b>{" If a building supports \
-                        overclocking, then it can now have a non-integer multiplier. When a \
-                        building has a fractional multiplier, it represents N buildings at the \
-                        current clock speed, plus one building at a reduced clock speed."}</p>
-                        <p>{"For example, if you have a multiplier of 3.5, on a building with \
-                        clock speed 1.0, then that means 3 buildings at 1.0 plus 1 building with \
-                        clock speed 0.5.. If you have a multiplier of 3.5 and a clock speed of \
-                        2.0, then that means 3 buildings with clock speed 2.0, plus 1 building with
-                        clock speed 1.0."}</p>
-                        <p>{"Note that clock speeds are clamped at the limits imposed by the game, \
-                        so for example if you have a building at 0.1 clock speed and try to \
-                        multiply that by 3.05, you'll end up with 3 @ 0.1 + 1 @ 0.01, not 3 @ 0.1 \
-                        + 1 @ 0.005, which matches what you can do in game. Unless you frequently \
-                        use very low clock speeds, this probably doesn't matter to you"}</p>
-                    </li>
-                    <li>
-                        <p><b>{"Backdriving!"}</b>{" or \"let me type in the number of items\". \
-                        You can now click and edit the number of items on a building directly, and \
-                        the tool will calculate the number of buildings and clock speed you need \
-                        to produce that number of items, and update the building to match the \
-                        desired output rate. Since it doesn't change recipies, you can always type \
-                        positive numbers, and it will know whether it's an input or an output."}</p>
-                        <p>{"There are a couple different modes available. The tool can either \
-                        produce buildings with a uniform clock speed set on all buildings, or it \
-                        can set to have most buildings with the same clock speed plus only one \
-                        with a different clock speed, using the fractional multipliers above. The \
-                        latter mode is more useful if you want most of your buildings to have a \
-                        clock speed of 1.0."}</p>
-                        <p>{"You can find more about the two modes in the settings menu, and \
-                        switch between them for different categories of buildings."}</p>
+                        <p><b>{"Configurable rounding modes."}</b>{" You can configure rounding \
+                        for clock speeds, building multipliers, and balances. Additionally, you \
+                        can choose whether the coloring in balances and 'hide empty balances' use \
+                        the exact value or the rounded value."}</p>
                     </li>
                 </ul>
                 <h3>{"What's coming next"}</h3>
-                <p>{"v1.2.12 will be a minor update that "}
-                <a target="_blank" href="https://github.com/satisfactory-accounting/satisfactory-accounting/issues/27">
-                    {"adds settings for controlling rounding"}
-                </a>{". I believe that the rest of the open feature requests will actually require \
-                more substantial changes to the underlying model I use to represent buildings \
-                (especially things like transportation of resources between groups and properly \
-                supporting the Alien Power Augmenter), so I anticipate 1.2.12 being the last 1.2.x \
-                update, aside from any bug fixes that come up. At that point I'll have to "}</p>
+                <p>{"I believe this covers all the feature requests that I can reasonably cover \
+                without substantial changes to how the app stores and tracks balances, so aside \
+                from bug fixes, this is probably going to be the last update for a while. I do \
+                have plans for more substantial updates, but I also have fairly limited free time \
+                and I'm not sure if or when I'll prioritize them."}</p>
                 if acked_version < versions::PREVIOUS {
                     <h3>{"Additionally, you may have missed these updates from previous releases:"}</h3>
+                    if acked_version < versions::V1M2P11 {
+                        <h4>{"Version 1.2.11"}</h4>
+                        <ul>
+                            <li>
+                                <p><b>{"Fractional Multipliers"}</b>{" If a building supports \
+                                overclocking, then it can now have a non-integer multiplier. When a \
+                                building has a fractional multiplier, it represents N buildings at the \
+                                current clock speed, plus one building at a reduced clock speed."}</p>
+                                <p>{"For example, if you have a multiplier of 3.5, on a building with \
+                                clock speed 1.0, then that means 3 buildings at 1.0 plus 1 building with \
+                                clock speed 0.5.. If you have a multiplier of 3.5 and a clock speed of \
+                                2.0, then that means 3 buildings with clock speed 2.0, plus 1 building with
+                                clock speed 1.0."}</p>
+                                <p>{"Note that clock speeds are clamped at the limits imposed by the game, \
+                                so for example if you have a building at 0.1 clock speed and try to \
+                                multiply that by 3.05, you'll end up with 3 @ 0.1 + 1 @ 0.01, not 3 @ 0.1 \
+                                + 1 @ 0.005, which matches what you can do in game. Unless you frequently \
+                                use very low clock speeds, this probably doesn't matter to you"}</p>
+                            </li>
+                            <li>
+                                <p><b>{"Backdriving!"}</b>{" or \"let me type in the number of items\". \
+                                You can now click and edit the number of items on a building directly, and \
+                                the tool will calculate the number of buildings and clock speed you need \
+                                to produce that number of items, and update the building to match the \
+                                desired output rate. Since it doesn't change recipies, you can always type \
+                                positive numbers, and it will know whether it's an input or an output."}</p>
+                                <p>{"There are a couple different modes available. The tool can either \
+                                produce buildings with a uniform clock speed set on all buildings, or it \
+                                can set to have most buildings with the same clock speed plus only one \
+                                with a different clock speed, using the fractional multipliers above. The \
+                                latter mode is more useful if you want most of your buildings to have a \
+                                clock speed of 1.0."}</p>
+                                <p>{"You can find more about the two modes in the settings menu, and \
+                                switch between them for different categories of buildings."}</p>
+                            </li>
+                        </ul>
+                    }
                     if acked_version < versions::V1M2P10 {
                         <h4>{"Version 1.2.10"}</h4>
                         <ul>
