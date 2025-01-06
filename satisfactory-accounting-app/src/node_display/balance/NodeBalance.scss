@@ -125,12 +125,12 @@
 
 .hide-empty-balances .NodeBalance {
 
-    .item-entries.neutral {
+    .item-entries.hideable-neutral {
         display: none;
     }
 
     // Don't catch the power in this.
-    .item-entries .entry-row.neutral {
+    .item-entries .entry-row.hideable-neutral {
         display: none;
     }
 }

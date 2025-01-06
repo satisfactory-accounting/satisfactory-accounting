@@ -1,3 +1,4 @@
+use log::info;
 // Copyright 2021 Zachary Stewart
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,15 +73,14 @@ pub fn NodeBalance(
     let balance = node.balance();
     let db = use_db();
     let user_settings = use_user_settings();
-
+    let balance_settings = &user_settings.number_display.balance;
     let on_backdrive = on_backdrive.as_ref();
 
     let item_balances: Html = match user_settings.balance_sort_mode {
         BalanceSortMode::Item => {
-            let combined_balances = balance
-                .balances
-                .iter()
-                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
+            let combined_balances = balance.balances.iter().map(|(&itemid, &rate)| {
+                display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+            });
             html! {
                 <div class="item-entries combined">
                     {for combined_balances}
@@ -88,23 +88,39 @@ pub fn NodeBalance(
             }
         }
         BalanceSortMode::IOItem => {
+            let display_rate = |rate| {
+                display_rate(
+                    rate,
+                    &balance_settings.item_format_settings,
+                    balance_settings,
+                )
+            };
             let positive_balances = balance
                 .balances
                 .iter()
-                .filter(|(_, &rate)| rate > 0.0)
-                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
+                .filter(|(_, &rate)| display_rate(rate) > 0.0)
+                .map(|(&itemid, &rate)| {
+                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                });
             let negative_balances = balance
                 .balances
                 .iter()
-                .filter(|(_, &rate)| rate < 0.0)
-                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
+                .filter(|(_, &rate)| display_rate(rate) < 0.0)
+                .map(|(&itemid, &rate)| {
+                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                });
 
             let neutral_balances = balance
                 .balances
                 .iter()
                 // Weird NaN handling? I guess I could probably just use is_nan here?
-                .filter(|(_, &rate)| rate == 0.0 || !(rate < 0.0 || rate > 0.0))
-                .map(|(&itemid, &rate)| display_item(itemid, db.get(itemid), rate, on_backdrive));
+                .filter(|(_, &rate)| {
+                    let rate = display_rate(rate);
+                    rate == 0.0 || !(rate < 0.0 || rate > 0.0)
+                })
+                .map(|(&itemid, &rate)| {
+                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                });
 
             html! {
                 <>
@@ -123,7 +139,7 @@ pub fn NodeBalance(
     };
     html! {
         <div class={classes!("NodeBalance", shape.to_class_name())}>
-            {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, on_backdrive)}
+            {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, balance_settings, on_backdrive)}
             { item_balances }
         </div>
     }
@@ -133,6 +149,7 @@ fn display_item(
     id: ItemId,
     item: Option<&Item>,
     rate: f32,
+    balance_settings: &BalanceDisplaySettings,
     on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
 ) -> Html {
     match item {
@@ -141,9 +158,17 @@ fn display_item(
             item.name.clone().into(),
             Some(item.image.clone().into()),
             rate,
+            balance_settings,
             on_backdrive,
         ),
-        None => item_row(id.into(), "Unknown Item".into(), None, rate, on_backdrive),
+        None => item_row(
+            id.into(),
+            "Unknown Item".into(),
+            None,
+            rate,
+            balance_settings,
+            on_backdrive,
+        ),
     }
 }
 
@@ -195,15 +220,14 @@ fn balance_style(
     rounding: &NumberFormatSettings,
     settings: &BalanceDisplaySettings,
 ) -> Classes {
-    let rate_for_color = match settings.highlight_style.mode {
-        NumberStylingMode::DisplayedValue => balance.round_by_format(rounding),
-        NumberStylingMode::ExactValue => balance,
-    };
+    let rate_for_color = display_rate(balance, rounding, settings);
     let rate_for_hide = match settings.hide_style.mode {
         NumberStylingMode::DisplayedValue => balance.round_by_format(rounding),
         NumberStylingMode::ExactValue => balance,
     };
+    info!("balance: {balance}, color: {rate_for_color}, hide: {rate_for_hide}");
     let rate_color_mode = if rate_for_color < 0.0 {
+        info!("negative: {balance} {rate_for_color}");
         "negative"
     } else if rate_for_color > 0.0 {
         "positive"
@@ -217,4 +241,16 @@ fn balance_style(
         None
     };
     classes!(rate_color_mode, hide_mode)
+}
+
+/// Get the rate that will be used for display.
+fn display_rate(
+    balance: f32,
+    rounding: &NumberFormatSettings,
+    settings: &BalanceDisplaySettings,
+) -> f32 {
+    match settings.highlight_style.mode {
+        NumberStylingMode::DisplayedValue => balance.round_by_format(rounding),
+        NumberStylingMode::ExactValue => balance,
+    }
 }
