@@ -130,6 +130,12 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                         can choose whether the coloring in balances and 'hide empty balances' use \
                         the exact value or the rounded value."}</p>
                     </li>
+                    <li>
+                        <p><b>{"Increment/Decrement."}</b>{" When you select a building's \
+                        multiplier, clock speed, or balance value, you can use the up and down \
+                        arrow keys to increment and decrement it rather than typing a whole new \
+                        number. These can also be combined with 'Shift' for finer adjustments."}</p>
+                    </li>
                 </ul>
                 <h3>{"What's coming next"}</h3>
                 <p>{"I believe this covers all the feature requests that I can reasonably cover \

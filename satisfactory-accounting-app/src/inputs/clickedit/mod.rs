@@ -226,11 +226,14 @@ impl Component for ClickEdit {
                         self.edit_text = Some(adjuster(adjustment, value));
                         true
                     }
+                    (None, Some(text)) => {
+                        self.edit_text = Some(text);
+                        false
+                    }
                     (_, None) => {
                         warn!("Adjust while not editing");
                         false
                     }
-                    _ => false,
                 }
             }
         }

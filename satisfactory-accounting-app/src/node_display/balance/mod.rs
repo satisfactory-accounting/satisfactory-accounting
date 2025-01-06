@@ -11,7 +11,9 @@ use satisfactory_accounting::database::{Item, ItemId, ItemIdOrPower};
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use crate::inputs::clickedit::ClickEdit;
+use crate::inputs::clickedit::{
+    AdjustDir, AdjustModifier, AdjustScale, ClickEdit, ValueAdjustment,
+};
 use crate::node_display::icon::Icon;
 use crate::user_settings::number_format::{
     BalanceDisplaySettings, NumberFormatSettings, NumberStylingMode, UserConfiguredFormat,
@@ -200,6 +202,29 @@ fn item_row(
             </div>
         },
         Some(on_backdrive) => {
+            fn adjust(adjustment: ValueAdjustment, current: AttrValue) -> AttrValue {
+                let current = match current.parse::<f32>() {
+                    Ok(current) => current,
+                    Err(_) => return current,
+                };
+                let dir = match adjustment.dir {
+                    // Multiply by signum so that the direction adjusts the absolute magnitude,
+                    // regardless of whether the balance is positive or negative.
+                    AdjustDir::Up => 1.0 * current.signum(),
+                    AdjustDir::Down => -1.0 * current.signum(),
+                };
+                let dist = match (adjustment.scale, adjustment.modifier) {
+                    // Fine adjustment by increments of 1 building.
+                    (AdjustScale::Fine, AdjustModifier::None) => 1.0,
+                    // Coarse adjustment by increments of 5 buildings.
+                    (AdjustScale::Coarse, AdjustModifier::None) => 5.0,
+                    // Small scale adjustments are by 1% and 10% of clock respectively.
+                    (AdjustScale::Fine, AdjustModifier::Smaller) => 0.01,
+                    (AdjustScale::Coarse, AdjustModifier::Smaller) => 0.1,
+                };
+                (current + dir * dist).to_string().into()
+            }
+
             let on_backdrive = on_backdrive.clone();
             let on_commit = Callback::from(move |edit_text: AttrValue| {
                 if let Ok(value) = edit_text.parse::<f32>() {
@@ -209,7 +234,7 @@ fn item_row(
             let prefix = html!(<Icon {icon} />);
             html! {
                 <ClickEdit {class} {prefix} {title} value={rate.to_string()} {rounded_value}
-                    {on_commit} />
+                    {on_commit} adjust={adjust as fn(_,_)->_} />
             }
         }
     }
