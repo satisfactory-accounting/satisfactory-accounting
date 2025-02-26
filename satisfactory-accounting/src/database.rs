@@ -267,10 +267,18 @@ impl Database {
     pub fn buildings(&self) -> BuildingsIter {
         self.inner.buildings.values()
     }
+
+    /// Gets an iterator over the items in the database.
+    pub fn items(&self) -> ItemsIter {
+        self.inner.items.values()
+    }
 }
 
 /// Iterator over the list of available buildings.
 pub type BuildingsIter<'a> = std::collections::btree_map::Values<'a, BuildingId, BuildingType>;
+
+/// Iterator over the list of available items.
+pub type ItemsIter<'a> = std::collections::btree_map::Values<'a, ItemId, Item>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct DatabaseInner {
@@ -471,6 +479,50 @@ pub enum ItemIdOrPower {
     Item(ItemId),
 }
 
+impl ItemIdOrPower {
+    const POWER_FAKE_ITEM_ID: &str = "_Power_";
+}
+
+impl Serialize for ItemIdOrPower {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            Self::Power => serializer.serialize_str(Self::POWER_FAKE_ITEM_ID),
+            Self::Item(item) => item.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ItemIdOrPower {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = ItemIdOrPower;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a string symbol value")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                if value == ItemIdOrPower::POWER_FAKE_ITEM_ID {
+                    Ok(ItemIdOrPower::Power)
+                } else {
+                    Ok(ItemIdOrPower::Item(ItemId::from(value)))
+                }
+            }
+        }
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
 impl From<ItemId> for ItemIdOrPower {
     fn from(value: ItemId) -> Self {
         Self::Item(value)
@@ -584,6 +636,7 @@ impl BuildingType {
             BuildingKind::Geothermal(_) => false,
             BuildingKind::PowerConsumer(_) => false,
             BuildingKind::Station(_) => false,
+            BuildingKind::BalanceAdjustment(_) => false,
         }
     }
 }
@@ -606,6 +659,8 @@ pub enum BuildingKind {
     PowerConsumer(PowerConsumer),
     /// A station which refuels vehicles.
     Station(Station),
+    /// Arbitrary balance change.
+    BalanceAdjustment(BalanceAdjustment),
 }
 
 impl BuildingKind {
@@ -619,6 +674,7 @@ impl BuildingKind {
             Self::Geothermal(_) => BuildingKindId::Geothermal,
             Self::PowerConsumer(_) => BuildingKindId::PowerConsumer,
             Self::Station(_) => BuildingKindId::Station,
+            Self::BalanceAdjustment(_) => BuildingKindId::BalanceAdjustment,
         }
     }
 
@@ -662,6 +718,9 @@ impl BuildingKind {
                 }
                 BuildingSettings::Station(settings)
             }
+            BuildingKind::BalanceAdjustment(_) => {
+                BuildingSettings::BalanceAdjustment(Default::default())
+            }
         }
     }
 }
@@ -684,6 +743,8 @@ pub enum BuildingKindId {
     PowerConsumer,
     /// A station which refuels vehicles.
     Station,
+    /// Arbitrary balance change.
+    BalanceAdjustment,
 }
 
 /// Power-usage information for a building.
@@ -820,6 +881,10 @@ pub struct Station {
     /// Allowed fuels for vehicles at this station.
     pub allowed_fuel: Vec<ItemId>,
 }
+
+/// Adjusts the balance of an item or power.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BalanceAdjustment {}
 
 mod private {
     pub trait Sealed {}

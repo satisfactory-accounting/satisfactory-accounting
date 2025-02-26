@@ -14,9 +14,9 @@ use uuid::Uuid;
 use yew::prelude::*;
 
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings, Group,
-    ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings, ResourcePurity,
-    StationSettings,
+    BalanceAdjustmentSettings, BuildNode, Building, BuildingSettings, GeneratorSettings,
+    GeothermalSettings, Group, ManufacturerSettings, MinerSettings, Node, NodeKind, PumpSettings,
+    ResourcePurity, StationSettings,
 };
 use satisfactory_accounting::database::{
     BuildingId, BuildingKind, BuildingKindId, BuildingType, Database, ItemId, ItemIdOrPower,
@@ -162,6 +162,10 @@ enum Msg {
     ChangeItem {
         id: ItemId,
     },
+    /// Change the item for the balance adjustment.
+    ChangeItemOrPower {
+        id: ItemIdOrPower,
+    },
     /// Change the clock speed for the building.
     ChangeClockSpeed {
         clock_speed: f32,
@@ -177,9 +181,9 @@ enum Msg {
         /// New number of pads of that type.
         num_pads: u32,
     },
-    /// Change the consumption of a Station.
-    ChangeConsumption {
-        consumption: f32,
+    /// Change the consumption of a Station or the rate for a balance adjustment.
+    ChangeRate {
+        rate: f32,
     },
     /// Backdrive this node to match the requested rate.
     Backdrive {
@@ -695,6 +699,64 @@ impl Component for NodeDisplay {
 
                 false
             }
+            Msg::ChangeItemOrPower { id } => {
+                let building = match ctx.props().node.kind() {
+                    NodeKind::Building(building) => building,
+                    _ => {
+                        warn!("Cannot change item id or power of a non-building");
+                        return false;
+                    }
+                };
+                let kind_id = if let Some(building_id) = building.building {
+                    match self.db.get(building_id) {
+                        Some(BuildingType {
+                            kind: BuildingKind::BalanceAdjustment(_),
+                            ..
+                        }) => BuildingKindId::BalanceAdjustment,
+                        Some(_) => {
+                            warn!("Cannot change item id or power, buildng is not a balance adjustment");
+                            return false;
+                        }
+                        None => {
+                            warn!("Cannot change item id or power, unknown building");
+                            return false;
+                        }
+                    }
+                } else {
+                    warn!("Cannot change recipe id, building not set");
+                    return false;
+                };
+                let settings = match (kind_id, &building.settings) {
+                    (
+                        BuildingKindId::BalanceAdjustment,
+                        BuildingSettings::BalanceAdjustment(bas),
+                    ) => BalanceAdjustmentSettings {
+                        item_or_power: Some(id),
+                        ..bas.clone()
+                    }
+                    .into(),
+                    (BuildingKindId::BalanceAdjustment, _) => {
+                        warn!("Had to change building settings kind, did not match building kind in db");
+                        BalanceAdjustmentSettings {
+                            item_or_power: Some(id),
+                            ..Default::default()
+                        }
+                        .into()
+                    }
+                    // We know the other BuidingKindId values are impossible because we
+                    // only return this from the early match.
+                    _ => unreachable!(),
+                };
+                let new_bldg = Building {
+                    settings,
+                    ..building.clone()
+                };
+                match new_bldg.build_node(&self.db) {
+                    Ok(new_node) => ctx.props().replace.emit((our_idx, new_node)),
+                    Err(e) => warn!("Unable to build node: {}", e),
+                }
+                false
+            }
             Msg::ChangeClockSpeed { clock_speed } => {
                 if let NodeKind::Building(building) = ctx.props().node.kind() {
                     if building.settings.clock_speed() != clock_speed {
@@ -793,7 +855,7 @@ impl Component for NodeDisplay {
 
                 false
             }
-            Msg::ChangeConsumption { consumption } => {
+            Msg::ChangeRate { rate } => {
                 let building = match ctx.props().node.kind() {
                     NodeKind::Building(building) => building,
                     _ => {
@@ -802,13 +864,18 @@ impl Component for NodeDisplay {
                     }
                 };
                 if building.building.is_none() {
-                    warn!("Cannot change station consumption, building not set");
+                    warn!("Cannot change rate, building not set");
                     return false;
                 };
                 let settings = match &building.settings {
                     BuildingSettings::Station(ss) => StationSettings {
-                        consumption,
+                        consumption: rate,
                         ..ss.clone()
+                    }
+                    .into(),
+                    BuildingSettings::BalanceAdjustment(bas) => BalanceAdjustmentSettings {
+                        rate,
+                        ..bas.clone()
                     }
                     .into(),
                     _ => {
@@ -819,6 +886,7 @@ impl Component for NodeDisplay {
                         return false;
                     }
                 };
+
                 let new_bldg = Building {
                     settings,
                     ..building.clone()

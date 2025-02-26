@@ -1,0 +1,5 @@
+@use "../name-mixin.scss";
+
+.ItemOrPowerDisplay {
+    @include name-mixin.name_mixin(13em);
+}

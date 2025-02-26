@@ -8,8 +8,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use satisfactory_accounting::database::{
-    BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item, ItemAmount, ItemId,
-    Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe, Station,
+    BalanceAdjustment, BuildingKind, BuildingType, Database, Fuel, Generator, Geothermal, Item,
+    ItemAmount, ItemId, Manufacturer, Miner, Power, PowerConsumer, Pump, Recipe, Station,
 };
 
 mod rawdata;
@@ -136,6 +136,7 @@ fn main() {
         .chain([
             "Desc_FrackingSmasher_C".to_string(),
             "Desc_AlienPowerBuilding_C".to_string(),
+            "Desc_GeneratorGeoThermal_C".to_string(),
         ])
         .collect();
 
@@ -327,34 +328,31 @@ fn main() {
                         },
                     },
                 })
+            } else if building.class_name == "Desc_GeneratorGeoThermal_C" {
+                BuildingKind::Geothermal(Geothermal {
+                    // Patched from wiki because the data says zero. Based on average
+                    // power on a normal node. This should work with node purity to get
+                    // the right averages.
+                    power: 200.0,
+                })
             } else if generators.contains_key(building.class_name.as_str()) {
-                // Geothermal is a special case.
-                if building.class_name == "Desc_GeneratorGeoThermal_C" {
-                    BuildingKind::Geothermal(Geothermal {
-                        // Patched from wiki because the data says zero. Based on average
-                        // power on a normal node. This should work with node purity to get
-                        // the right averages.
-                        power: 200.0,
-                    })
-                } else {
-                    let gen = generators[building.class_name.as_str()];
-                    BuildingKind::Generator(Generator {
-                        allowed_fuel: gen.fuel.iter().map(|fuel| fuel.as_str().into()).collect(),
-                        // Patched directly because the waterToPowerRatio in the data
-                        // makes no sense to me.
-                        used_water: match building.class_name.as_str() {
-                            "Desc_GeneratorCoal_C" => 45.0 / 75.0,
-                            "Desc_GeneratorNuclear_C" => 300.0 / 2500.0,
-                            _ => 0.0,
-                        },
-                        power_production: Power {
-                            power: gen.power_production,
-                            // The powerProductionExponents in the source all still say 1.6, but
-                            // since U7, generators have scaled linearly.
-                            power_exponent: 1.0,
-                        },
-                    })
-                }
+                let gen = generators[building.class_name.as_str()];
+                BuildingKind::Generator(Generator {
+                    allowed_fuel: gen.fuel.iter().map(|fuel| fuel.as_str().into()).collect(),
+                    // Patched directly because the waterToPowerRatio in the data
+                    // makes no sense to me.
+                    used_water: match building.class_name.as_str() {
+                        "Desc_GeneratorCoal_C" => 45.0 / 75.0,
+                        "Desc_GeneratorNuclear_C" => 300.0 / 2500.0,
+                        _ => 0.0,
+                    },
+                    power_production: Power {
+                        power: gen.power_production,
+                        // The powerProductionExponents in the source all still say 1.6, but
+                        // since U7, generators have scaled linearly.
+                        power_exponent: 1.0,
+                    },
+                })
             } else if miners.contains_key(building.class_name.as_str()) {
                 let min = miners[building.class_name.as_str()];
                 BuildingKind::Miner(Miner {
@@ -425,6 +423,13 @@ fn main() {
                 })
             },
         })
+        .chain([BuildingType {
+            name: "Balance Adjustment".into(),
+            id: "_Patch_Balance_Adjustment".into(),
+            image: "upload-upgrade-240-min".into(),
+            description: "Arbitrarily changes the balance of an item or power".into(),
+            kind: BuildingKind::BalanceAdjustment(BalanceAdjustment {}),
+        }])
         .map(|building| (building.id, building))
         .collect();
 

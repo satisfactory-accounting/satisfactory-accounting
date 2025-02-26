@@ -7,7 +7,7 @@ use log::info;
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use satisfactory_accounting::accounting::Node;
-use satisfactory_accounting::database::{Item, ItemId, ItemIdOrPower};
+use satisfactory_accounting::database::{BuildingKindId, Item, ItemId, ItemIdOrPower};
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
@@ -77,6 +77,13 @@ pub fn NodeBalance(
     let user_settings = use_user_settings();
     let balance_settings = &user_settings.number_display.balance;
     let on_backdrive = on_backdrive.as_ref();
+    let adjustment_class = node.building().and_then(|b| {
+        if b.settings.kind_id() == BuildingKindId::BalanceAdjustment {
+            Some("balance-adjustment")
+        } else {
+            None
+        }
+    });
 
     let item_balances: Html = match user_settings.balance_sort_mode {
         BalanceSortMode::Item => {
@@ -140,7 +147,7 @@ pub fn NodeBalance(
         }
     };
     html! {
-        <div class={classes!("NodeBalance", shape.to_class_name())}>
+        <div class={classes!("NodeBalance", shape.to_class_name(), adjustment_class)}>
             {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, balance_settings, on_backdrive)}
             { item_balances }
         </div>

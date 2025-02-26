@@ -11,16 +11,22 @@ use crate::inputs::clickedit::ClickEdit;
 
 #[derive(Debug, PartialEq, Properties)]
 pub struct Props {
-    /// Last set value for the clock speed.
-    pub consumption: f32,
+    /// Last set value for the item rate.
+    pub rate: f32,
     /// Callback to change the actual value.
-    pub update_consumption: Callback<f32>,
+    pub update_rate: Callback<f32>,
+    /// Whether negative values are allowed.
+    #[prop_or_default]
+    pub allow_negative: bool,
+    /// Title to apply to the field.
+    #[prop_or_default]
+    pub title: AttrValue,
 }
 
 #[function_component]
-pub fn StationConsumption(props: &Props) -> Html {
+pub fn ItemRate(props: &Props) -> Html {
     let on_commit = use_callback(
-        props.update_consumption.clone(),
+        props.update_rate.clone(),
         |edit_text: AttrValue, update_consumption| {
             if let Ok(value) = edit_text.parse::<f32>() {
                 update_consumption.emit(value.max(0.0));
@@ -28,12 +34,11 @@ pub fn StationConsumption(props: &Props) -> Html {
         },
     );
 
-    let value: AttrValue = props.consumption.to_string().into();
+    let value: AttrValue = props.rate.to_string().into();
     let prefix = html! {
         <span class="material-icons">{"trending_down"}</span>
     };
     html! {
-        <ClickEdit {value} class="StationConsumption" title="Fuel Consumption of Fueled Vehicles"
-            {on_commit} {prefix} />
+        <ClickEdit {value} class="ItemRate" title={&props.title} {on_commit} {prefix} />
     }
 }

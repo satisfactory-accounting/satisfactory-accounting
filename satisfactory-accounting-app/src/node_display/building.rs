@@ -7,8 +7,9 @@ use log::warn;
 //
 //       http://www.apache.org/licenses/LICENSE-2.0
 use satisfactory_accounting::accounting::{
-    BuildError, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
-    ManufacturerSettings, MinerSettings, PumpSettings, ResourcePurity, StationSettings,
+    BalanceAdjustmentSettings, BuildError, Building, BuildingSettings, GeneratorSettings,
+    GeothermalSettings, ManufacturerSettings, MinerSettings, PumpSettings, ResourcePurity,
+    StationSettings,
 };
 use satisfactory_accounting::database::{BuildingId, BuildingKind};
 use yew::prelude::*;
@@ -20,17 +21,19 @@ use crate::node_display::{Msg, NodeDisplay};
 
 use building_type::BuildingTypeDisplay;
 use item::ItemDisplay;
+use item_or_power::ItemOrPowerDisplay;
+use item_rate::ItemRate;
 use multi_purity::MultiPurity;
 use purity::Purity;
 use recipe::RecipeDisplay;
-use station_consumption::StationConsumption;
 
 mod building_type;
 mod item;
+mod item_or_power;
+mod item_rate;
 mod multi_purity;
 mod purity;
 mod recipe;
-mod station_consumption;
 
 impl NodeDisplay {
     /// Build display for a building.
@@ -79,6 +82,7 @@ impl NodeDisplay {
             BuildingKind::Geothermal(ref g) => g.power > 0.0,
             BuildingKind::PowerConsumer(ref p) => p.power > 0.0,
             BuildingKind::Station(_) => false,
+            BuildingKind::BalanceAdjustment(_) => false,
         }
     }
 
@@ -113,6 +117,9 @@ impl NodeDisplay {
                 BuildingSettings::PowerConsumer => html! {},
                 BuildingSettings::Station(settings) => {
                     self.view_station_settings(ctx, id, settings)
+                }
+                BuildingSettings::BalanceAdjustment(settings) => {
+                    self.view_balance_adjustment_settings(ctx, settings)
                 }
             }
         } else {
@@ -226,13 +233,29 @@ impl NodeDisplay {
     ) -> Html {
         let link = ctx.link();
         let on_change_item = link.callback(|id| Msg::ChangeItem { id });
-        let update_consumption =
-            link.callback(|consumption| Msg::ChangeConsumption { consumption });
+        let update_rate = link.callback(|rate| Msg::ChangeRate { rate });
         html! {
             <>
                 <ItemDisplay building_id={building} item_id={settings.fuel}
                     {on_change_item} />
-                <StationConsumption consumption={settings.consumption} {update_consumption} />
+                <ItemRate rate={settings.consumption} {update_rate}
+                    title="Fuel Consumption of Fueled Vehicles" />
+            </>
+        }
+    }
+
+    /// Display settings for a balance adjustment.
+    fn view_balance_adjustment_settings(
+        &self,
+        ctx: &Context<Self>,
+        settings: &BalanceAdjustmentSettings,
+    ) -> Html {
+        let link = ctx.link();
+        let on_change_item = link.callback(|id| Msg::ChangeItemOrPower { id });
+        let update_rate = link.callback(|rate| Msg::ChangeRate { rate });
+
+        html! {
+            <>
             </>
         }
     }

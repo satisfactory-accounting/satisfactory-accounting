@@ -18,7 +18,7 @@ use uuid::Uuid;
 pub use self::balance::Balance;
 use crate::database::{
     BuildingId, BuildingKind, BuildingKindId, Database, Generator, Geothermal, ItemId,
-    Manufacturer, Miner, Pump, RecipeId, Station,
+    ItemIdOrPower, Manufacturer, Miner, Pump, RecipeId, Station,
 };
 
 mod balance;
@@ -528,6 +528,10 @@ impl BuildNode for Building {
                 (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
                     balance = ss.get_balance(building_id, s, self.copies, database)?;
                 }
+                (
+                    BuildingSettings::BalanceAdjustment(bas),
+                    BuildingKind::BalanceAdjustment(_ba),
+                ) => balance = bas.get_balance(self.copies)?,
                 (settings, building_kind) => {
                     return Err(BuildError::MismatchedKind {
                         settings_kind: settings.kind_id(),
@@ -560,6 +564,7 @@ pub enum BuildingSettings {
     Geothermal(GeothermalSettings),
     PowerConsumer,
     Station(StationSettings),
+    BalanceAdjustment(BalanceAdjustmentSettings),
 }
 
 impl BuildingSettings {
@@ -573,6 +578,7 @@ impl BuildingSettings {
             Self::Geothermal(_) => BuildingKindId::Geothermal,
             Self::PowerConsumer => BuildingKindId::PowerConsumer,
             Self::Station(_) => BuildingKindId::Station,
+            Self::BalanceAdjustment(_) => BuildingKindId::BalanceAdjustment,
         }
     }
 
@@ -586,6 +592,7 @@ impl BuildingSettings {
             Self::Geothermal(_) => 1.0,
             Self::PowerConsumer => 1.0,
             Self::Station(_) => 1.0,
+            Self::BalanceAdjustment(_) => 1.0,
         }
     }
 
@@ -599,6 +606,7 @@ impl BuildingSettings {
             Self::Geothermal(_) => {}
             Self::PowerConsumer => {}
             Self::Station(_) => {}
+            Self::BalanceAdjustment(_) => {}
         }
     }
 
@@ -623,6 +631,9 @@ impl BuildingSettings {
             }
             (BuildingSettings::Station(ss), BuildingKind::Station(s)) => {
                 BuildingSettings::Station(ss.copy_settings(s))
+            }
+            (BuildingSettings::BalanceAdjustment(bas), BuildingKind::BalanceAdjustment(_)) => {
+                BuildingSettings::BalanceAdjustment(bas.clone())
             }
             _ => {
                 // For mismatched types, just copy the clock speed.
@@ -653,6 +664,7 @@ settings_from_inner! {
     Pump(PumpSettings);
     Geothermal(GeothermalSettings);
     Station(StationSettings);
+    BalanceAdjustment(BalanceAdjustmentSettings);
 }
 
 /// Building which manufactures items using a recipe that converts input items to output
@@ -1152,6 +1164,31 @@ impl StationSettings {
             ss.fuel = s.allowed_fuel.first().copied();
         }
         ss
+    }
+}
+
+/// Changes the balance of an arbitrary item or power.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct BalanceAdjustmentSettings {
+    /// The balance to adjust.
+    pub item_or_power: Option<ItemIdOrPower>,
+    /// The quantity to change.
+    pub rate: f32,
+}
+
+impl BalanceAdjustmentSettings {
+    fn get_balance(&self, copies: f32) -> Result<Balance, BuildError> {
+        let mut balance = Balance::empty();
+        match self.item_or_power {
+            None => {}
+            Some(ItemIdOrPower::Power) => {
+                balance.power = self.rate * copies;
+            }
+            Some(ItemIdOrPower::Item(item)) => {
+                balance.balances.insert(item, self.rate * copies);
+            }
+        }
+        Ok(balance)
     }
 }
 

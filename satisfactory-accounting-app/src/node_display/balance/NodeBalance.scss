@@ -129,8 +129,9 @@
         display: none;
     }
 
-    // Don't catch the power in this.
-    .item-entries .entry-row.hideable-neutral {
+    // Don't catch the power in this, unless its for a balance adjustment.
+    .item-entries .entry-row.hideable-neutral,
+    &.balance-adjustment .power-entry.entry-row.hideable-neutral {
         display: none;
     }
 }
