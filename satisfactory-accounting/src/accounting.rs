@@ -501,9 +501,11 @@ impl BuildNode for Building {
             let building = database
                 .get(building_id)
                 .ok_or(BuildError::UnknownBuilding(building_id))?;
-            if !building.overclockable() {
-                // If this isn't an overclockable building, set the number of copies to the nearest
-                // integer.
+            if !(building.overclockable()
+                || building.kind.kind_id() == BuildingKindId::BalanceAdjustment)
+            {
+                // If this isn't an overclockable building or balance adjustment, set the number of
+                // copies to the nearest integer.
                 self.copies = self.copies.round();
             }
             match (&self.settings, &building.kind) {

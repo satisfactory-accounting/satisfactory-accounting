@@ -1,7 +1,8 @@
 use log::{info, warn};
 use satisfactory_accounting::accounting::{
-    BuildNode, Building, BuildingSettings, GeneratorSettings, GeothermalSettings,
-    ManufacturerSettings, MinerSettings, Node, PumpSettings, ResourcePurity, MAX_CLOCK, MIN_CLOCK,
+    BalanceAdjustmentSettings, BuildNode, Building, BuildingSettings, GeneratorSettings,
+    GeothermalSettings, ManufacturerSettings, MinerSettings, Node, PumpSettings, ResourcePurity,
+    MAX_CLOCK, MIN_CLOCK,
 };
 use satisfactory_accounting::database::{
     BuildingKind, Generator, Geothermal, ItemId, ItemIdOrPower, Manufacturer, Miner, Power,
@@ -289,7 +290,7 @@ impl NodeDisplay {
             None
         })?;
         let building_id = building.building.or_else(|| {
-            warn!("Cannot backdrive, buiilding not set");
+            warn!("Cannot backdrive, building not set");
             None
         })?;
 
@@ -298,7 +299,8 @@ impl NodeDisplay {
             None
         })?;
         // Backdriving calculations never care about positive vs negative, since that's fixed by the
-        // recipie/building.
+        // recipie/building except for Backdrive.
+        let sign = rate.signum();
         let rate = rate.abs();
 
         let (copies, settings) = match (&building.settings, &building_type.kind) {
@@ -329,6 +331,11 @@ impl NodeDisplay {
             (BuildingSettings::Station(_), BuildingKind::Station(_)) => {
                 warn!("Stations do not support backdriving");
                 return None;
+            }
+            (BuildingSettings::BalanceAdjustment(bas), BuildingKind::BalanceAdjustment(_)) => {
+                let (copies, bas) =
+                    backdrive_balance_adjustment(id, rate * sign, bas, building.copies)?;
+                (copies, bas.into())
             }
             _ => {
                 warn!("Building Settings don't match Building Kind");
@@ -618,6 +625,33 @@ impl NodeDisplay {
         let multiplier = rate / p.power;
         Some(multiplier.ceil())
     }
+}
+
+/// Backdrive a balance adjustment.
+fn backdrive_balance_adjustment(
+    id: ItemIdOrPower,
+    rate: f32,
+    bas: &BalanceAdjustmentSettings,
+    copies: f32,
+) -> Option<(f32, BalanceAdjustmentSettings)> {
+    let current = match bas.item_or_power {
+        Some(id) => id,
+        None => {
+            warn!("Unable to backdrive balance adjustment -- item not set");
+            return None;
+        }
+    };
+    if current != id {
+        warn!("Cannot backdrive, requested item does not match current item");
+        return None;
+    }
+    Some((
+        copies,
+        BalanceAdjustmentSettings {
+            rate: rate / copies,
+            ..bas.clone()
+        },
+    ))
 }
 
 /// Result of backdriving for power.

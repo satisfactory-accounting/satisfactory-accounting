@@ -26,17 +26,25 @@ pub struct Props {
 #[function_component]
 pub fn ItemRate(props: &Props) -> Html {
     let on_commit = use_callback(
-        props.update_rate.clone(),
-        |edit_text: AttrValue, update_consumption| {
+        (props.update_rate.clone(), props.allow_negative),
+        |edit_text: AttrValue, (update_rate, allow_negative)| {
             if let Ok(value) = edit_text.parse::<f32>() {
-                update_consumption.emit(value.max(0.0));
+                update_rate.emit(if *allow_negative {
+                    value
+                } else {
+                    value.max(0.0)
+                });
             }
         },
     );
 
     let value: AttrValue = props.rate.to_string().into();
     let prefix = html! {
-        <span class="material-icons">{"trending_down"}</span>
+        if !props.allow_negative || props.rate < 0.0 {
+            <span class="material-icons">{"trending_down"}</span>
+        } else {
+            <span class="material-icons">{"trending_up"}</span>
+        }
     };
     html! {
         <ClickEdit {value} class="ItemRate" title={&props.title} {on_commit} {prefix} />

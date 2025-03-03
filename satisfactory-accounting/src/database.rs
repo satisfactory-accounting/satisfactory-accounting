@@ -174,6 +174,13 @@ impl DatabaseVersion {
             description: "This update to the databse for Satisfactory 1.0 corrects the production \
                 rate of the Nitro Rocket Fuel alternate recipe.",
         },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Geo),
+            file: "../db-v1.0-geo.json",
+            name: "1.0 \u{2013} Geo",
+            description: "This update to the databse for Satisfactory 1.0 adds the Geothermal \
+                Generator and the new Balance Adjustment node",
+        },
     ];
 
     /// Latest version of the database.
@@ -228,6 +235,8 @@ pub enum V1_0Subversion {
     /// Update to fix the production rate of nitro rocket fuel, released in Satisfactory Accounting
     /// 1.2.8.
     Rocket,
+    /// Update to add Geothermal and Balance Adjustment.
+    Geo,
 }
 
 impl fmt::Display for DatabaseVersion {

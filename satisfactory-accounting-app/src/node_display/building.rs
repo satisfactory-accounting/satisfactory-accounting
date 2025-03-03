@@ -82,7 +82,7 @@ impl NodeDisplay {
             BuildingKind::Geothermal(ref g) => g.power > 0.0,
             BuildingKind::PowerConsumer(ref p) => p.power > 0.0,
             BuildingKind::Station(_) => false,
-            BuildingKind::BalanceAdjustment(_) => false,
+            BuildingKind::BalanceAdjustment(_) => true,
         }
     }
 
@@ -256,6 +256,9 @@ impl NodeDisplay {
 
         html! {
             <>
+                <ItemOrPowerDisplay item_id={settings.item_or_power} {on_change_item} />
+                <ItemRate rate={settings.rate} {update_rate} allow_negative=true
+                    title="Amount to add or subtract" />
             </>
         }
     }

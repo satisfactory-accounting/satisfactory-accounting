@@ -11,9 +11,10 @@ mod versions {
     pub(super) const V1M2P10: u32 = 3;
     pub(super) const V1M2P11: u32 = 4;
     pub(super) const V1M2P13: u32 = 5;
+    pub(super) const V1M2P14: u32 = 6;
 
-    pub(super) const PREVIOUS: u32 = V1M2P11;
-    pub(super) const CURRENT: u32 = V1M2P13;
+    pub(super) const PREVIOUS: u32 = V1M2P13;
+    pub(super) const CURRENT: u32 = V1M2P14;
 }
 
 struct Notification {
@@ -116,35 +117,63 @@ fn get_new_user_welcome() -> Notification {
 
 fn get_existing_user_notification(acked_version: u32) -> Notification {
     Notification {
-        title: "Satisfactory Accounting v1.2.13",
+        title: "Satisfactory Accounting v1.2.14",
         content: html! {
             <>
-                <h2>{"Welcome back, Pioneer."}</h2>
-                <p>{"This is a minor update which adds support for adjusting how values are \
-                rounded in the app."}</p>
+                <h2>{"Greetings, Pioneer."}</h2>
+                <p>{"I haven't been playing Satisfactory much lately, so I also have not had much \
+                time to work on this tool. I have a variety of other projects and priorities that \
+                take precedence. However, I also know that I've missed implementing a number of \
+                features, especially for late-game things like Sommersloops and Alien Power \
+                Augmenters, as well as some features like sinks and resource transportation that \
+                some of you have asked for."}</p>
+                <p>{"I still don't have time to do all of that, but rather than leave you with \
+                completely imbalanced factory tracks, I've decied to put in one more small \
+                feature, which you can use to work around all the things I haven't had the time to \
+                implement."}</p>
                 <h3>{"What's in this version"}</h3>
                 <ul>
                     <li>
-                        <p><b>{"Configurable rounding modes."}</b>{" You can configure rounding \
-                        for clock speeds, building multipliers, and balances. Additionally, you \
-                        can choose whether the coloring in balances and 'hide empty balances' use \
-                        the exact value or the rounded value."}</p>
+                        <p><b>{"Balance Adjustment."}</b>{" This is available as a new \
+                        \"building\" type. It lets you add or subtract any quantity of any \
+                        resource that the app supports. You can use this to add in the missing \
+                        power from your Alien Power Augmenters, extra production from \
+                        Sommersloops, delete resources that are being dumped into an Awesome Sink, \
+                        move resources which are being created in one factory's group to that of \
+                        another factory, account for the power use of trains, or balance out \
+                        inputs you're getting from that one factory your friend built which you \
+                        couldn't be bothered to enter into the app."}</p>
+                        <p>{"Obviously this is less useful than having any of those requested \
+                        features, since you have to know the production of the Augmenter or \
+                        Sommersloop, and you can accidentally lose or add extra resources since \
+                        there's no connection between the input an output of a transportation \
+                        link. However, it is something I can offer you without months of extra \
+                        development time, so I hope you find this helpful!"}</p>
                     </li>
                     <li>
-                        <p><b>{"Increment/Decrement."}</b>{" When you select a building's \
-                        multiplier, clock speed, or balance value, you can use the up and down \
-                        arrow keys to increment and decrement it rather than typing a whole new \
-                        number. These can also be combined with 'Shift' for finer adjustments."}</p>
+                        <p><b>{"Geothermal."}</b>{" I finally got around to adding this back to \
+                        the database of available structures."}</p>
                     </li>
                 </ul>
-                <h3>{"What's coming next"}</h3>
-                <p>{"I believe this covers all the feature requests that I can reasonably cover \
-                without substantial changes to how the app stores and tracks balances, so aside \
-                from bug fixes, this is probably going to be the last update for a while. I do \
-                have plans for more substantial updates, but I also have fairly limited free time \
-                and I'm not sure if or when I'll prioritize them."}</p>
                 if acked_version < versions::PREVIOUS {
                     <h3>{"Additionally, you may have missed these updates from previous releases:"}</h3>
+                    if acked_version < versions::V1M2P13 {
+                        <h4>{"Version 1.2.13"}</h4>
+                        <ul>
+                            <li>
+                                <p><b>{"Configurable rounding modes."}</b>{" You can configure rounding \
+                                for clock speeds, building multipliers, and balances. Additionally, you \
+                                can choose whether the coloring in balances and 'hide empty balances' use \
+                                the exact value or the rounded value."}</p>
+                            </li>
+                            <li>
+                                <p><b>{"Increment/Decrement."}</b>{" When you select a building's \
+                                multiplier, clock speed, or balance value, you can use the up and down \
+                                arrow keys to increment and decrement it rather than typing a whole new \
+                                number. These can also be combined with 'Shift' for finer adjustments."}</p>
+                            </li>
+                        </ul>
+                    }
                     if acked_version < versions::V1M2P11 {
                         <h4>{"Version 1.2.11"}</h4>
                         <ul>
@@ -279,13 +308,22 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                 <h3>{"In case of issues"}</h3>
                 <p>{"If you run into any problems with this release, you can "}{file_a_bug()}{". \
                 (there's also a link in the top-right corner of the app, with the bug icon)."}</p>
-                <p>{"The previous two versions of Satisfactory Accounting are also available, \
+                <p>{"The previous versions of Satisfactory Accounting are also available, \
                 should you need to switch back to them to work around bugs. "}<b>{"However"}</b>
-                {", the older versions are not compatible with fractional building multipliers. If \
-                any buildings in a world have non-integer multipliers, you won't be able to load \
-                that world in the older versions."}</p>
+                {", older versions are not generally compatible with new features, so if you have \
+                used new features, you may not be able to revert."}</p>
                 <p>{"You can find the older versions at these links:"}</p>
                 <ul>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.13/">
+                            {"https://satisfactory-accounting.github.io/v1.2.13/"}
+                        </a>{"."}
+                    </li>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.12/">
+                            {"https://satisfactory-accounting.github.io/v1.2.12/"}
+                        </a>{"."}
+                    </li>
                     <li>
                         <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.11/">
                             {"https://satisfactory-accounting.github.io/v1.2.11/"}
@@ -307,7 +345,7 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                         </a>{"."}
                     </li>
                 </ul>
-                <h3><a target="_blank" href="https://youtu.be/79DijItQXMM">{"You're welcome!"}</a></h3>
+                <h3>{"Hope this helps,"}</h3>
                 {signature()}
             </>
         },
