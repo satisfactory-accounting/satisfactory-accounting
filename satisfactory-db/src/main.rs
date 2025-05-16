@@ -339,13 +339,12 @@ fn main() {
                 let gen = generators[building.class_name.as_str()];
                 BuildingKind::Generator(Generator {
                     allowed_fuel: gen.fuel.iter().map(|fuel| fuel.as_str().into()).collect(),
-                    // Patched directly because the waterToPowerRatio in the data
-                    // makes no sense to me.
-                    used_water: match building.class_name.as_str() {
-                        "Desc_GeneratorCoal_C" => 45.0 / 75.0,
-                        "Desc_GeneratorNuclear_C" => 300.0 / 2500.0,
-                        _ => 0.0,
-                    },
+                    // The waterToPowerRatio in the data is evidently water/megawatt/60 FPS game
+                    // tick, not something sensible like water per second! Plus all fluid
+                    // quantities are 1000 times higher than they should be, so to get per-second
+                    // values we multiply by 60 and divide by 1000. Our used_water is
+                    // water/megawatt, so we just convert the ratio.
+                    used_water: gen.water_to_power_ratio * 60.0 / 1000.0,
                     power_production: Power {
                         power: gen.power_production,
                         // The powerProductionExponents in the source all still say 1.6, but
