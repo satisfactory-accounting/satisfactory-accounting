@@ -181,6 +181,13 @@ impl DatabaseVersion {
             description: "This update to the databse for Satisfactory 1.0 adds the Geothermal \
                 Generator and the new Balance Adjustment node",
         },
+        {
+            version: DatabaseVersion::V1_0(V1_0Subversion::Dryer),
+            file: "../db-v1.0-dryer.json",
+            name: "1.0 \u{2013} Dryer",
+            description: "This update to the database for Satisfactory 1.0 fixes the water \
+                consumption of the Nuclear Power plant.",
+        },
     ];
 
     /// Latest version of the database.
@@ -237,6 +244,8 @@ pub enum V1_0Subversion {
     Rocket,
     /// Update to add Geothermal and Balance Adjustment.
     Geo,
+    /// Reduce the amount of water consumed by nuclear power plants.
+    Dryer,
 }
 
 impl fmt::Display for DatabaseVersion {
