@@ -28,17 +28,17 @@ impl WorldId {
 
     /// Get a formatter that formats the world ID in the legacy
     /// zstewart.satisfactroydb.state.world.{uuids} format.
-    pub fn as_legacy_dotted(&self) -> AsLegacyDotted {
+    pub fn as_legacy_dotted(&self) -> AsLegacyDotted<'_> {
         AsLegacyDotted { id: self }
     }
 
     /// Get a formatter that formats the world ID in the new worlds/{base64uuid} format.
-    pub fn as_resource_id(&self) -> AsResourceId {
+    pub fn as_resource_id(&self) -> AsResourceId<'_> {
         AsResourceId { id: self }
     }
 
     /// Get a formatter that formats the world ID as a plain base64 uuid.
-    pub fn as_base64(&self) -> AsBase64 {
+    pub fn as_base64(&self) -> AsBase64<'_> {
         AsBase64 { id: self }
     }
 }
