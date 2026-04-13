@@ -29,6 +29,7 @@ use crate::user_settings::{use_user_settings, UserSettings};
 use crate::world::{use_world_dispatcher, use_world_root, NodeMeta, NodeMetas};
 
 pub use self::backdrive::{BackdriveSettings, BackdriveSettingsMsg, BackdriveSettingsSection};
+pub use self::balance::highlight::HighlightItemManager;
 pub use self::balance::BalanceSortMode;
 
 mod backdrive;
@@ -52,7 +53,8 @@ pub fn NodeTreeDisplay() -> Html {
         "NodeTreeDisplay",
         user_settings
             .hide_empty_balances
-            .then_some("hide-empty-balances")
+            .then_some("hide-empty-balances"),
+        "highlight-enabled"
     );
 
     let replace = use_callback(dispatcher.clone(), |(idx, replacement), dispatcher| {

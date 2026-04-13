@@ -11,6 +11,7 @@ use yew::{classes, function_component, html, use_callback, Children, Classes, Ht
 use crate::appheader::AppHeader;
 use crate::inputs::toggle::MaterialRadio;
 use crate::modal::ModalManager;
+use crate::node_display::HighlightItemManager;
 use crate::node_display::NodeTreeDisplay;
 use crate::notifications::Notifications;
 use crate::storagenotice::StorageNotice;
@@ -25,6 +26,7 @@ pub fn App() -> Html {
         <ModalManager>
         <UserSettingsManager>
         <WorldManager>
+        <HighlightItemManager>
             <AppInner>
                 <UserSettingsWindowManager>
                 <WorldChooserWindowManager>
@@ -35,6 +37,7 @@ pub fn App() -> Html {
                 </UserSettingsWindowManager>
                 <NodeTreeDisplay />
             </AppInner>
+        </HighlightItemManager>
         </WorldManager>
         <Notifications />
         <StorageNotice />

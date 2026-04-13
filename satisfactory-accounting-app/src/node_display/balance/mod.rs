@@ -14,12 +14,15 @@ use yew::prelude::*;
 use crate::inputs::clickedit::{
     AdjustDir, AdjustModifier, AdjustScale, ClickEdit, ValueAdjustment,
 };
+use crate::node_display::balance::highlight::{use_highlighted_item, HighlightedItemController};
 use crate::node_display::icon::Icon;
 use crate::user_settings::number_format::{
     BalanceDisplaySettings, NumberFormatSettings, NumberStylingMode, UserConfiguredFormat,
 };
 use crate::user_settings::use_user_settings;
 use crate::world::use_db;
+
+pub mod highlight;
 
 /// How entries in the balance should be sorted.
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -75,6 +78,7 @@ pub fn NodeBalance(
     let balance = node.balance();
     let db = use_db();
     let user_settings = use_user_settings();
+    let highlight = use_highlighted_item();
     let balance_settings = &user_settings.number_display.balance;
     let on_backdrive = on_backdrive.as_ref();
     let adjustment_class = node.building().and_then(|b| {
@@ -88,7 +92,14 @@ pub fn NodeBalance(
     let item_balances: Html = match user_settings.balance_sort_mode {
         BalanceSortMode::Item => {
             let combined_balances = balance.balances.iter().map(|(&itemid, &rate)| {
-                display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                display_item(
+                    itemid,
+                    db.get(itemid),
+                    rate,
+                    balance_settings,
+                    on_backdrive,
+                    &highlight,
+                )
             });
             html! {
                 <div class="item-entries combined">
@@ -109,14 +120,28 @@ pub fn NodeBalance(
                 .iter()
                 .filter(|(_, &rate)| display_rate(rate) > 0.0)
                 .map(|(&itemid, &rate)| {
-                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                    display_item(
+                        itemid,
+                        db.get(itemid),
+                        rate,
+                        balance_settings,
+                        on_backdrive,
+                        &highlight,
+                    )
                 });
             let negative_balances = balance
                 .balances
                 .iter()
                 .filter(|(_, &rate)| display_rate(rate) < 0.0)
                 .map(|(&itemid, &rate)| {
-                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                    display_item(
+                        itemid,
+                        db.get(itemid),
+                        rate,
+                        balance_settings,
+                        on_backdrive,
+                        &highlight,
+                    )
                 });
 
             let neutral_balances = balance
@@ -128,7 +153,14 @@ pub fn NodeBalance(
                     rate == 0.0 || !(rate < 0.0 || rate > 0.0)
                 })
                 .map(|(&itemid, &rate)| {
-                    display_item(itemid, db.get(itemid), rate, balance_settings, on_backdrive)
+                    display_item(
+                        itemid,
+                        db.get(itemid),
+                        rate,
+                        balance_settings,
+                        on_backdrive,
+                        &highlight,
+                    )
                 });
 
             html! {
@@ -148,7 +180,7 @@ pub fn NodeBalance(
     };
     html! {
         <div class={classes!("NodeBalance", shape.to_class_name(), adjustment_class)}>
-            {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, balance_settings, on_backdrive)}
+            {item_row(ItemIdOrPower::Power, "Power".into(), Some("power-line".into()), balance.power, balance_settings, on_backdrive, &highlight)}
             { item_balances }
         </div>
     }
@@ -160,6 +192,7 @@ fn display_item(
     rate: f32,
     balance_settings: &BalanceDisplaySettings,
     on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
+    highlight: &HighlightedItemController,
 ) -> Html {
     match item {
         Some(item) => item_row(
@@ -169,6 +202,7 @@ fn display_item(
             rate,
             balance_settings,
             on_backdrive,
+            highlight,
         ),
         None => item_row(
             id.into(),
@@ -177,6 +211,7 @@ fn display_item(
             rate,
             balance_settings,
             on_backdrive,
+            highlight,
         ),
     }
 }
@@ -188,22 +223,38 @@ fn item_row(
     rate: f32,
     display_settings: &BalanceDisplaySettings,
     on_backdrive: Option<&Callback<(ItemIdOrPower, f32)>>,
+    highlight: &HighlightedItemController,
 ) -> Html {
     let (power_class, rounding) = match id {
         ItemIdOrPower::Power => (Some("power-entry"), &display_settings.power_format_settings),
         _ => (None, &display_settings.item_format_settings),
     };
+    let highlight_class = if highlight.item() == Some(id) {
+        Some("highlight-item")
+    } else {
+        None
+    };
     let class = classes!(
         "entry-row",
         balance_style(rate, rounding, display_settings),
-        power_class
+        power_class,
+        highlight_class
     );
 
     let rounded_value: AttrValue = rate.format(rounding).to_string().into();
 
+    let onmouseenter = {
+        let highlight = highlight.clone();
+        move |_| highlight.enter_item(id)
+    };
+    let onmouseleave = {
+        let highlight = highlight.clone();
+        move |_| highlight.exit_item(id)
+    };
+
     match on_backdrive {
         None => html! {
-            <div {class} {title}>
+            <div {class} {title} {onmouseenter} {onmouseleave}>
                 <Icon {icon}/>
                 <div class="balance-value">{rounded_value}</div>
             </div>
@@ -241,7 +292,8 @@ fn item_row(
             let prefix = html!(<Icon {icon} />);
             html! {
                 <ClickEdit {class} {prefix} {title} value={rate.to_string()} {rounded_value}
-                    {on_commit} adjust={adjust as fn(_,_)->_} />
+                    {on_commit} adjust={adjust as fn(_,_)->_}
+                    {onmouseenter} {onmouseleave} />
             }
         }
     }
