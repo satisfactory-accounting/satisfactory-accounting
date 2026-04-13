@@ -8,6 +8,7 @@ use log::warn;
 use yew::html::Scope;
 use yew::{hook, html, use_context, Component, Context, ContextProvider, Html, Properties};
 
+use crate::app::GlobalDisplaySettingsMsg;
 use crate::node_display::{BackdriveSettingsMsg, BalanceSortMode};
 use crate::refeqrc::RefEqRc;
 use crate::user_settings::number_format::NumberDisplaySettingsMsg;
@@ -61,6 +62,8 @@ pub enum Msg {
     UpdateBackdriveSettings { msg: BackdriveSettingsMsg },
     /// Updates the number display settings by applying the given message.
     UpdateNumberDisplaySettings { msg: NumberDisplaySettingsMsg },
+    /// Updates global display settings by applying the given message.
+    UpdateGlobalDisplaySettings { msg: GlobalDisplaySettingsMsg },
 }
 
 pub struct UserSettingsManager {
@@ -196,6 +199,19 @@ impl UserSettingsManager {
             false
         }
     }
+
+    /// Message handler for UpdateGlobalDisplaySettings.
+    fn update_global_display_settings(&mut self, msg: GlobalDisplaySettingsMsg) -> bool {
+        if Rc::make_mut(&mut self.user_settings)
+            .global_display
+            .update(msg)
+        {
+            save_user_settings(&self.user_settings);
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -241,6 +257,7 @@ impl Component for UserSettingsManager {
             Msg::UpdateWorldSortSettings { msg } => self.update_world_sort_settings(msg),
             Msg::UpdateBackdriveSettings { msg } => self.update_backdrive_settings(msg),
             Msg::UpdateNumberDisplaySettings { msg } => self.update_number_display_settings(msg),
+            Msg::UpdateGlobalDisplaySettings { msg } => self.update_global_display_settings(msg),
         }
     }
 
@@ -333,6 +350,12 @@ impl UserSettingsDispatcher {
     ) {
         self.scope
             .send_message(Msg::UpdateNumberDisplaySettings { msg: msg.into() });
+    }
+
+    /// Updates the global display settings.
+    pub fn update_global_display_settings(&self, msg: impl Into<GlobalDisplaySettingsMsg>) {
+        self.scope
+            .send_message(Msg::UpdateGlobalDisplaySettings { msg: msg.into() });
     }
 }
 

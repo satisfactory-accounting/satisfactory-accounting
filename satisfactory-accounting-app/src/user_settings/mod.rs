@@ -1,6 +1,7 @@
 //! Management for user settings.
 use serde::{Deserialize, Serialize};
 
+use crate::app::GlobalDisplaySettings;
 use crate::node_display::{BackdriveSettings, BalanceSortMode};
 pub use crate::user_settings::manager::{
     use_user_settings, use_user_settings_dispatcher, UserSettingsDispatcher, UserSettingsManager,
@@ -41,6 +42,10 @@ pub struct UserSettings {
     /// Settings for how to round and display balances and clock.
     #[serde(default)]
     pub number_display: NumberDisplaySettings,
+
+    /// Display settings that affect the entire app.
+    #[serde(default)]
+    pub global_display: GlobalDisplaySettings,
 
     /// Whether the user has acknowledged the use of local storage.
     #[serde(default)]
