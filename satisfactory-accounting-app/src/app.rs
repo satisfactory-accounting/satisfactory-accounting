@@ -9,6 +9,7 @@ use yew::{function_component, html, Html};
 //       http://www.apache.org/licenses/LICENSE-2.0
 use crate::appheader::AppHeader;
 use crate::modal::ModalManager;
+use crate::node_display::HighlightItemManager;
 use crate::node_display::NodeTreeDisplay;
 use crate::notifications::Notifications;
 use crate::storagenotice::StorageNotice;
@@ -21,6 +22,7 @@ pub fn App() -> Html {
         <ModalManager>
         <UserSettingsManager>
         <WorldManager>
+        <HighlightItemManager>
             <div class="App">
                 <UserSettingsWindowManager>
                 <WorldChooserWindowManager>
@@ -31,6 +33,7 @@ pub fn App() -> Html {
                 </UserSettingsWindowManager>
                 <NodeTreeDisplay />
             </div>
+        </HighlightItemManager>
         </WorldManager>
         <Notifications />
         <StorageNotice />
