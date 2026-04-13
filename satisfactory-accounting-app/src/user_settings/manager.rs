@@ -64,6 +64,8 @@ pub enum Msg {
     UpdateNumberDisplaySettings { msg: NumberDisplaySettingsMsg },
     /// Updates global display settings by applying the given message.
     UpdateGlobalDisplaySettings { msg: GlobalDisplaySettingsMsg },
+    /// Flips highlight_hovered_items.
+    ToggleHiglightItems,
 }
 
 pub struct UserSettingsManager {
@@ -212,6 +214,13 @@ impl UserSettingsManager {
             false
         }
     }
+
+    fn toggle_highlight_items(&mut self) -> bool {
+        let user_settings = Rc::make_mut(&mut self.user_settings);
+        user_settings.highlight_hovered_items = !user_settings.highlight_hovered_items;
+        save_user_settings(user_settings);
+        true
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -258,6 +267,7 @@ impl Component for UserSettingsManager {
             Msg::UpdateBackdriveSettings { msg } => self.update_backdrive_settings(msg),
             Msg::UpdateNumberDisplaySettings { msg } => self.update_number_display_settings(msg),
             Msg::UpdateGlobalDisplaySettings { msg } => self.update_global_display_settings(msg),
+            Msg::ToggleHiglightItems => self.toggle_highlight_items(),
         }
     }
 
@@ -356,6 +366,11 @@ impl UserSettingsDispatcher {
     pub fn update_global_display_settings(&self, msg: impl Into<GlobalDisplaySettingsMsg>) {
         self.scope
             .send_message(Msg::UpdateGlobalDisplaySettings { msg: msg.into() });
+    }
+
+    /// Toggles whether to highlight all items of a type when hovering over one of them.
+    pub fn toggle_highlight_items(&self) {
+        self.scope.send_message(Msg::ToggleHiglightItems);
     }
 }
 
