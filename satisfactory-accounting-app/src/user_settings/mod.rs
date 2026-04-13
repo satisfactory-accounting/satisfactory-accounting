@@ -20,7 +20,7 @@ mod storagemanager;
 mod window;
 
 /// App-wide settings specific to the user rather than the world.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UserSettings {
     /// Whether empty balance values should be hidden.
     pub hide_empty_balances: bool,
@@ -59,10 +59,37 @@ pub struct UserSettings {
     /// user message.
     #[serde(default = "notification_serde_default")]
     pub acked_notification: u32,
+
+    /// Whether to highlight items which the user is hovering over.
+    #[serde(default = "highlight_serde_default")]
+    pub highlight_hovered_items: bool,
+}
+
+impl Default for UserSettings {
+    fn default() -> Self {
+        Self {
+            hide_empty_balances: false,
+            balance_sort_mode: Default::default(),
+            show_deprecated_databases: false,
+            world_sort_settings: Default::default(),
+            backdrive_settings: Default::default(),
+            number_display: Default::default(),
+            global_display: Default::default(),
+            acked_local_storage_notice_version: 0,
+            acked_notification: 0,
+            highlight_hovered_items: true,
+        }
+    }
 }
 
 /// Serde default for acked_welcome_notice.
 #[inline]
 const fn notification_serde_default() -> u32 {
     1
+}
+
+/// Serde default for highlight_hovered_items.
+#[inline]
+const fn highlight_serde_default() -> bool {
+    true
 }
