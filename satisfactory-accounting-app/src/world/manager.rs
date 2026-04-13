@@ -305,7 +305,7 @@ mod save_tracker {
         }
 
         /// Gets a handle to the value for if you aren't sure if you are going to mutate it.
-        pub fn maybe_mutate(&mut self) -> MutateHandle<T> {
+        pub fn maybe_mutate(&mut self) -> MutateHandle<'_, T> {
             MutateHandle {
                 value: &mut self.value,
                 is_saved: Some(&mut self.is_saved),
@@ -1501,7 +1501,7 @@ impl WorldReader {
     }
 
     /// Borrow the current world.
-    fn borrow(&self) -> WorldRef {
+    fn borrow(&self) -> WorldRef<'_> {
         WorldRef {
             inner: self.inner.borrow(),
         }

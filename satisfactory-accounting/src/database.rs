@@ -282,12 +282,12 @@ impl Database {
     }
 
     /// Gets an iterator over the buildings in the database.
-    pub fn buildings(&self) -> BuildingsIter {
+    pub fn buildings(&self) -> BuildingsIter<'_> {
         self.inner.buildings.values()
     }
 
     /// Gets an iterator over the items in the database.
-    pub fn items(&self) -> ItemsIter {
+    pub fn items(&self) -> ItemsIter<'_> {
         self.inner.items.values()
     }
 }

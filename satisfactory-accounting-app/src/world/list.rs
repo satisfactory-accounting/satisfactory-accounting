@@ -51,17 +51,17 @@ impl WorldList {
     }
 
     /// Get the currently selected world.
-    pub fn get_selected(&self) -> Option<WorldMetaRef> {
+    pub fn get_selected(&self) -> Option<WorldMetaRef<'_>> {
         self.get(self.selected_id())
     }
 
     /// Get the currently selected world.
-    pub fn get_selected_mut(&mut self) -> Option<WorldMetaMut> {
+    pub fn get_selected_mut(&mut self) -> Option<WorldMetaMut<'_>> {
         self.get_mut(self.selected_id())
     }
 
     /// Get an entry for the currently selected world.
-    pub fn selected_entry(&mut self) -> WorldEntry {
+    pub fn selected_entry(&mut self) -> WorldEntry<'_> {
         self.entry(self.selected_id())
     }
 
@@ -75,7 +75,7 @@ impl WorldList {
     }
 
     /// Get the metadata for a particular world, if it exists.
-    pub fn get(&self, id: WorldId) -> Option<WorldMetaRef> {
+    pub fn get(&self, id: WorldId) -> Option<WorldMetaRef<'_>> {
         self.inner.worlds.get(&id).map(|meta| WorldMetaRef {
             selected: &self.inner.selected,
             id,
@@ -84,7 +84,7 @@ impl WorldList {
     }
 
     /// Get the metadata for a particular world, if it exists.
-    pub fn get_mut(&mut self, id: WorldId) -> Option<WorldMetaMut> {
+    pub fn get_mut(&mut self, id: WorldId) -> Option<WorldMetaMut<'_>> {
         let inner = Rc::make_mut(&mut self.inner);
         inner.worlds.get_mut(&id).map(|meta| WorldMetaMut {
             selected: Cell::from_mut(&mut inner.selected),
@@ -94,7 +94,7 @@ impl WorldList {
     }
 
     /// Choose a new world ID and get a VacantEntry pointing to it.
-    pub fn allocate_new_id(&mut self) -> AbsentWorld {
+    pub fn allocate_new_id(&mut self) -> AbsentWorld<'_> {
         let inner = Rc::make_mut(&mut self.inner);
         const MAX_ATTEMPTS: usize = 10;
         let mut chosen_id = None;
@@ -125,7 +125,7 @@ impl WorldList {
     }
 
     /// Gets the entry for the world with the given id.
-    pub fn entry(&mut self, id: WorldId) -> WorldEntry {
+    pub fn entry(&mut self, id: WorldId) -> WorldEntry<'_> {
         let inner = Rc::make_mut(&mut self.inner);
         let selected = &mut inner.selected;
         match inner.worlds.entry(id) {
@@ -135,7 +135,7 @@ impl WorldList {
     }
 
     /// Gets an iterator over the world list.
-    pub fn iter(&self) -> WorldListIter {
+    pub fn iter(&self) -> WorldListIter<'_> {
         WorldListIter {
             selected: &self.inner.selected,
             inner: self.inner.worlds.iter(),
@@ -143,7 +143,7 @@ impl WorldList {
     }
 
     /// Gets a mutable iterator over the world list.
-    pub fn iter_mut(&mut self) -> WorldListIterMut {
+    pub fn iter_mut(&mut self) -> WorldListIterMut<'_> {
         let inner = Rc::make_mut(&mut self.inner);
         WorldListIterMut {
             selected: Cell::from_mut(&mut inner.selected),

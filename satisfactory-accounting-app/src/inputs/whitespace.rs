@@ -8,7 +8,7 @@ use std::borrow::Cow;
 /// preserve spaces while divs collaps spaces and don't render trailing spaces.
 ///
 /// This doesn't cover every possible type of space but is "good enough". Probably.
-pub fn space_to_nbsp(src: &str) -> Cow<str> {
+pub fn space_to_nbsp(src: &str) -> Cow<'_, str> {
     if src.contains(' ') {
         src.replace(' ', "\u{00a0}").into()
     } else {

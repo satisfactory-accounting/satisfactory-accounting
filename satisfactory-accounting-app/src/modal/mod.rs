@@ -426,7 +426,7 @@ pub struct ModalDispatcher {
 impl ModalDispatcher {
     /// Creates a modal dialog and returns a handle to it which must be kept around as long as you
     /// want the modal to remain shown.
-    pub fn builder(&self) -> ModalBuilder {
+    pub fn builder(&self) -> ModalBuilder<'_> {
         ModalBuilder {
             dispatcher: self,
             modal: Default::default(),
