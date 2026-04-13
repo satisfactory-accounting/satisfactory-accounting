@@ -35,6 +35,10 @@ pub fn UserSettingsWindow() -> Html {
     let toggle_hide_empty = use_callback(settings_dispatcher.clone(), |_, settings_dispatcher| {
         settings_dispatcher.toggle_hide_empty_balances();
     });
+    let toggle_highlight_items =
+        use_callback(settings_dispatcher.clone(), |_, settings_dispatcher| {
+            settings_dispatcher.toggle_highlight_items();
+        });
 
     let set_sort_mode_item = use_callback(settings_dispatcher.clone(), |_, settings_dispatcher| {
         settings_dispatcher.set_sort_mode(BalanceSortMode::Item);
@@ -88,6 +92,21 @@ pub fn UserSettingsWindow() -> Html {
                                 <MaterialRadio
                                     checked={user_settings.balance_sort_mode == BalanceSortMode::IOItem}
                                     onclick={set_sort_mode_ioitem} />
+                            </label>
+                        </li>
+                    </ul>
+                </div>
+                <div class="settings-subsection">
+                    <h3>{"Highlighting Hovered Items"}</h3>
+                    <p>{"When enabled, all balances for the same item type are highlighted when \
+                        you hover over one of them. This can be helpful for finding other places \
+                        where an item is used or produced in a large worlds."}</p>
+                    <ul>
+                        <li>
+                            <label>
+                                <span>{"Highlight Hovered Items"}</span>
+                                <MaterialCheckbox checked={user_settings.highlight_hovered_items}
+                                    onclick={toggle_highlight_items} />
                             </label>
                         </li>
                     </ul>

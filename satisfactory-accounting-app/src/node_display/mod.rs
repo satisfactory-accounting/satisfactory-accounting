@@ -54,7 +54,9 @@ pub fn NodeTreeDisplay() -> Html {
         user_settings
             .hide_empty_balances
             .then_some("hide-empty-balances"),
-        "highlight-enabled"
+        user_settings
+            .highlight_hovered_items
+            .then_some("highlight-enabled"),
     );
 
     let replace = use_callback(dispatcher.clone(), |(idx, replacement), dispatcher| {

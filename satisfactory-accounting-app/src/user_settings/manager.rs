@@ -61,6 +61,8 @@ pub enum Msg {
     UpdateBackdriveSettings { msg: BackdriveSettingsMsg },
     /// Updates the number display settings by applying the given message.
     UpdateNumberDisplaySettings { msg: NumberDisplaySettingsMsg },
+    /// Flips highlight_hovered_items.
+    ToggleHiglightItems,
 }
 
 pub struct UserSettingsManager {
@@ -196,6 +198,13 @@ impl UserSettingsManager {
             false
         }
     }
+
+    fn toggle_highlight_items(&mut self) -> bool {
+        let user_settings = Rc::make_mut(&mut self.user_settings);
+        user_settings.highlight_hovered_items = !user_settings.highlight_hovered_items;
+        save_user_settings(user_settings);
+        true
+    }
 }
 
 impl Component for UserSettingsManager {
@@ -241,6 +250,7 @@ impl Component for UserSettingsManager {
             Msg::UpdateWorldSortSettings { msg } => self.update_world_sort_settings(msg),
             Msg::UpdateBackdriveSettings { msg } => self.update_backdrive_settings(msg),
             Msg::UpdateNumberDisplaySettings { msg } => self.update_number_display_settings(msg),
+            Msg::ToggleHiglightItems => self.toggle_highlight_items(),
         }
     }
 
@@ -333,6 +343,11 @@ impl UserSettingsDispatcher {
     ) {
         self.scope
             .send_message(Msg::UpdateNumberDisplaySettings { msg: msg.into() });
+    }
+
+    /// Toggles whether to highlight all items of a type when hovering over one of them.
+    pub fn toggle_highlight_items(&self) {
+        self.scope.send_message(Msg::ToggleHiglightItems);
     }
 }
 
