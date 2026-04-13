@@ -53,6 +53,10 @@ pub struct ValueAdjustment {
 }
 
 #[derive(Debug, Properties, PartialEq)]
+// Allow the adjuster function to use a fn pointer even in comparisons as comparison is only for
+// optimization and we expect to be constructed with the same pointer all the time in any given
+// instance.
+#[allow(unpredictable_function_pointer_comparisons)]
 pub struct Props {
     /// Last committed value.
     pub value: AttrValue,
@@ -72,11 +76,16 @@ pub struct Props {
     pub suffix: Html,
     /// Callback to invoke when the edit is committed.
     pub on_commit: Callback<AttrValue>,
-    /// Callback to allow small adjustments of the value by itting keys like pg up, pg down, or
+    /// Callback to allow small adjustments of the value by hitting keys like pg up, pg down, or
     /// up/down. This callback takes the adjustment info and the current value and emits an updated
     /// editable value.
     #[prop_or_default]
     pub adjust: Option<fn(ValueAdjustment, AttrValue) -> AttrValue>,
+
+    #[prop_or_default]
+    pub onmouseenter: Callback<MouseEvent>,
+    #[prop_or_default]
+    pub onmouseleave: Callback<MouseEvent>,
 }
 
 pub enum Msg {
@@ -249,13 +258,15 @@ impl Component for ClickEdit {
             ..
         } = ctx.props();
         let class = self.class.clone();
+        let onmouseenter = ctx.props().onmouseenter.clone();
+        let onmouseleave = ctx.props().onmouseleave.clone();
         if let Some(value) = self.edit_text.clone() {
             let oninput = self.oninput.clone();
             let onkeyup = self.onkeyup.clone();
             let onblur = self.onblur.clone();
             let onsubmit = self.onsubmit.clone();
             html! {
-                <form {class} {title} {onsubmit}>
+                <form {class} {title} {onsubmit} {onmouseenter} {onmouseleave}>
                     { prefix.clone() }
                     <div class="value">
                         <input class="value-input" type="text" value={&value}
@@ -274,7 +285,7 @@ impl Component for ClickEdit {
             let onclick = self.onclick.clone();
             let value = rounded_value.as_ref().unwrap_or(value);
             html! {
-                <div {class} {title} {onclick}>
+                <div {class} {title} {onclick} {onmouseenter} {onmouseleave}>
                     { prefix.clone() }
                     <div class="value">
                         <div class="value-display">
