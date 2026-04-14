@@ -10,6 +10,7 @@
 @use "world/world.scss";
 @use "notifications/Notifications.scss";
 @use "storagenotice/StorageNotice.scss";
+@use "compact-mode.scss";
 
 body {
     display: flex;

@@ -1,0 +1,56 @@
+.compact-mode {
+    .Icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .building,
+    .group.collapsed,
+    .header {
+        height: 36px;
+    }
+
+    .BuildingTypeDisplay,
+    .ItemDisplay,
+    .RecipeDisplay {
+        width: 180px;
+        font-size: 14px;
+        text-wrap: wrap;
+    }
+
+    .GroupName {
+        .value {
+            font-size: 18px;
+        }
+    }
+
+    .ClockSpeed,
+    .Purity {
+        font-size: 14px;
+        gap: 2px;
+    }
+
+    .NodeBalance.horizontal > .item-entries > .entry-row,
+    .NodeBalance.horizontal > .power-entry {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: 20px 14px;
+        row-gap: 0px;
+
+        align-content: center;
+        justify-items: center;
+
+        .balance-value,
+        .value {
+            font-size: 12px;
+        }
+
+        .value-display {
+            padding: 0px;
+        }
+    }
+
+    .NodeDisplay {
+        align-content: center;
+    }
+}
