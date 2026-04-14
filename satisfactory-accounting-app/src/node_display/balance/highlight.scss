@@ -1,0 +1,11 @@
+@use "sass:color";
+@use "../..//colors.scss";
+
+.highlight-enabled .highlight-item {
+    background-color: colors.$dark;
+    border-radius: 3px;
+
+    &.neutral > .balance-value {
+        color: colors.$gray;
+    }
+}

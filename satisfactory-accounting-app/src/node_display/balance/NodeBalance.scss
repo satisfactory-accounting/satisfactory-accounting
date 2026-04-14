@@ -10,6 +10,7 @@
         box-sizing: border-box;
         cursor: pointer;
         align-items: center;
+        padding: 2px;
 
         &.ClickEdit {
             cursor: text;
@@ -21,8 +22,8 @@
 
         border-radius: 5px;
         background-color: colors.$light;
-        padding: 5px;
-        row-gap: 5px;
+        padding: 3px;
+        row-gap: 1px;
 
         .item-entries {
             display: grid;
@@ -56,7 +57,7 @@
         grid-template-columns: subgrid;
         grid-column: balance-negative / span 4;
 
-        column-gap: 10px;
+        column-gap: 6px;
 
         .item-entries {
             display: flex;
