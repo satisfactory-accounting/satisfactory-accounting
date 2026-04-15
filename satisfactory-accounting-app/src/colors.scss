@@ -35,3 +35,6 @@ $dark: #4E5D6C;
         color: $danger;
     }
 }
+
+$negative-balance: $danger;
+$positive-balance: color.scale($success, $lightness: -30%);

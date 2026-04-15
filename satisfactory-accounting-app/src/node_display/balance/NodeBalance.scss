@@ -1,5 +1,6 @@
 @use "sass:color";
-@use "../..//colors.scss";
+@use "../../colors.scss";
+@use "highlight.scss";
 
 .NodeBalance {
     box-sizing: border-box;
@@ -110,7 +111,7 @@
 
         .balance-value,
         .value-display {
-            color: colors.$danger;
+            color: colors.$negative-balance;
         }
     }
 
@@ -118,7 +119,7 @@
 
         .balance-value,
         .value-display {
-            color: color.scale(colors.$success, $lightness: -30%);
+            color: colors.$positive-balance;
         }
     }
 }

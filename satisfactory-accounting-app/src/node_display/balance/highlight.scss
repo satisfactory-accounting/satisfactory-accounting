@@ -1,0 +1,39 @@
+@use "sass:color";
+@use "../../colors.scss";
+
+$neutral-glow: colors.$warning;
+
+@mixin hl-glow($hlcolor, $alpha: 1, $scale: 1) {
+    filter: drop-shadow(0 0 calc(1px * $scale) color.change(#fff, $alpha: $alpha))
+        drop-shadow(0 0 calc(3px * $scale) color.change(#fff, $alpha: $alpha))
+        drop-shadow(0 0 calc(4px * $scale) color.change($hlcolor, $alpha: $alpha))
+        drop-shadow(0 0 calc(10px * $scale) color.change($hlcolor, $alpha: $alpha));
+}
+
+.highlight-enabled .NodeBalance .entry-row {
+    transition: filter 0.5s;
+
+    &.neutral {
+        @include hl-glow($neutral-glow, 0, 0);
+    }
+
+    &.negative {
+        @include hl-glow(colors.$negative-balance, 0, 0);
+    }
+
+    &.positive {
+        @include hl-glow(colors.$positive-balance, 0, 0);
+    }
+
+    &.highlight-item.neutral {
+        @include hl-glow($neutral-glow);
+    }
+
+    &.highlight-item.negative {
+        @include hl-glow(colors.$negative-balance);
+    }
+
+    &.highlight-item.positive {
+        @include hl-glow(colors.$positive-balance);
+    }
+}
