@@ -12,9 +12,10 @@ mod versions {
     pub(super) const V1M2P11: u32 = 4;
     pub(super) const V1M2P13: u32 = 5;
     pub(super) const V1M2P14: u32 = 6;
+    pub(super) const V1M2P16: u32 = 7;
 
-    pub(super) const PREVIOUS: u32 = V1M2P13;
-    pub(super) const CURRENT: u32 = V1M2P14;
+    pub(super) const PREVIOUS: u32 = V1M2P14;
+    pub(super) const CURRENT: u32 = V1M2P16;
 }
 
 struct Notification {
@@ -117,46 +118,55 @@ fn get_new_user_welcome() -> Notification {
 
 fn get_existing_user_notification(acked_version: u32) -> Notification {
     Notification {
-        title: "Satisfactory Accounting v1.2.14",
+        title: "Satisfactory Accounting v1.2.16",
         content: html! {
             <>
                 <h2>{"Greetings, Pioneer."}</h2>
-                <p>{"I haven't been playing Satisfactory much lately, so I also have not had much \
-                time to work on this tool. I have a variety of other projects and priorities that \
-                take precedence. However, I also know that I've missed implementing a number of \
-                features, especially for late-game things like Sommersloops and Alien Power \
-                Augmenters, as well as some features like sinks and resource transportation that \
-                some of you have asked for."}</p>
-                <p>{"I still don't have time to do all of that, but rather than leave you with \
-                completely imbalanced factory tracks, I've decied to put in one more small \
-                feature, which you can use to work around all the things I haven't had the time to \
-                implement."}</p>
+                <p>{"This is a small update with a couple of minor UI modifications to help you \
+                work with very large factories."}</p>
                 <h3>{"What's in this version"}</h3>
                 <ul>
                     <li>
-                        <p><b>{"Balance Adjustment."}</b>{" This is available as a new \
-                        \"building\" type. It lets you add or subtract any quantity of any \
-                        resource that the app supports. You can use this to add in the missing \
-                        power from your Alien Power Augmenters, extra production from \
-                        Sommersloops, delete resources that are being dumped into an Awesome Sink, \
-                        move resources which are being created in one factory's group to that of \
-                        another factory, account for the power use of trains, or balance out \
-                        inputs you're getting from that one factory your friend built which you \
-                        couldn't be bothered to enter into the app."}</p>
-                        <p>{"Obviously this is less useful than having any of those requested \
-                        features, since you have to know the production of the Augmenter or \
-                        Sommersloop, and you can accidentally lose or add extra resources since \
-                        there's no connection between the input an output of a transportation \
-                        link. However, it is something I can offer you without months of extra \
-                        development time, so I hope you find this helpful!"}</p>
+                        <p><b>{"Hovered-Item Highlight."}</b>{" When you mouse over an item, all \
+                        items of the same type will be highlighted. This can help you find where \
+                        items are coming from or going to in a large world with a lot of consumers \
+                        and producers. If you don't like the highlight effect, you can turn it off \
+                        from the settings menu."}</p>
                     </li>
                     <li>
-                        <p><b>{"Geothermal."}</b>{" I finally got around to adding this back to \
-                        the database of available structures."}</p>
+                        <p><b>{"Compact Mode."}</b>{" This makes the display for structures a \
+                        little smaller so you can fit more within the screen width. It is off by \
+                        default, but you can enable it in the settings menu."}</p>
                     </li>
                 </ul>
                 if acked_version < versions::PREVIOUS {
                     <h3>{"Additionally, you may have missed these updates from previous releases:"}</h3>
+                    if acked_version < versions::V1M2P14 {
+                        <h4>{"Version 1.2.14"}</h4>
+                        <ul>
+                            <li>
+                                <p><b>{"Balance Adjustment."}</b>{" This is available as a new \
+                                \"building\" type. It lets you add or subtract any quantity of any \
+                                resource that the app supports. You can use this to add in the missing \
+                                power from your Alien Power Augmenters, extra production from \
+                                Sommersloops, delete resources that are being dumped into an Awesome Sink, \
+                                move resources which are being created in one factory's group to that of \
+                                another factory, account for the power use of trains, or balance out \
+                                inputs you're getting from that one factory your friend built which you \
+                                couldn't be bothered to enter into the app."}</p>
+                                <p>{"Obviously this is less useful than having any of those requested \
+                                features, since you have to know the production of the Augmenter or \
+                                Sommersloop, and you can accidentally lose or add extra resources since \
+                                there's no connection between the input an output of a transportation \
+                                link. However, it is something I can offer you without months of extra \
+                                development time, so I hope you find this helpful!"}</p>
+                            </li>
+                            <li>
+                                <p><b>{"Geothermal."}</b>{" I finally got around to adding this back to \
+                                the database of available structures."}</p>
+                            </li>
+                        </ul>
+                    }
                     if acked_version < versions::V1M2P13 {
                         <h4>{"Version 1.2.13"}</h4>
                         <ul>
@@ -314,6 +324,16 @@ fn get_existing_user_notification(acked_version: u32) -> Notification {
                 used new features, you may not be able to revert."}</p>
                 <p>{"You can find the older versions at these links:"}</p>
                 <ul>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.15/">
+                            {"https://satisfactory-accounting.github.io/v1.2.15/"}
+                        </a>{"."}
+                    </li>
+                    <li>
+                        <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.14/">
+                            {"https://satisfactory-accounting.github.io/v1.2.14/"}
+                        </a>{"."}
+                    </li>
                     <li>
                         <a target="_blank" href="https://satisfactory-accounting.github.io/v1.2.13/">
                             {"https://satisfactory-accounting.github.io/v1.2.13/"}

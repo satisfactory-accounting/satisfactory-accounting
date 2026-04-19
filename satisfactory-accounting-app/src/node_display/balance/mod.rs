@@ -254,7 +254,7 @@ fn item_row(
 
     match on_backdrive {
         None => html! {
-            <div {class} {title} {onmouseenter} {onmouseleave}>
+            <div {class} {title} {onmouseenter} {onmouseleave} key={id.as_str()}>
                 <Icon {icon}/>
                 <div class="balance-value">{rounded_value}</div>
             </div>
