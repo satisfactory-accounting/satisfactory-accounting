@@ -3,37 +3,71 @@
 
 $neutral-glow: colors.$warning;
 
-@mixin hl-glow($hlcolor, $alpha: 1, $scale: 1) {
-    filter: drop-shadow(0 0 calc(1px * $scale) color.change(#fff, $alpha: $alpha))
-        drop-shadow(0 0 calc(3px * $scale) color.change(#fff, $alpha: $alpha))
-        drop-shadow(0 0 calc(4px * $scale) color.change($hlcolor, $alpha: $alpha))
-        drop-shadow(0 0 calc(10px * $scale) color.change($hlcolor, $alpha: $alpha));
+@mixin hl-glow($hlcolor, $alpha) {
+    filter:
+        drop-shadow(0 0 calc(1px * $alpha) color.change(#fff, $alpha: $alpha))
+        drop-shadow(0 0 calc(4px * $alpha) color.change($hlcolor, $alpha: $alpha))
+        drop-shadow(0 0 calc(10px * $alpha) color.change($hlcolor, $alpha: $alpha));
+
+    &::after {
+        border: 2px solid color.change(color.mix($hlcolor, #fff, 50%), $alpha: $alpha);
+    }
 }
 
 .highlight-enabled .NodeBalance .entry-row {
-    transition: filter 0.5s;
+    transition: filter 0.2s;
+    position: relative;
+
+    .value-display, .balance-value {
+        transition: color 0.2s;
+        z-index: 0;
+    }
+
+    &::after {
+        transition: border-color 0.2s;
+
+        position: absolute;
+        left: -5px;
+        right: -6px;
+        top: -2px;
+        bottom: -2px;
+        border-radius: 8px;
+        content: "";
+        z-index: -1;
+    }
+
+    .value-input {
+        color: #000;
+        z-index: 1;
+    }
 
     &.neutral {
-        @include hl-glow($neutral-glow, 0, 0);
+        @include hl-glow($neutral-glow, 0);
     }
 
     &.negative {
-        @include hl-glow(colors.$negative-balance, 0, 0);
+        @include hl-glow(colors.$negative-balance, 0);
     }
 
     &.positive {
-        @include hl-glow(colors.$positive-balance, 0, 0);
+        @include hl-glow(colors.$positive-balance, 0);
     }
 
     &.highlight-item.neutral {
-        @include hl-glow($neutral-glow);
+        @include hl-glow($neutral-glow, 1);
     }
 
     &.highlight-item.negative {
-        @include hl-glow(colors.$negative-balance);
+        @include hl-glow(colors.$negative-balance, 1);
+        .value-display, .balance-value {
+            color: color.adjust(colors.$negative-balance, $lightness: -30%);
+        }
     }
 
     &.highlight-item.positive {
-        @include hl-glow(colors.$positive-balance);
+        @include hl-glow(colors.$positive-balance, 1);
+        .value-display, .balance-value {
+            color: color.adjust(colors.$positive-balance, $lightness: -30%);
+        }
     }
 }

@@ -415,7 +415,7 @@ macro_rules! typed_symbol {
             }
 
             impl $Self {
-                fn as_str(&self) -> &str {
+                pub fn as_str(&self) -> &str {
                     &*self.0
                 }
             }
@@ -499,6 +499,13 @@ pub enum ItemIdOrPower {
 
 impl ItemIdOrPower {
     const POWER_FAKE_ITEM_ID: &str = "_Power_";
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            ItemIdOrPower::Power => Self::POWER_FAKE_ITEM_ID,
+            ItemIdOrPower::Item(item_id) => item_id.as_str(),
+        }
+    }
 }
 
 impl Serialize for ItemIdOrPower {
